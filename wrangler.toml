@@ -1,0 +1,147 @@
+# spcfz-licence-card — see docs/ARCHITECTURE.md section 11.
+# Production is the default environment; `--env preview` is our own QA copy.
+
+name = "spcfz-licence-card"
+main = "src/index.ts"
+compatibility_date = "2026-06-01"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = false
+
+[observability]
+enabled = true
+
+[vars]
+BASE_URL = "https://licensed.spcfz.ae"
+# Comma-separated IPv4/IPv6 addresses or IPv4 CIDRs the ERP posts from. Empty = reject everything.
+ERP_IP_ALLOWLIST = ""
+# JSON object mapping ERP field names (dotted paths allowed) to canonical names; see src/intake.
+FIELD_MAP = "{}"
+GTM_CONTAINER = "GTM-PZ8R4DN"
+TEMPLATE_VERSION = "placeholder-1"
+
+[triggers]
+crons = ["15 1 * * *"]   # 05:15 Asia/Dubai, daily housekeeping
+
+[browser]
+binding = "BROWSER"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "spcfz-licence-card"
+database_id = "REPLACE_AFTER_WRANGLER_D1_CREATE"
+migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "spcfz-licence-card"
+
+[[queues.producers]]
+binding = "RENDER_QUEUE"
+queue = "spcfz-licence-card-render"
+
+[[queues.consumers]]
+queue = "spcfz-licence-card-render"
+max_batch_size = 1
+max_batch_timeout = 5
+max_retries = 3
+dead_letter_queue = "spcfz-licence-card-dlq"
+
+[[queues.consumers]]
+queue = "spcfz-licence-card-dlq"
+max_batch_size = 10
+max_retries = 0
+
+[[routes]]
+pattern = "licensed.spcfz.ae"
+custom_domain = true
+
+# Font files are bundled as raw bytes and embedded into the render HTML.
+[[rules]]
+type = "Data"
+globs = ["**/*.woff2"]
+fallthrough = true
+
+# Secrets, set with `wrangler secret put <NAME>` (never in this file):
+#   WEBHOOK_SECRET_CURRENT, WEBHOOK_SECRET_PREVIOUS   production intake
+#   TEST_SECRET_CURRENT, TEST_SECRET_PREVIOUS         test intake
+#   ACCESS_TEAM_DOMAIN, ACCESS_AUD                    Cloudflare Access for /admin
+
+# ---------------------------------------------------------------- preview
+[env.preview]
+name = "spcfz-licence-card-preview"
+workers_dev = true
+# `routes` IS inherited by environments; without this, a preview deploy would take licensed.spcfz.ae.
+routes = []
+
+[env.preview.vars]
+BASE_URL = "https://spcfz-licence-card-preview.REPLACE_SUBDOMAIN.workers.dev"
+ERP_IP_ALLOWLIST = ""
+FIELD_MAP = "{}"
+GTM_CONTAINER = ""
+TEMPLATE_VERSION = "placeholder-1"
+
+[env.preview.triggers]
+crons = ["15 1 * * *"]
+
+[env.preview.browser]
+binding = "BROWSER"
+
+[[env.preview.d1_databases]]
+binding = "DB"
+database_name = "spcfz-licence-card-preview"
+database_id = "REPLACE_AFTER_WRANGLER_D1_CREATE"
+migrations_dir = "migrations"
+
+[[env.preview.r2_buckets]]
+binding = "BUCKET"
+bucket_name = "spcfz-licence-card-preview"
+
+[[env.preview.queues.producers]]
+binding = "RENDER_QUEUE"
+queue = "spcfz-licence-card-preview-render"
+
+[[env.preview.queues.consumers]]
+queue = "spcfz-licence-card-preview-render"
+max_batch_size = 1
+max_batch_timeout = 5
+max_retries = 3
+dead_letter_queue = "spcfz-licence-card-preview-dlq"
+
+[[env.preview.queues.consumers]]
+queue = "spcfz-licence-card-preview-dlq"
+max_batch_size = 10
+max_retries = 0
+
+# ---------------------------------------------------------------- test
+# Used only by vitest (vitest.config.ts selects it). Same bindings as production minus the
+# queue consumers and the browser binding, so a test can enqueue a render without anything
+# consuming it. Vars come from vitest.config.ts.
+[env.test]
+name = "spcfz-licence-card-test"
+workers_dev = false
+routes = []
+
+[env.test.vars]
+BASE_URL = "https://licensed.test"
+ERP_IP_ALLOWLIST = ""
+FIELD_MAP = "{}"
+GTM_CONTAINER = ""
+TEMPLATE_VERSION = "placeholder-1"
+
+# Present only so wrangler does not warn; no test touches it and Miniflare has no browser.
+[env.test.browser]
+binding = "BROWSER"
+
+[[env.test.d1_databases]]
+binding = "DB"
+database_name = "spcfz-licence-card-test"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+[[env.test.r2_buckets]]
+binding = "BUCKET"
+bucket_name = "spcfz-licence-card-test"
+
+[[env.test.queues.producers]]
+binding = "RENDER_QUEUE"
+queue = "spcfz-licence-card-test-render"

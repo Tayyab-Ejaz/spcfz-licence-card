@@ -1,0 +1,119 @@
+# Licence-issued webhook: specification for the ERP team
+
+From SPC Free Zone marketing. Version 0.1, 15 October 2026.
+
+When a business licence is issued, please send us one HTTP request. We answer
+with a web address. That address goes into the licence-issued email you already
+send to the customer. Nothing else is needed from the ERP.
+
+## Endpoints
+
+| Use | URL |
+|---|---|
+| Testing, use this first | `https://licensed.spcfz.ae/v1/test/licence-issued` |
+| Live licences | `https://licensed.spcfz.ae/v1/licence-issued` |
+
+Method `POST`, HTTPS only, body in JSON, `Content-Type: application/json`.
+
+Each endpoint has its own secret. We will hand both secrets over through a
+channel you choose, never by email. The test secret never works on the live
+endpoint and the other way round.
+
+## Authentication
+
+Send the secret in one of these two headers, whichever your system supports:
+
+```
+X-SPC-Webhook-Secret: <secret>
+```
+or
+```
+Authorization: Bearer <secret>
+```
+
+We also allow traffic only from your public IP addresses. Please send us the
+list of addresses the ERP uses for outbound calls, and tell us before they
+change.
+
+## Payload
+
+We adapt to your field names. Send what you have, using the names your system
+already uses, and post a few examples to the test endpoint. We will map them on
+our side. What we need:
+
+| Information | Required | Notes |
+|---|---|---|
+| Licence number | yes | Exactly as printed on the licence. |
+| Company name, English | yes | The legal name. |
+| Company name, Arabic | no | Used when present. |
+| Licence type | no | Free text as you hold it. |
+| Business activity or activity category | no | One value, or a list; we use the first. |
+| Issue date | no | Any unambiguous format. ISO `YYYY-MM-DD` is best. Defaults to today. |
+| Customer's preferred language | no | `en` or `ar`. Defaults to English. |
+
+Please do not include personal details such as the owner's name, email or
+phone number. If your system cannot leave them out, we discard them on
+receipt and never store them.
+
+Example:
+
+```json
+{
+  "licence_number": "SPC-2026-01234",
+  "company_name_en": "Nimbus Publishing FZE",
+  "company_name_ar": "نيمبوس للنشر م.م.ح",
+  "licence_type": "Standard",
+  "activity_category": "Publishing",
+  "issued_on": "2026-10-15",
+  "preferred_language": "en"
+}
+```
+
+Bodies over 64 KB are rejected.
+
+## Response
+
+Normally within one second:
+
+```json
+{
+  "status": "accepted",
+  "card_id": "01J9ZK4Q7W…",
+  "page_url": "https://licensed.spcfz.ae/c/7Hk2bQpX9sLm3nVd8rTy1w",
+  "ready": false
+}
+```
+
+Put `page_url` into the customer's licence-issued email. The page is ready a
+few seconds after we answer; if a customer opens it sooner, it shows a short
+"preparing your card" screen and refreshes itself.
+
+Sending the same licence twice is safe. You get the same `page_url` back.
+Sending the same licence with corrected details updates the card behind the
+same address.
+
+| Status | Meaning | What to do |
+|---|---|---|
+| 200 | Accepted, including repeats | Use `page_url`. |
+| 400 | The body could not be read or a required field is missing | Response lists the problems. Fix and resend. |
+| 401 | Wrong or missing secret | Check the header and which endpoint you called. |
+| 403 | Your IP address is not on our list | Tell us the address. |
+| 413 | Body too large | Send less. |
+| 429 | Too many requests | Wait a minute and resend. |
+| 500 to 599 | Our fault | Resend later if you can. If your system cannot retry, nothing is lost: we can recreate the card from the licence number on our side. |
+
+Set your request timeout to at least 10 seconds.
+
+## Going live
+
+1. We send you the two secrets. You send us your outbound IP addresses.
+2. You post several real-looking licences to the test endpoint, including at
+   least one with no Arabic name and one with a long company name.
+3. We confirm the field mapping with you and show you the resulting pages.
+4. You add `page_url` to the licence-issued email template.
+5. You switch the URL to the live endpoint and the secret to the live secret.
+6. The first few live licences are checked by both teams.
+
+## Contact
+
+SPC Free Zone marketing, marketing.admin@spcemail.co.

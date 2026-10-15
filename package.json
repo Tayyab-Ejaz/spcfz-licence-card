@@ -1,0 +1,34 @@
+{
+  "name": "spcfz-licence-card",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Licence-issued social creative for SPC Free Zone customers, served at licensed.spcfz.ae",
+  "scripts": {
+    "dev": "wrangler dev",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "migrate:local": "wrangler d1 migrations apply spcfz-licence-card --local",
+    "migrate:preview": "wrangler d1 migrations apply spcfz-licence-card-preview --env preview --remote",
+    "migrate:production": "wrangler d1 migrations apply spcfz-licence-card --remote --env \"\"",
+    "deploy:preview": "wrangler deploy --env preview",
+    "deploy:production": "wrangler deploy --env \"\""
+  },
+  "dependencies": {
+    "@cloudflare/puppeteer": "^1.4.0",
+    "hono": "^4.13.0",
+    "jose": "^6.2.0"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.4.2",
+    "@cloudflare/workers-types": "^5.20261006.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.11",
+    "wrangler": "^4.151.0"
+  },
+  "allowScripts": {
+    "workerd@1.20261012.1": true,
+    "esbuild@0.28.2": true
+  }
+}
