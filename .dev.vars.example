@@ -1,7 +1,0 @@
-# Copy to .dev.vars for `wrangler dev`. Never commit .dev.vars.
-WEBHOOK_SECRET_CURRENT=dev-production-secret
-WEBHOOK_SECRET_PREVIOUS=
-TEST_SECRET_CURRENT=dev-test-secret
-TEST_SECRET_PREVIOUS=
-ACCESS_TEAM_DOMAIN=
-ACCESS_AUD=

@@ -1,9 +1,9 @@
 // Shared chrome for the staff admin: nav, brand colours, tables, forms. Server-rendered, no JavaScript.
 import type { Context } from 'hono';
-import type { AppEnv, CardStatus } from '../types';
-import { html, raw } from '../util/html';
-import type { RawHtml } from '../util/html';
-import { CSRF_FIELD } from './csrf';
+import type { AppEnv, CardStatus } from '../types.js';
+import { html, raw } from '../util/html.js';
+import type { RawHtml } from '../util/html.js';
+import { CSRF_FIELD } from './csrf.js';
 
 /** `html` that returns RawHtml so fragments nest without double escaping. */
 export function h(strings: TemplateStringsArray, ...values: unknown[]): RawHtml {

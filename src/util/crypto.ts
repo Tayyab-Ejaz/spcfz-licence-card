@@ -1,3 +1,5 @@
+import { createHash, timingSafeEqual } from 'node:crypto';
+
 const BASE62 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 const BASE32 = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'; // Crockford, for ULIDs
 
@@ -50,15 +52,12 @@ export async function sha256Hex(input: string): Promise<string> {
 
 /**
  * Constant-time string equality. Both sides are hashed first so differing
- * lengths leak nothing, then compared with the platform primitive.
+ * lengths leak nothing, then compared with node:crypto's primitive.
  */
 export async function timingSafeEqualStr(a: string, b: string): Promise<boolean> {
-  const enc = new TextEncoder();
-  const [ha, hb] = await Promise.all([
-    crypto.subtle.digest('SHA-256', enc.encode(a)),
-    crypto.subtle.digest('SHA-256', enc.encode(b)),
-  ]);
-  return crypto.subtle.timingSafeEqual(ha, hb);
+  const ha = createHash('sha256').update(a, 'utf8').digest();
+  const hb = createHash('sha256').update(b, 'utf8').digest();
+  return timingSafeEqual(ha, hb);
 }
 
 /** Stable hash of the canonical fields, used for idempotency (ARCHITECTURE section 4). */

@@ -1,14 +1,16 @@
-// Queue consumer against the isolated D1 and R2 of the Workers pool, with the browser renderer
+// Queue consumer against a fresh SQLite database and image folder (tests/env.ts), with the browser renderer
 // replaced by a stub (RenderDeps). Nothing here launches Chromium.
-import { env } from 'cloudflare:test';
 import { describe, expect, it, vi } from 'vitest';
-import type { CardRow, Env, RenderJob } from '../src/types';
-import { LANGS, SIZE_NAMES } from '../src/types';
-import { getCardById, insertCard, setCardStatus } from '../src/db/cards';
-import { DLQ_ERROR, handleDeadLetters, handleRenderBatch } from '../src/render/consumer';
-import type { RenderDeps, RenderedImage } from '../src/render/consumer';
-import { imageKey } from '../src/storage';
-import { randomToken } from '../src/util/crypto';
+import type { CardRow, Env, MessageBatch, RenderJob } from '../src/types.js';
+import { LANGS, SIZE_NAMES } from '../src/types.js';
+import { getCardById, insertCard, setCardStatus } from '../src/db/cards.js';
+import { DLQ_ERROR, handleDeadLetters, handleRenderBatch } from '../src/render/consumer.js';
+import type { RenderDeps, RenderedImage } from '../src/render/consumer.js';
+import { imageKey } from '../src/storage.js';
+import { randomToken } from '../src/util/crypto.js';
+import { createTestEnv } from './env.js';
+
+const env = createTestEnv();
 
 // A 1x1 transparent PNG, 70 bytes.
 const PNG_1X1 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
@@ -50,12 +52,6 @@ function fakeBatch(job: RenderJob, queue = 'spcfz-licence-card-render') {
   return { batch, ack, retry };
 }
 
-const ctx = {
-  waitUntil: (_p: Promise<unknown>) => undefined,
-  passThroughOnException: () => undefined,
-  props: {},
-} as unknown as ExecutionContext;
-
 function expectedKeys(token: string): string[] {
   return LANGS.flatMap((lang) => SIZE_NAMES.map((size) => imageKey(token, lang, size))).sort();
 }
@@ -72,7 +68,7 @@ describe('handleRenderBatch', () => {
     const deps: RenderDeps = { renderCard };
     const { batch, ack, retry } = fakeBatch({ card_id: card.id, content_hash: card.content_hash });
 
-    await handleRenderBatch(batch, env, ctx, deps);
+    await handleRenderBatch(batch, env, deps);
 
     expect(renderCard).toHaveBeenCalledTimes(1);
     expect(renderCard.mock.calls[0]?.[0]?.id).toBe(card.id);
@@ -98,7 +94,7 @@ describe('handleRenderBatch', () => {
     const renderCard = vi.fn(async (): Promise<RenderedImage[]> => allImages());
     const { batch, ack, retry } = fakeBatch({ card_id: card.id, content_hash: 'stale-hash' });
 
-    await handleRenderBatch(batch, env, ctx, { renderCard });
+    await handleRenderBatch(batch, env, { renderCard });
 
     expect(renderCard).not.toHaveBeenCalled();
     expect(await storedKeys(card.token)).toEqual([]);
@@ -114,7 +110,7 @@ describe('handleRenderBatch', () => {
     });
     const { batch, ack, retry } = fakeBatch({ card_id: card.id, content_hash: card.content_hash });
 
-    await handleRenderBatch(batch, env, ctx, { renderCard });
+    await handleRenderBatch(batch, env, { renderCard });
 
     expect(renderCard).toHaveBeenCalledTimes(1);
     expect(retry).toHaveBeenCalledTimes(1);
@@ -130,7 +126,7 @@ describe('handleRenderBatch', () => {
     const renderCard = vi.fn(async (): Promise<RenderedImage[]> => allImages().slice(0, 7));
     const { batch, ack, retry } = fakeBatch({ card_id: card.id, content_hash: card.content_hash });
 
-    await handleRenderBatch(batch, env, ctx, { renderCard });
+    await handleRenderBatch(batch, env, { renderCard });
 
     expect(retry).toHaveBeenCalledTimes(1);
     expect(ack).not.toHaveBeenCalled();
@@ -142,7 +138,7 @@ describe('handleRenderBatch', () => {
     const renderCard = vi.fn(async (): Promise<RenderedImage[]> => allImages());
     const { batch, ack, retry } = fakeBatch({ card_id: '01JA0000000000000000000000', content_hash: 'x' });
 
-    await handleRenderBatch(batch, env, ctx, { renderCard });
+    await handleRenderBatch(batch, env, { renderCard });
 
     expect(renderCard).not.toHaveBeenCalled();
     expect(ack).toHaveBeenCalledTimes(1);
@@ -155,7 +151,7 @@ describe('handleRenderBatch', () => {
     const renderCard = vi.fn(async (): Promise<RenderedImage[]> => allImages());
     const { batch, ack, retry } = fakeBatch({ card_id: card.id, content_hash: card.content_hash });
 
-    await handleRenderBatch(batch, env, ctx, { renderCard });
+    await handleRenderBatch(batch, env, { renderCard });
 
     expect(renderCard).not.toHaveBeenCalled();
     expect(await storedKeys(card.token)).toEqual([]);
@@ -170,7 +166,7 @@ describe('handleDeadLetters', () => {
     const card = await createCard();
     const { batch, ack, retry } = fakeBatch({ card_id: card.id, content_hash: card.content_hash }, 'spcfz-licence-card-dlq');
 
-    await handleDeadLetters(batch, env, ctx);
+    await handleDeadLetters(batch, env);
 
     const after = await getCardById(env.DB, card.id);
     expect(after?.status).toBe('failed');
@@ -184,7 +180,7 @@ describe('handleDeadLetters', () => {
     const card = await createCard();
     const { batch, ack } = fakeBatch({ card_id: card.id, content_hash: 'older-hash' }, 'spcfz-licence-card-dlq');
 
-    await handleDeadLetters(batch, env, ctx);
+    await handleDeadLetters(batch, env);
 
     expect((await getCardById(env.DB, card.id))?.status).toBe('pending');
     expect(ack).toHaveBeenCalledTimes(1);
@@ -192,7 +188,7 @@ describe('handleDeadLetters', () => {
 
   it('acks a dead job for a missing card without throwing', async () => {
     const { batch, ack } = fakeBatch({ card_id: '01JA0000000000000000000001', content_hash: 'x' }, 'spcfz-licence-card-dlq');
-    await handleDeadLetters(batch, env, ctx);
+    await handleDeadLetters(batch, env);
     expect(ack).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,8 +1,8 @@
 // Validation and normalisation of the mapped fields (ARCHITECTURE section 4, table "Field mapping"). Pure; no I/O.
-import type { CanonicalFields, Lang } from '../types';
-import { stripHtml } from '../util/html';
-import { parseDate, todayInDubai } from '../util/time';
-import { isBlank } from './common';
+import type { CanonicalFields, Lang } from '../types.js';
+import { stripHtml } from '../util/html.js';
+import { parseDate, todayInDubai } from '../util/time.js';
+import { isBlank } from './common.js';
 
 export type ValidationResult = { ok: true; fields: CanonicalFields } | { ok: false; errors: string[] };
 

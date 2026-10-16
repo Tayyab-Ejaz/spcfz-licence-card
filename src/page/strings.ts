@@ -1,6 +1,6 @@
 // Every visitor-facing string on the personal page, in both languages.
 // The Arabic was drafted by Claude and must be reviewed by a native reader before launch (ARCHITECTURE section 12).
-import type { Lang, Size } from '../types';
+import type { Lang, Size } from '../types.js';
 
 export interface PageStrings {
   dir: 'ltr' | 'rtl';

@@ -1,11 +1,11 @@
 // Idempotent create-or-update of a card from validated fields (ARCHITECTURE C1, section 4 "Idempotency and updates").
-import type { CanonicalFields, CardRow, CardSource, Env, UpsertOutcome } from '../types';
+import type { CanonicalFields, CardRow, CardSource, D1Database, Env, UpsertOutcome } from '../types.js';
 import {
   findCardByLicence, getCardById, getIntSetting, insertCard, setCardExpiry, updateCardFields,
-} from '../db/cards';
-import { contentHash, randomToken } from '../util/crypto';
-import { addDays, nowIso } from '../util/time';
-import { pageUrl } from '../storage';
+} from '../db/cards.js';
+import { contentHash, randomToken } from '../util/crypto.js';
+import { addDays, nowIso } from '../util/time.js';
+import { pageUrl } from '../storage.js';
 
 export interface UpsertOptions {
   is_test: boolean;

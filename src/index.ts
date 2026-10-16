@@ -1,11 +1,10 @@
-// Entry point. Routers and handlers live in their own folders; this file only wires them.
+// The Hono application. Routers and handlers live in their own folders; this file only wires them.
+// src/server.ts builds the Env, serves `app`, and runs the queue worker and the daily scheduler.
 import { Hono } from 'hono';
-import type { AppEnv, Env, RenderJob } from './types';
-import { intakeRoutes } from './intake/routes';
-import { pageRoutes } from './page/routes';
-import { adminRoutes } from './admin/routes';
-import { handleDeadLetters, handleRenderBatch } from './render/consumer';
-import { runHousekeeping } from './cron';
+import type { AppEnv } from './types.js';
+import { intakeRoutes } from './intake/routes.js';
+import { pageRoutes } from './page/routes.js';
+import { adminRoutes } from './admin/routes.js';
 
 const app = new Hono<AppEnv>();
 
@@ -23,17 +22,5 @@ app.onError((err, c) => {
   return c.text('Something went wrong', 500);
 });
 
-export default {
-  fetch: app.fetch,
-
-  async queue(batch: MessageBatch<RenderJob>, env: Env, ctx: ExecutionContext): Promise<void> {
-    if (batch.queue.endsWith('-dlq')) await handleDeadLetters(batch, env, ctx);
-    else await handleRenderBatch(batch, env, ctx);
-  },
-
-  async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
-    ctx.waitUntil(runHousekeeping(env));
-  },
-} satisfies ExportedHandler<Env, RenderJob>;
-
 export { app };
+export default app;

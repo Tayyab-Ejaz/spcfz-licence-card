@@ -3,32 +3,35 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Licence-issued social creative for SPC Free Zone customers, served at licensed.spcfz.ae",
+  "description": "Licence-issued social creative for SPC Free Zone customers, served at licensed.spcfz.ae (self-hosted Node 22 service)",
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "migrate:local": "wrangler d1 migrations apply spcfz-licence-card --local",
-    "migrate:preview": "wrangler d1 migrations apply spcfz-licence-card-preview --env preview --remote",
-    "migrate:production": "wrangler d1 migrations apply spcfz-licence-card --remote --env \"\"",
-    "deploy:preview": "wrangler deploy --env preview",
-    "deploy:production": "wrangler deploy --env \"\""
+    "test:watch": "vitest"
   },
   "dependencies": {
-    "@cloudflare/puppeteer": "^1.4.0",
+    "@hono/node-server": "^2.1.5",
+    "better-sqlite3": "^13.0.3",
     "hono": "^4.13.0",
-    "jose": "^6.2.0"
+    "jose": "^6.2.0",
+    "puppeteer": "^25.14.0"
   },
   "devDependencies": {
-    "@cloudflare/vitest-plugin": "^1.4.2",
-    "@cloudflare/workers-types": "^5.20261006.1",
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/node": "^26.6.5",
+    "tsx": "^4.23.15",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.11",
-    "wrangler": "^4.151.0"
+    "vitest": "^4.1.11"
   },
   "allowScripts": {
-    "workerd@1.20261012.1": true,
-    "esbuild@0.28.2": true
+    "esbuild@0.28.2": true,
+    "better-sqlite3@13.0.3": true,
+    "puppeteer@25.14.0": true
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

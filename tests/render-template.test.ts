@@ -1,13 +1,13 @@
 // Pure template tests: no browser, no bindings. Fonts are stubbed except in the last block, which
-// loads the real woff2 imports to prove the Data rule and the two variable @font-face blocks.
+// reads the real woff2 files from templates/fonts to prove the two variable @font-face blocks.
 import { describe, expect, it } from 'vitest';
-import type { CardRow, Lang, Size } from '../src/types';
-import { LANGS, SIZES, SIZE_NAMES } from '../src/types';
-import { AUTOFIT_FN, autofitScript } from '../src/render/autofit';
-import type { FontCss } from '../src/render/fonts';
-import { buildCardHtml, cardText, STORY_SAFE_ZONE, TEMPLATE_METRICS } from '../src/render/template';
-import { escapeHtml } from '../src/util/html';
-import { formatMonthYear } from '../src/util/time';
+import type { CardRow, Lang, Size } from '../src/types.js';
+import { LANGS, SIZES, SIZE_NAMES } from '../src/types.js';
+import { AUTOFIT_FN, autofitScript } from '../src/render/autofit.js';
+import type { FontCss } from '../src/render/fonts.js';
+import { buildCardHtml, cardText, STORY_SAFE_ZONE, TEMPLATE_METRICS } from '../src/render/template.js';
+import { escapeHtml } from '../src/util/html.js';
+import { formatMonthYear } from '../src/util/time.js';
 
 const fonts: FontCss = { css: '/* fonts stubbed */' };
 const TEMPLATE_VERSION = 'placeholder-1';
@@ -196,8 +196,8 @@ describe('autofit', () => {
 
 describe('fonts', () => {
   it('embeds one variable @font-face per family, covering weights 400 to 700, as base64 woff2', async () => {
-    // Dynamic import keeps a failing Data-rule import from taking the template tests down with it.
-    const { loadFonts } = await import('../src/render/fonts');
+    // Dynamic import keeps a missing font file from taking the template tests down with it.
+    const { loadFonts } = await import('../src/render/fonts.js');
     const { css } = loadFonts();
     expect(css.match(/@font-face/g)?.length).toBe(2);
     expect(css).toContain("font-family:'Inter';font-style:normal;font-weight:400 700;");

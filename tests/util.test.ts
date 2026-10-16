@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { TOKEN_RE, contentHash, randomSecret, randomToken, sha256Hex, timingSafeEqualStr, ulid } from '../src/util/crypto';
-import { escapeHtml, html, raw, safeFilename, stripHtml } from '../src/util/html';
-import { ipAllowed, parseAllowlist } from '../src/util/ip';
-import { addDays, formatMonthYear, parseDate, todayInDubai } from '../src/util/time';
-import { csvToObjects, parseCsv } from '../src/util/csv';
+import { TOKEN_RE, contentHash, randomSecret, randomToken, sha256Hex, timingSafeEqualStr, ulid } from '../src/util/crypto.js';
+import { escapeHtml, html, raw, safeFilename, stripHtml } from '../src/util/html.js';
+import { ipAllowed, parseAllowlist } from '../src/util/ip.js';
+import { addDays, formatMonthYear, parseDate, todayInDubai } from '../src/util/time.js';
+import { csvToObjects, parseCsv } from '../src/util/csv.js';
 
 describe('crypto', () => {
   it('randomToken is 22 base62 chars and unique', () => {

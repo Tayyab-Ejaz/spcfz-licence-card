@@ -1,21 +1,25 @@
-// Personal page: the page itself, status JSON, image delivery from R2 and the counter beacon (ARCHITECTURE section 7).
+// Personal page: the page itself, status JSON, image delivery from the bucket and the counter beacon (ARCHITECTURE section 7).
 import { Hono } from 'hono';
 import type { Context } from 'hono';
-import type { AppEnv, Lang, MetricKind, Size } from '../types';
-import { isLang, isSize } from '../types';
-import { bumpMetric, getCardByToken, getSettings } from '../db/cards';
-import type { MetricKey } from '../db/cards';
-import { imageKey, imageUrl } from '../storage';
-import { TOKEN_RE, bytesToBase64 } from '../util/crypto';
-import { safeFilename } from '../util/html';
-import { todayInDubai } from '../util/time';
+import type { AppEnv, Lang, MetricKind, Size } from '../types.js';
+import { isLang, isSize } from '../types.js';
+import { bumpMetric, getCardByToken, getSettings } from '../db/cards.js';
+import type { MetricKey } from '../db/cards.js';
+import { imageKey } from '../storage.js';
+import { background } from '../util/background.js';
+import { TOKEN_RE, bytesToBase64 } from '../util/crypto.js';
+import { safeFilename } from '../util/html.js';
+import { todayInDubai } from '../util/time.js';
 import {
   buildCaption, displayName, renderExpiredPage, renderNotFoundPage, renderPendingPage, renderReadyPage,
-} from './view';
+} from './view.js';
 
 const IMAGE_FILE_RE = /^(en|ar)-(square|portrait|story|landscape)\.png$/;
 const GTM_ID_RE = /^GTM-[A-Z0-9]{4,12}$/;
 const BEACON_LIMIT = 1024;
+
+/** Image URLs are versioned (src/storage.ts), so a copy may live at the edge and in browsers for a year. */
+export const IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 
 const DEFAULT_CAPTION_EN =
   "We're officially licensed at SPC Free Zone! {company} is now a licensed business in Sharjah. #SPCFreeZone #Sharjah #BusinessSetup {link}";
@@ -56,15 +60,12 @@ function pageHeaders(c: Context<AppEnv>, nonce: string, gtm: boolean): void {
 
 /** Counters must never break the page: fire and forget, swallow everything. */
 function safeMetric(c: Context<AppEnv>, m: MetricKey): void {
-  try {
-    c.executionCtx.waitUntil(
-      bumpMetric(c.env.DB, m, todayInDubai()).catch((err: unknown) => {
-        console.warn('metric failed', { kind: m.kind, message: err instanceof Error ? err.message : String(err) });
-      }),
-    );
-  } catch {
-    // No execution context (should not happen in Workers); drop the counter.
-  }
+  background(
+    bumpMetric(c.env.DB, m, todayInDubai()).catch((err: unknown) => {
+      console.warn('metric failed', { kind: m.kind, message: err instanceof Error ? err.message : String(err) });
+    }),
+    'metric',
+  );
 }
 
 function isMetricKind(v: unknown): v is MetricKind {
@@ -150,51 +151,28 @@ pageRoutes.get('/c/:token/:file', async (c) => {
 
   const download = c.req.query('download') === '1';
 
-  // Cache key: the canonical image URL with no query string, so `?download=1` and plain share one body and
-  // `purgeImageCache` in src/storage.ts (which keys the same way) can evict it.
-  const cacheKey = new Request(imageUrl(c.env, token, lang, size), { method: 'GET' });
-  let cache: Cache | null = null;
-  try {
-    cache = caches.default;
-  } catch {
-    cache = null;
-  }
+  const obj = await c.env.BUCKET.get(imageKey(token, lang, size));
+  if (!obj) return c.text('Not found', 404);
 
-  let res: Response | null = null;
-  if (cache) {
-    try {
-      const hit = await cache.match(cacheKey);
-      if (hit) res = new Response(hit.body, hit); // mutable copy so Content-Disposition can be added
-    } catch {
-      res = null;
-    }
-  }
-
-  if (!res) {
-    const obj = await c.env.BUCKET.get(imageKey(token, lang, size));
-    if (!obj) return c.text('Not found', 404);
-    const headers = new Headers({
-      'Content-Type': 'image/png',
-      'Cache-Control': 'public, max-age=86400',
-      ETag: obj.httpEtag,
-      'X-Content-Type-Options': 'nosniff',
-    });
-    res = new Response(obj.body, { status: 200, headers });
-    if (cache) {
-      try {
-        c.executionCtx.waitUntil(cache.put(cacheKey, res.clone()).catch(() => undefined));
-      } catch {
-        // No execution context; skip the edge cache.
-      }
-    }
-  }
+  // Plain image URLs are versioned (`?v=`, src/storage.ts) and cacheable for a year. The download variant
+  // counts a download on every click, so it must never be answered from a shared cache.
+  const headers = new Headers({
+    'Content-Type': 'image/png',
+    'Content-Length': String(obj.size),
+    'Cache-Control': download ? 'private, no-store' : IMAGE_CACHE_CONTROL,
+    ETag: obj.httpEtag,
+    'X-Content-Type-Options': 'nosniff',
+  });
 
   if (download) {
     const filename = `${safeFilename(card.company_name_en, `${lang}-${size}`)}.png`;
-    res.headers.set('Content-Disposition', `attachment; filename="${filename}"`);
+    headers.set('Content-Disposition', `attachment; filename="${filename}"`);
     if (!card.is_test) safeMetric(c, { card_id: card.id, kind: 'download', lang, size });
+  } else if (c.req.header('If-None-Match') === obj.httpEtag) {
+    headers.delete('Content-Length');
+    return new Response(null, { status: 304, headers });
   }
-  return res;
+  return new Response(obj.body, { status: 200, headers });
 });
 
 // ------------------------------------------------------------------ beacon

@@ -1,13 +1,14 @@
 // Daily housekeeping (ARCHITECTURE section 10): raw bodies, old test cards, expired live cards, metric compaction.
-import { env } from 'cloudflare:test';
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { CanonicalFields, CardRow } from '../src/types';
-import { LANGS, SIZE_NAMES } from '../src/types';
-import { runHousekeeping } from '../src/cron';
-import { bumpMetric, getCardById, getEvent, insertCard, insertEvent, metricsForCard } from '../src/db/cards';
-import { imageKey, putImage } from '../src/storage';
-import { randomToken } from '../src/util/crypto';
+import type { CanonicalFields, CardRow } from '../src/types.js';
+import { LANGS, SIZE_NAMES } from '../src/types.js';
+import { runHousekeeping } from '../src/cron.js';
+import { bumpMetric, getCardById, getEvent, insertCard, insertEvent, metricsForCard } from '../src/db/cards.js';
+import { imageKey, putImage } from '../src/storage.js';
+import { randomToken } from '../src/util/crypto.js';
+import { createTestEnv } from './env.js';
 
+const env = createTestEnv();
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 73, 72, 68, 82]);
 const DAY = 24 * 3600 * 1000;
 
@@ -53,6 +54,7 @@ beforeEach(async () => {
     env.DB.prepare('DELETE FROM metrics'),
     env.DB.prepare('DELETE FROM events'),
     env.DB.prepare('DELETE FROM cards'),
+    env.DB.prepare('DELETE FROM jobs'),
   ]);
 });
 

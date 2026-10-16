@@ -2,8 +2,8 @@
 // echoed as a hidden `_csrf` field and compared on every POST. Mutations also require same-origin Sec-Fetch-Site.
 import type { Context } from 'hono';
 import { getCookie, setCookie } from 'hono/cookie';
-import type { AppEnv } from '../types';
-import { randomSecret } from '../util/crypto';
+import type { AppEnv } from '../types.js';
+import { randomSecret } from '../util/crypto.js';
 
 export const CSRF_COOKIE = 'admin_csrf';
 export const CSRF_FIELD = '_csrf';

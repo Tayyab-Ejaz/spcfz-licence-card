@@ -2,12 +2,12 @@
 // One function builds the full HTML document for a (card, lang, size); the browser renders it at
 // exactly SIZES[size] and screenshots it. Every variable goes through the escaping `html` tag.
 // The approved design from docs/DESIGN-HANDOFF.md replaces the layout here under a new TEMPLATE_VERSION.
-import type { CardRow, Lang, Size } from '../types';
-import { SIZES } from '../types';
-import { html, raw } from '../util/html';
-import { formatMonthYear } from '../util/time';
-import { autofitScript } from './autofit';
-import type { FontCss } from './fonts';
+import type { CardRow, Lang, Size } from '../types.js';
+import { SIZES } from '../types.js';
+import { html, raw } from '../util/html.js';
+import { formatMonthYear } from '../util/time.js';
+import { autofitScript } from './autofit.js';
+import type { FontCss } from './fonts.js';
 
 export interface TemplateInput {
   card: CardRow;

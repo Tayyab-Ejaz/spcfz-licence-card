@@ -4,14 +4,14 @@
 // the production route never does.
 import { Hono } from 'hono';
 import type { Context } from 'hono';
-import type { AppEnv, CardSource, Env, EventOutcome, IntakeRoute } from '../types';
-import { getIntSetting, insertEvent } from '../db/cards';
-import { addDays, nowIso } from '../util/time';
-import { checkIp, checkSecret, extractSecret } from './auth';
-import { isPlainObject } from './common';
-import { mapPayload } from './mapper';
-import { upsertFromCanonical } from './upsert';
-import { validateCanonical } from './validate';
+import type { AppEnv, CardSource, Env, EventOutcome, IntakeRoute } from '../types.js';
+import { getIntSetting, insertEvent } from '../db/cards.js';
+import { addDays, nowIso } from '../util/time.js';
+import { checkIp, checkSecret, extractSecret } from './auth.js';
+import { isPlainObject } from './common.js';
+import { mapPayload } from './mapper.js';
+import { upsertFromCanonical } from './upsert.js';
+import { validateCanonical } from './validate.js';
 
 export const MAX_BODY_BYTES = 65536;
 export const PRODUCTION_PATH = '/v1/licence-issued';

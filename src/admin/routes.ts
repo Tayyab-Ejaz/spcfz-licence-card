@@ -4,28 +4,28 @@ import { Hono } from 'hono';
 import type { Context } from 'hono';
 import type {
   AppEnv, CanonicalFields, CardRow, CardSource, CardStatus, Env, EventOutcome, EventRoute, EventRow, SettingKey,
-} from '../types';
-import { LANGS, SIZE_NAMES } from '../types';
-import type { CardFilter } from '../db/cards';
+} from '../types.js';
+import { LANGS, SIZE_NAMES } from '../types.js';
+import type { CardFilter } from '../db/cards.js';
 import {
   countByStatus, countCards, deleteCard, findCardByLicence, getCardById, getEvent, getIntSetting, getSettings,
   insertEvent, listCards, listEvents, metricsForCard, metricsTotals, setCardExpiry, setCardStatus, setSetting,
-} from '../db/cards';
-import { deleteCardImages, imageUrl, pageUrl, purgeImageCache } from '../storage';
-import { csvToObjects } from '../util/csv';
-import { raw } from '../util/html';
-import type { RawHtml } from '../util/html';
-import { addDays, nowIso, todayInDubai } from '../util/time';
-import { mapPayload } from '../intake/mapper';
-import { validateCanonical } from '../intake/validate';
-import { hashFields, upsertFromCanonical } from '../intake/upsert';
-import type { AccessVerifier } from './access';
-import { isAccessConfigured, verifyAccessJwt } from './access';
-import { csrfFailure, csrfToken, ensureCsrf } from './csrf';
-import type { AdminStatus } from './layout';
+} from '../db/cards.js';
+import { deleteCardImages, imageUrl, pageUrl, purgeImageCache } from '../storage.js';
+import { csvToObjects } from '../util/csv.js';
+import { raw } from '../util/html.js';
+import type { RawHtml } from '../util/html.js';
+import { addDays, nowIso, todayInDubai } from '../util/time.js';
+import { mapPayload } from '../intake/mapper.js';
+import { validateCanonical } from '../intake/validate.js';
+import { hashFields, upsertFromCanonical } from '../intake/upsert.js';
+import type { AccessVerifier } from './access.js';
+import { isAccessConfigured, verifyAccessJwt } from './access.js';
+import { csrfFailure, csrfToken, ensureCsrf } from './csrf.js';
+import type { AdminStatus } from './layout.js';
 import {
   EMPTY, actionForm, adminHeaders, badge, csrfField, fmtDateTime, h, kv, pager, respond, table, testBadge,
-} from './layout';
+} from './layout.js';
 
 const PER_PAGE = 50;
 const RERENDER_CAP = 500;
@@ -334,7 +334,7 @@ function settingsForm(c: Context<AppEnv>, values: Record<string, string>, errors
 <div><button class="btn" type="submit">Save settings</button></div>
 </form>
 <h2>Field mapping (read-only)</h2>
-<p class="muted">From the <code>FIELD_MAP</code> Worker variable; change it in wrangler.toml and redeploy. Secrets and the ERP IP allowlist are not editable here.</p>
+<p class="muted">From the <code>FIELD_MAP</code> environment variable; change it in the service's env file and restart the container. Secrets and the ERP IP allowlist are not editable here.</p>
 <pre>${prettyJson(c.env.FIELD_MAP || '{}')}</pre>`;
   return respond(c, { title: 'Settings', active: 'settings', error: errors, flash: flashOf(c), body }, status);
 }
@@ -353,7 +353,7 @@ export function createAdminRoutes(verify: AccessVerifier): Hono<AppEnv> {
           c,
           {
             title: 'Admin is not configured',
-            body: h`<p>Cloudflare Access is not set up for this deployment: the <code>ACCESS_TEAM_DOMAIN</code> and <code>ACCESS_AUD</code> secrets are missing (docs/CLOUDFLARE-SETUP.md).</p>`,
+            body: h`<p>Cloudflare Access is not set up for this deployment: the <code>ACCESS_TEAM_DOMAIN</code> and <code>ACCESS_AUD</code> variables are missing (docs/CLOUDFLARE-SETUP.md).</p>`,
           },
           503,
         );
@@ -494,7 +494,7 @@ ${card.status === 'expired'
 <h2>Images</h2>
 <div class="thumbs">${LANGS.flatMap((lang) =>
   SIZE_NAMES.map((size) => {
-    const src = imageUrl(c.env, card.token, lang, size);
+    const src = imageUrl(c.env, card, lang, size);
     return h`<figure><a href="${src}" target="_blank" rel="noopener"><img src="${src}" alt="${lang} ${size}" loading="lazy"></a><figcaption>${lang}-${size}</figcaption></figure>`;
   }),
 )}</div>

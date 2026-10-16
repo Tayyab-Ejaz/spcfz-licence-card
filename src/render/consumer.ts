@@ -2,12 +2,14 @@
 // The job carries { card_id, content_hash }; the card is reloaded and the job is dropped if a newer
 // event has superseded it. Images are written only after all eight have rendered, so a failure
 // leaves the previous set in place and the status unchanged.
-import type { CardRow, Env, Lang, RenderJob, Size } from '../types';
-import { LANGS, SIZE_NAMES } from '../types';
-import { getCardById, setCardStatus } from '../db/cards';
-import { purgeImageCache, putImage } from '../storage';
-import { nowIso } from '../util/time';
-import { renderCardWithBrowser } from './browser';
+//
+// Called by the queue worker in src/platform/sqlite-queue.ts with MessageBatch-shaped objects.
+import type { CardRow, Env, Lang, Message, MessageBatch, RenderJob, Size } from '../types.js';
+import { LANGS, SIZE_NAMES } from '../types.js';
+import { getCardById, setCardStatus } from '../db/cards.js';
+import { purgeImageCache, putImage } from '../storage.js';
+import { nowIso } from '../util/time.js';
+import { renderCardWithBrowser } from './browser.js';
 
 export interface RenderedImage {
   lang: Lang;
@@ -21,8 +23,8 @@ export interface RenderDeps {
 
 export const DLQ_ERROR = 'render failed after retries';
 
-/** The real renderer. Imported statically: a lazy import left a module resolution pending at test teardown. */
-async function defaultDeps(): Promise<RenderDeps> {
+/** The real renderer. */
+function defaultDeps(): RenderDeps {
   return { renderCard: renderCardWithBrowser };
 }
 
@@ -80,7 +82,7 @@ async function handleRenderMessage(msg: Message<RenderJob>, env: Env, deps?: Ren
       return;
     }
 
-    const d = deps ?? (await defaultDeps());
+    const d = deps ?? defaultDeps();
     const images = await d.renderCard(card, env);
     assertCompleteSet(images);
 
@@ -99,22 +101,17 @@ async function handleRenderMessage(msg: Message<RenderJob>, env: Env, deps?: Ren
   }
 }
 
-export async function handleRenderBatch(
-  batch: MessageBatch<RenderJob>,
-  env: Env,
-  _ctx: ExecutionContext,
-  deps?: RenderDeps,
-): Promise<void> {
-  // Sequential on purpose: one browser session at a time per invocation (max_batch_size is 1 anyway).
+export async function handleRenderBatch(batch: MessageBatch<RenderJob>, env: Env, deps?: RenderDeps): Promise<void> {
+  // Sequential on purpose: one browser session at a time.
   for (const msg of batch.messages) await handleRenderMessage(msg, env, deps);
 }
 
 /**
- * Dead-letter consumer. The platform moves the original body, so no error text travels with it;
- * the card is marked failed with a fixed message. A card whose hash has moved on, or that has
- * since rendered successfully or expired, is left alone.
+ * Dead-letter consumer. Only the original body travels with the message, so the card is marked failed
+ * with a fixed message. A card whose hash has moved on, or that has since rendered successfully or
+ * expired, is left alone.
  */
-export async function handleDeadLetters(batch: MessageBatch<RenderJob>, env: Env, _ctx: ExecutionContext): Promise<void> {
+export async function handleDeadLetters(batch: MessageBatch<RenderJob>, env: Env): Promise<void> {
   for (const msg of batch.messages) {
     const job = readJob(msg);
     try {

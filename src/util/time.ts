@@ -1,4 +1,4 @@
-import type { Lang } from '../types';
+import type { Lang } from '../types.js';
 
 export function nowIso(now: Date = new Date()): string {
   return now.toISOString();

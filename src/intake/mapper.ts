@@ -1,7 +1,7 @@
 // Field mapping: turns whatever the ERP sends into the seven canonical keys and nothing else
 // (ARCHITECTURE section 4 "Field mapping", C5, C6). Pure; no I/O.
-import type { CanonicalFields } from '../types';
-import { isBlank, isPlainObject, normaliseKey } from './common';
+import type { CanonicalFields } from '../types.js';
+import { isBlank, isPlainObject, normaliseKey } from './common.js';
 
 export type CanonicalKey = keyof CanonicalFields;
 

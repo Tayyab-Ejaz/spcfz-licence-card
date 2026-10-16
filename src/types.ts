@@ -1,10 +1,129 @@
 // Shared types. docs/ARCHITECTURE.md is the contract; this file is its TypeScript shadow.
+//
+// The service runs on Node (docs/PORT-TO-NODE.md). The three platform bindings keep the shape of the
+// Cloudflare APIs the application code was written against, implemented by the adapters in src/platform:
+// a D1-shaped SQLite database, an R2-shaped filesystem bucket and a Queue-shaped SQLite job table.
+
+// ------------------------------------------------------------------ platform contracts (D1 subset)
+
+export interface D1Meta {
+  changes: number;
+  last_row_id: number;
+  duration: number;
+  rows_read: number;
+  rows_written: number;
+}
+
+export interface D1Result<T = Record<string, unknown>> {
+  results: T[];
+  success: true;
+  meta: D1Meta;
+}
+
+export interface D1ExecResult {
+  count: number;
+  duration: number;
+}
+
+export interface D1PreparedStatement {
+  bind(...values: unknown[]): D1PreparedStatement;
+  /** The first row, or null when the statement returns none. With a column name, that column of the first row. */
+  first<T = Record<string, unknown>>(): Promise<T | null>;
+  first<T = unknown>(column: string): Promise<T | null>;
+  all<T = Record<string, unknown>>(): Promise<D1Result<T>>;
+  run<T = Record<string, unknown>>(): Promise<D1Result<T>>;
+}
+
+export interface D1Database {
+  prepare(sql: string): D1PreparedStatement;
+  /** Runs every statement in one transaction; results come back in the same order. */
+  batch<T = Record<string, unknown>>(statements: D1PreparedStatement[]): Promise<D1Result<T>[]>;
+  /** Runs one or more semicolon-separated statements with no parameters. */
+  exec(sql: string): Promise<D1ExecResult>;
+}
+
+// ------------------------------------------------------------------ platform contracts (R2 subset)
+
+export interface R2HTTPMetadata {
+  contentType?: string;
+  cacheControl?: string;
+}
+
+export interface R2PutOptions {
+  httpMetadata?: R2HTTPMetadata;
+}
+
+export interface R2Object {
+  key: string;
+  size: number;
+  /** Hex SHA-1 of the content. */
+  etag: string;
+  /** The same, quoted, ready for an ETag header. */
+  httpEtag: string;
+  uploaded: Date;
+  httpMetadata: R2HTTPMetadata;
+}
+
+export interface R2ObjectBody extends R2Object {
+  body: ReadableStream<Uint8Array>;
+  arrayBuffer(): Promise<ArrayBuffer>;
+  text(): Promise<string>;
+}
+
+export type R2PutValue = ArrayBuffer | ArrayBufferView | string | ReadableStream<Uint8Array> | Blob;
+
+export interface R2Bucket {
+  put(key: string, value: R2PutValue, options?: R2PutOptions): Promise<R2Object>;
+  get(key: string): Promise<R2ObjectBody | null>;
+  head(key: string): Promise<R2Object | null>;
+  delete(keys: string | string[]): Promise<void>;
+  list(options?: { prefix?: string }): Promise<{ objects: R2Object[]; truncated: false }>;
+}
+
+// ------------------------------------------------------------------ platform contracts (Queue subset)
+
+export interface Queue<T> {
+  send(body: T): Promise<void>;
+}
+
+export interface Message<T> {
+  readonly id: string;
+  readonly timestamp: Date;
+  readonly body: T;
+  /** 1 on first delivery. */
+  readonly attempts: number;
+  ack(): void;
+  retry(options?: { delaySeconds?: number }): void;
+}
+
+export interface MessageBatch<T> {
+  readonly queue: string;
+  readonly messages: readonly Message<T>[];
+  ackAll(): void;
+  retryAll(options?: { delaySeconds?: number }): void;
+}
+
+// ------------------------------------------------------------------ Env
+
+/**
+ * How the client address is established (docs/PORT-TO-NODE.md section 5).
+ * `off`: the socket peer is the client; `CF-Connecting-IP` is ignored. Local development and tests.
+ * `cloudflare`: `CF-Connecting-IP` is trusted only when the socket peer is a Cloudflare address.
+ * `local-proxy`: `CF-Connecting-IP` is trusted only when the socket peer is loopback or a private address,
+ *   that is a reverse proxy on the same host which has already enforced Cloudflare-only. Production.
+ */
+export type TrustProxy = 'off' | 'cloudflare' | 'local-proxy';
+export const TRUST_PROXY_MODES: readonly TrustProxy[] = ['off', 'cloudflare', 'local-proxy'] as const;
 
 export interface Env {
   DB: D1Database;
   BUCKET: R2Bucket;
   RENDER_QUEUE: Queue<RenderJob>;
-  BROWSER: Fetcher;
+
+  /** All state lives here: the SQLite file, images/, backups/, the Cloudflare range cache. */
+  DATA_DIR: string;
+  PORT: number;
+  TRUST_PROXY: TrustProxy;
 
   BASE_URL: string;
   ERP_IP_ALLOWLIST: string;
@@ -18,6 +137,8 @@ export interface Env {
   TEST_SECRET_PREVIOUS?: string;
   ACCESS_TEAM_DOMAIN?: string;
   ACCESS_AUD?: string;
+  /** Chromium executable for the renderer; puppeteer's own download when unset. */
+  CHROME_PATH?: string;
 }
 
 /** Hono generic: every router in src/ is a `Hono<AppEnv>`. */

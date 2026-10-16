@@ -1,57 +1,118 @@
 # Runbook
 
-Operational procedures for licensed.spcfz.ae. Every step that changes the
-account or the Worker is requested from the account owner one at a time.
+licensed.spcfz.ae runs as the Docker container `spcfz-licence-card` on
+13.206.34.102, the server that also hosts the marketing dashboard,
+announcements, coworking, quality and the reviews dashboard. **Every change
+on that server needs the user's approval for that specific change.** Reading
+is free.
 
-## Rotate an ERP webhook secret
+| What | Where |
+|---|---|
+| Container | `spcfz-licence-card`, image `spcfz-licence-card:<git sha>` |
+| State | `/opt/spcfz-licence-card/data` (SQLite, images, daily backups) |
+| Settings and secrets | `/opt/spcfz-licence-card/licence-card.env`, mode 600 |
+| Releases | `/opt/spcfz-licence-card/releases/<sha>/` |
+| Apache site | `/www/server/panel/vhost/apache/licensed.spcfz.ae.conf` |
+| Certificate | `/www/server/panel/vhost/cert/licensed.spcfz.ae/` |
+| Apache logs | `/www/wwwlogs/licensed.spcfz.ae-*_log` |
 
-1. Generate a new 48-character secret (`randomSecret()` in src/util/crypto.ts, or any CSPRNG).
-2. `wrangler secret put WEBHOOK_SECRET_PREVIOUS` with the **current** value.
-3. `wrangler secret put WEBHOOK_SECRET_CURRENT` with the **new** value.
-4. Hand the new value to the ERP team through the channel the user chooses. Both values work meanwhile.
-5. When the ERP team confirms the switch, `wrangler secret put WEBHOOK_SECRET_PREVIOUS` with an empty value.
-The test route uses `TEST_SECRET_CURRENT` / `TEST_SECRET_PREVIOUS` the same way.
+## Deploy a new version
 
-## Change the ERP IP allowlist
+From this Mac, on a clean committed tree, each step approved separately:
 
-1. Edit `ERP_IP_ALLOWLIST` in `wrangler.toml` (comma-separated IPs or IPv4 CIDRs) and deploy.
-2. Update the WAF custom rule on `/v1/*` to the same list.
-Both must match; the Worker check is the one that writes a 403 event you can see in the admin.
+```
+tools/deploy.sh --dry-run release      # shows what will run
+tools/deploy.sh release                # upload the commit, build the image
+tools/deploy.sh start                  # swap containers; restores the old one if unhealthy
+tools/deploy.sh status
+```
+
+A start stops the old container before the new one opens the database, so
+there are roughly ten seconds of 502s from Apache.
+
+## First-time setup (done once)
+
+1. `tools/deploy.sh release`
+2. `tools/deploy.sh env-init` creates the env file with two random secrets.
+   They are generated on the server and never printed.
+3. `tools/deploy.sh start`
+4. `tools/deploy.sh cert`
+5. `tools/deploy.sh vhost` runs Apache's config test, installs the site,
+   tests again and reloads gracefully. If the test fails, the file is
+   removed and Apache is not reloaded.
+6. In Cloudflare, add DNS `A licensed 13.206.34.102`, proxied.
+
+## Logs, restart, status
+
+```
+ssh root@13.206.34.102 docker logs --tail 100 spcfz-licence-card
+ssh root@13.206.34.102 docker restart spcfz-licence-card
+tools/deploy.sh status
+```
+
+Docker keeps at most 5 log files of 10 MB.
+
+## Roll back
+
+`tools/deploy.sh start <previous sha>`. Images and release folders stay on
+the server until removed. `docker images spcfz-licence-card` lists them.
+
+## Remove completely
+
+Puts the server back as it was before this service existed:
+
+```
+docker rm -f spcfz-licence-card
+docker rmi $(docker images -q spcfz-licence-card)
+rm /www/server/panel/vhost/apache/licensed.spcfz.ae.conf && /usr/bin/httpd -t && /etc/init.d/httpd reload
+rm -r /www/server/panel/vhost/cert/licensed.spcfz.ae
+rm -r /opt/spcfz-licence-card        # deletes every card; copy data/ off first if needed
+```
+
+Then delete the DNS record in Cloudflare.
+
+## Secrets
+
+Read a secret to hand to the ERP team:
+
+```
+ssh root@13.206.34.102 grep '^TEST_SECRET_CURRENT=' /opt/spcfz-licence-card/licence-card.env
+```
+
+Rotate: copy the current value to `WEBHOOK_SECRET_PREVIOUS`, put a new
+48-character value in `WEBHOOK_SECRET_CURRENT`, `docker restart`, tell the
+ERP team, clear `_PREVIOUS` once they confirm. Same for the `TEST_` pair.
+
+## ERP IP allowlist
+
+Set `ERP_IP_ALLOWLIST` in the env file, comma separated, then `docker
+restart`. Mirror it in the Cloudflare WAF rule on `/v1/*`. Until it is set,
+every webhook is rejected with 403, which is visible in Admin, Events.
+
+## Cloudflare ranges
+
+`deploy/cloudflare-ips.txt` feeds the Apache `Require ip` block. If
+Cloudflare publishes new ranges, update the file, regenerate the Apache site
+from it, and reinstall that file with an approved change.
+
+## Backups
+
+The host has no backup, by decision. The daily housekeeping at 05:15 Dubai
+time writes `data/backups/licence-card-YYYY-MM-DD.sqlite` and keeps seven.
+Images can be regenerated from the database with Admin, Re-render.
 
 ## A licence never got a card
 
-1. Admin, Events: filter route production, outcome rejected. The errors column says why.
-2. If the payload was rejected, fix the mapping (`FIELD_MAP` var) or ask the ERP team to correct the field, then Replay from the event.
-3. If no event exists, the ERP never reached us. Create the card by hand in Admin, Create, or import a CSV.
+1. Admin, Events: filter route production, outcome rejected. The errors say why.
+2. If the payload was rejected, fix `FIELD_MAP` in the env file, restart, and Replay the event.
+3. If no event exists, the ERP never reached us. Create the card in Admin, Create, or import a CSV.
 
 ## A card is stuck on "preparing"
 
-1. Admin, Cards, filter status pending older than ten minutes, or status failed.
-2. Open the card and press Regenerate. Watch the status.
-3. If it fails again, read the Worker logs (Cloudflare dashboard, Workers, Logs) for the card id. The usual causes are a Browser Rendering limit or a template error.
-4. Dead-letter depth is shown on the admin dashboard; a non-zero count means renders are failing in bulk. Stop and investigate before regenerating many.
+1. Admin, Cards, status pending or failed. Open the card, Regenerate.
+2. `docker logs` for the card id. Usual causes: Chromium crashed, or the container hit its memory cap.
 
-## Update the design (new template version)
+## Update the design
 
-1. Add the new template under `templates/spc/<version>/`, point `src/render/template.ts` at it, bump `TEMPLATE_VERSION` in `wrangler.toml`.
-2. Deploy to preview, render a few test cards, compare against the designer's PNGs.
-3. Deploy to production. New cards use the new design immediately.
-4. Admin, Re-render: filter by the old template version, confirm the count, run. Cards are re-rendered in place behind the same URLs. Cap is 500 per run; repeat as needed.
-
-## Delete a card on request
-
-Admin, Cards, open the card, Delete, confirm. The row, its metrics and its eight images are removed and the edge cache is purged. The page then returns the generic "not valid" screen. R2 versioning keeps the images recoverable for the bucket's retention window.
-
-## Expire or restore a card
-
-Mark expired removes the images and shows the "no longer available" page. Un-expire renders again and sets a new two-year expiry.
-
-## Change retention or captions
-
-Admin, Settings. Retention changes apply to cards created from then on and to the daily housekeeping run at 05:15 Dubai time. Caption changes apply immediately to every page.
-
-## Something is wrong with the whole service
-
-- Take it offline without losing data: remove the custom domain from the Worker in the dashboard. The ERP will get connection errors; cards can be recreated from the admin once it is back.
-- Roll back a deploy: Cloudflare dashboard, Workers, Deployments, roll back to the previous version.
-- Database migrations are forward-only. A bad migration is fixed with a new migration, not by rolling back.
+New template under `templates/`, bump `TEMPLATE_VERSION` in the env file,
+deploy, then Admin, Re-render filtered by the old version.

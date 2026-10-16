@@ -54,32 +54,36 @@ files, any change to www.spcfz.ae, customer accounts, customer-editable text.
 | C7 | Admin sits behind Cloudflare Access with an SPC email allowlist. No passwords in our code. | Free at this size, gives SSO and audit for nothing. |
 | C8 | Images and records are kept two years, then the images are deleted and the page says the card has expired. | A retention rule has to exist; two years covers a licence term and a renewal. |
 | C9 | Google Tag Manager is not loaded on the page by default. A config switch can add the site container GTM-PZ8R4DN. | Marketing decision; counters cover v1 needs. |
-| C10 | Deployment runs from GitHub Actions. Nothing depends on the development laptop, which has no Node. | Repeatable, auditable, same pattern as spcfz-forms. |
+| C10 | ~~Deployment runs from GitHub Actions.~~ Since 15 Oct 2026: deployment runs from the Mac with `tools/deploy.sh`, one approved step at a time; CI on GitHub runs the checks. | The server is SPC's own and every write on it needs the user's approval. |
 
 ## 3. System overview
 
-Everything runs on one Cloudflare Worker with these bindings:
+Since 15 October 2026 the service is one Node 22 process in a Docker
+container on SPC's own server (13.206.34.102), behind Apache and
+Cloudflare. docs/PORT-TO-NODE.md describes the port from the original
+Cloudflare Workers design; the behaviour in this document is unchanged.
 
-| Need | Cloudflare product |
+| Need | Implementation |
 |---|---|
-| HTTP endpoints, page, admin | Workers, custom domain licensed.spcfz.ae |
-| Background rendering | Queues, one queue plus a dead-letter queue |
-| Headless Chromium | Browser Rendering |
-| Image storage | R2, one private bucket |
-| Records and counters | D1, one database |
-| Daily housekeeping | Cron Trigger |
+| HTTP endpoints, page, admin | Hono on `@hono/node-server`, port 8787 inside the container |
+| Background rendering | `jobs` table in SQLite worked by an in-process queue; 3 attempts, then the dead-letter handler |
+| Headless Chromium | puppeteer driving Debian's Chromium inside the container |
+| Image storage | files under `DATA_DIR/images/cards/<token>/` |
+| Records and counters | SQLite file `DATA_DIR/licence-card.sqlite`, WAL mode |
+| Daily housekeeping | in-process scheduler at 05:15 Asia/Dubai, plus a SQLite backup |
 | Admin login | Cloudflare Access |
-| Rate limits and IP allowlist | WAF custom rules, plus checks in the Worker |
+| Edge, TLS, rate limits, IP allowlist | Cloudflare proxy and WAF on the spcfz.ae Pro zone; Apache admits Cloudflare only; the app checks the ERP allowlist itself |
 
 Flow:
 
-1. ERP posts to `/v1/licence-issued`.
-2. Worker checks IP, secret, size and shape; normalises; finds or creates the
-   card row; enqueues a render job; answers with the page URL in under a second.
-3. Queue consumer launches one browser, renders the eight images, writes them
-   to R2, marks the card ready.
-4. Customer opens the page from the ERP email, sees the card in their language,
-   downloads or shares.
+1. ERP posts to `/v1/licence-issued` through Cloudflare and Apache.
+2. The app checks IP, secret, size and shape; normalises; finds or creates
+   the card row; inserts a render job; answers with the page URL in under a
+   second.
+3. The queue worker launches one browser, renders the eight images, writes
+   them to disk, marks the card ready.
+4. Customer opens the page from the ERP email, sees the card in their
+   language, downloads or shares.
 
 ## 4. Intake
 
@@ -138,7 +142,7 @@ date. That is acceptable and noted.
 Target under 1 second at the 95th percentile. The render never happens in the
 request.
 
-## 5. Data model (D1)
+## 5. Data model (SQLite)
 
 ```sql
 cards (
@@ -209,7 +213,7 @@ at 1,000 licences, inside the plan's 10 included hours.
   Built from the approved design (see DESIGN-HANDOFF.md). A placeholder
   template exists until then.
 - Fonts embedded as base64 `@font-face` in the HTML: Inter and Noto Kufi
-  Arabic unless the design says otherwise. Browser Rendering's Chromium has
+  Arabic unless the design says otherwise. The container's Chromium has
   no Arabic system fonts, so nothing may rely on a system font.
 - Variable text zones carry a maximum font size and a minimum; the auto-fit
   script shrinks the company name until it fits, then wraps to the allowed
@@ -220,14 +224,14 @@ at 1,000 licences, inside the plan's 10 included hours.
 
 ### Storage
 
-R2 keys: `cards/{token}/{lang}-{size}.png`, with `size` in
+Image paths: `DATA_DIR/images/cards/{token}/{lang}-{size}.png`, with `size` in
 `square | portrait | story | landscape`. A failed render leaves the previous
 images in place.
 
 ### Retries
 
-Queue `max_retries` 3 with backoff, then the dead-letter queue. The consumer
-of the dead-letter queue marks the card `failed` with the error. The admin
+Three attempts with backoff in the SQLite jobs table, then the dead-letter
+handler, which marks the card `failed` with the error. The admin
 shows failed cards and offers a retry.
 
 ## 7. Personal page
@@ -237,7 +241,7 @@ shows failed cards and offers a retry.
 | Route | Purpose |
 |---|---|
 | `GET /c/{token}` | The page. `?lang=ar` or `?lang=en` overrides the default. |
-| `GET /c/{token}/{lang}-{size}.png` | The image from R2. `?download=1` adds a `Content-Disposition: attachment` header with a filename built from the company name. |
+| `GET /c/{token}/{lang}-{size}.png` | The image from disk. `?download=1` adds a `Content-Disposition: attachment` header with a filename built from the company name. |
 | `GET /c/{token}/status` | `{ status }` JSON, polled every 3 seconds while pending. |
 | `POST /c/{token}/m` | Counter beacon: `{ kind, lang, size, network }`. |
 
@@ -265,12 +269,14 @@ shows failed cards and offers a retry.
 
 ### Caching
 
-Pages are served with `Cache-Control: private, no-store`. Images are cached
-at the edge for a day; a regenerate purges the eight image URLs.
+Pages are served with `Cache-Control: private, no-store`. Image URLs carry
+`?v=` plus the first eight characters of the card's content hash and are
+served `immutable` for a year, so a regenerated card gets new URLs and no
+purge is needed.
 
 ## 8. Admin
 
-Path prefix `/admin`, protected by Cloudflare Access (C7). The Worker also
+Path prefix `/admin`, protected by Cloudflare Access (C7). The app also
 verifies the `Cf-Access-Jwt-Assertion` header against the team's keys, so the
 routes are useless if the Access policy is ever removed by mistake.
 
@@ -289,12 +295,13 @@ Screens:
   re-render, with a count shown first.
 - **Settings.** Caption templates, GTM switch, retention days, mapping
   preview. Secrets and the IP allowlist are not editable here; they live in
-  Worker secrets and the WAF rule.
+  the server's env file and the WAF rule.
 
 ## 9. Security and privacy
 
-- Allowlist checked in the Worker and enforced again by a WAF rule on `/v1/*`.
-- Secrets live in Worker secrets, two slots per route for rotation. Rotation:
+- Allowlist checked in the app and enforced again by a WAF rule on `/v1/*`;
+  Apache admits Cloudflare's ranges only.
+- Secrets live in the server's env file (mode 600), two slots per route for rotation. Rotation:
   set the new one as current, move the old one to previous, tell the ERP team,
   clear previous after they confirm.
 - Constant-time comparison. 64 KB body limit. JSON only.
@@ -317,43 +324,23 @@ A daily cron:
 
 ## 11. Environments, repository, deployment
 
-- **production**: the Worker on licensed.spcfz.ae, with the production and
-  test intake routes. There is only one ERP, so the test route lives here.
-- **preview**: `wrangler deploy --env preview` to a workers.dev hostname with
-  its own D1, R2 and queue, for our own QA before a production deploy.
+- **production**: the container on 13.206.34.102, reached as
+  licensed.spcfz.ae. The production and test intake routes both live here;
+  there is only one ERP.
+- **local**: `npm run dev` with a `.env` copied from `.env.example`.
+- There is no separate preview environment. Test cards on the test route are
+  marked TEST and purged after 30 days.
 
-Repository: a dedicated private GitHub repository, `spcfz-licence-card`.
-
-```
-wrangler.toml
-package.json
-src/
-  index.ts          router
-  intake/           checks, mapper, validation, idempotency
-  render/           queue consumer, browser session, auto-fit, fonts
-  page/             personal page, images, status, beacon
-  admin/            Access verification, screens
-  db/               D1 helpers, migrations/*.sql
-  cron.ts
-templates/
-  placeholder/      until the design arrives
-  spc/              the approved design, one folder per template_version
-tests/              Vitest with the Workers pool
-.github/workflows/
-  ci.yml            typecheck, tests, template render smoke test
-  deploy.yml        on main: migrations, deploy production
-docs/
-```
-
-TypeScript throughout. CI is where tests run; the development machine has no
-Node (C10).
+Repository: private GitHub repository `Tayyab-Ejaz/spcfz-licence-card`.
+Layout and deployment are in docs/DEV.md and docs/RUNBOOK.md.
 
 ## 12. Testing
 
 - **Unit**: mapper, validation, idempotency decisions, caption rendering,
   filename sanitising, Access JWT verification, auto-fit maths.
 - **Integration in CI**: intake to queue to a mocked render to page, against
-  a local D1 and R2.
+  a temp SQLite file and a temp image folder; plus the real server on an
+  ephemeral port.
 - **Visual**: render every template variant with a 12-character and a
   60-character company name in each script and compare to the designer's
   PNGs with a pixel diff. Thresholds set once the design lands.
@@ -364,11 +351,11 @@ Node (C10).
 
 ## 13. Operations
 
-- Worker error-rate alert through Cloudflare notifications.
+- Container health check; `docker logs` for errors.
 - Admin shows failed cards and rejected events on its first screen.
-- Dead-letter queue depth is checked by the daily cron and surfaced in admin.
+- Failed renders are surfaced on the admin dashboard.
 - A runbook in docs covers: ERP secret rotation, allowlist change, template
-  update and re-render, restoring a deleted card from R2 versioning.
+  update and re-render, removal of the whole service.
 
 ## 14. Phase 2 hooks already in place
 

@@ -1,10 +1,10 @@
 // Daily housekeeping (ARCHITECTURE section 10, C3, C4, C8). Wired to the cron trigger in src/index.ts.
-import type { CardRow, Env } from './types';
+import type { CardRow, Env } from './types.js';
 import {
   compactOldMetrics, deleteCard, getIntSetting, listExpiredCandidates, listTestCardsOlderThan, purgeRawBodies, setCardStatus,
-} from './db/cards';
-import { deleteCardImages, purgeImageCache } from './storage';
-import { addDays, nowIso } from './util/time';
+} from './db/cards.js';
+import { deleteCardImages, purgeImageCache } from './storage.js';
+import { addDays, nowIso } from './util/time.js';
 
 export interface HousekeepingSummary {
   rawBodiesPurged: number;

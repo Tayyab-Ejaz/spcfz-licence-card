@@ -1,16 +1,17 @@
 // Intake module: router behaviour against the isolated D1, plus pure tests for the mapper and validator.
-// Bindings (allowlist, secrets, BASE_URL) come from vitest.config.ts.
-import { env } from 'cloudflare:test';
+// Bindings (allowlist, secrets, BASE_URL) come from tests/env.ts.
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Hono } from 'hono';
-import type { AppEnv } from '../src/types';
-import { intakeRoutes } from '../src/intake/routes';
-import { mapPayload } from '../src/intake/mapper';
-import { validateCanonical } from '../src/intake/validate';
-import { checkSecret, extractSecret } from '../src/intake/auth';
-import { countCards, findCardByLicence, getCardByToken, listEvents } from '../src/db/cards';
-import { todayInDubai } from '../src/util/time';
+import type { AppEnv } from '../src/types.js';
+import { intakeRoutes } from '../src/intake/routes.js';
+import { mapPayload } from '../src/intake/mapper.js';
+import { validateCanonical } from '../src/intake/validate.js';
+import { checkSecret, extractSecret } from '../src/intake/auth.js';
+import { countCards, findCardByLicence, getCardByToken, listEvents } from '../src/db/cards.js';
+import { todayInDubai } from '../src/util/time.js';
+import { createTestEnv } from './env.js';
 
+const env = createTestEnv();
 const app = new Hono<AppEnv>().route('/', intakeRoutes);
 
 const PROD = '/v1/licence-issued';
@@ -90,7 +91,7 @@ const SAMPLE = {
 };
 
 beforeEach(async () => {
-  await env.DB.batch([env.DB.prepare('DELETE FROM cards'), env.DB.prepare('DELETE FROM events')]);
+  await env.DB.batch([env.DB.prepare('DELETE FROM cards'), env.DB.prepare('DELETE FROM events'), env.DB.prepare('DELETE FROM jobs')]);
 });
 
 describe('intake routes: access checks', () => {
@@ -109,6 +110,7 @@ describe('intake routes: access checks', () => {
     expect(rows[0]?.errors).toEqual(['source address not allowed']);
     expect(rows[0]?.card_id).toBeNull();
     expect(await countCards(env.DB)).toBe(0);
+    expect(env.jobs()).toEqual([]);
   });
 
   it('rejects a missing CF-Connecting-IP header with 403', async () => {
@@ -242,6 +244,13 @@ describe('intake routes: happy path and idempotency', () => {
     expect(rows[0]?.card_id).toBe(body.card_id);
     expect(rows[0]?.errors).toBeNull();
     expect(rows[0]?.raw_body).toBeNull();
+
+    // The render job is queued. The worker is off in tests, so the row is still there to inspect.
+    const jobs = env.jobs();
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0]?.state).toBe('queued');
+    expect(jobs[0]?.attempts).toBe(0);
+    expect(jobs[0]?.body).toEqual({ card_id: body.card_id, content_hash: card?.content_hash });
   });
 
   it('answers unchanged for the same payload, same URL, still one card', async () => {
@@ -250,6 +259,7 @@ describe('intake routes: happy path and idempotency', () => {
     expect(second.page_url).toBe(first.page_url);
     expect(second.card_id).toBe(first.card_id);
     expect(await countCards(env.DB)).toBe(1);
+    expect(env.jobs()).toHaveLength(1); // unchanged: nothing new was enqueued
 
     const unchanged = await listEvents(env.DB, { route: 'production', outcome: 'unchanged' });
     expect(unchanged.total).toBe(1);
@@ -274,6 +284,9 @@ describe('intake routes: happy path and idempotency', () => {
     expect(after?.content_hash).not.toBe(before?.content_hash);
     expect(after?.status).toBe('pending');
     expect(await countCards(env.DB)).toBe(1);
+    const jobs = env.jobs();
+    expect(jobs).toHaveLength(2);
+    expect(jobs[1]?.body).toEqual({ card_id: first.card_id, content_hash: after?.content_hash });
 
     const updated = await listEvents(env.DB, { route: 'production', outcome: 'updated' });
     expect(updated.total).toBe(1);

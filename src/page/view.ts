@@ -1,12 +1,12 @@
 // HTML for the personal page. Everything goes through the `html` tag; nested fragments are RawHtml via `h`.
 // No style attributes anywhere: the CSP allows only the nonced <style> block.
-import type { CardRow, Env, Lang, Size } from '../types';
-import { SIZE_NAMES, SIZES } from '../types';
-import { html, raw, safeFilename } from '../util/html';
-import type { RawHtml } from '../util/html';
-import { formatMonthYear } from '../util/time';
-import { SHARE_LINK, imageUrl, pageUrl } from '../storage';
-import { CONTACT_URL, STRINGS, WHATSAPP_URL, fill } from './strings';
+import type { CardRow, Env, Lang, Size } from '../types.js';
+import { SIZE_NAMES, SIZES } from '../types.js';
+import { html, raw, safeFilename } from '../util/html.js';
+import type { RawHtml } from '../util/html.js';
+import { formatMonthYear } from '../util/time.js';
+import { SHARE_LINK, imagePath, imageUrl, imageVersion, pageUrl } from '../storage.js';
+import { CONTACT_URL, STRINGS, WHATSAPP_URL, fill } from './strings.js';
 
 /** `html` that returns RawHtml so fragments nest without double escaping. */
 function h(strings: TemplateStringsArray, ...values: unknown[]): RawHtml {
@@ -140,7 +140,7 @@ export function renderReadyPage(i: ReadyPageInput): string {
   const company = displayName(card, lang);
   const base = `/c/${card.token}/`;
   const url = pageUrl(i.env, card.token);
-  const ogImage = imageUrl(i.env, card.token, lang, 'landscape');
+  const ogImage = imageUrl(i.env, card, lang, 'landscape');
   const ogTitle = fill(s.ogTitle, { company });
   const ogDesc = fill(s.ogDescription, { company });
   const enc = encodeURIComponent;
@@ -166,12 +166,12 @@ export function renderReadyPage(i: ReadyPageInput): string {
   );
 
   const body = h`
-<div class="hero" data-base="${base}" data-token="${card.token}" data-lang="${lang}" data-size="${size}" id="hero">
+<div class="hero" data-base="${base}" data-token="${card.token}" data-lang="${lang}" data-size="${size}" data-v="${imageVersion(card)}" id="hero">
 <h1>${s.headline}</h1>
 <p class="lead">${fill(s.intro, { company })}</p>
 <figure class="card">
 ${card.is_test ? h`<div class="ribbon" aria-label="${s.testRibbon}">${s.testRibbon}</div>` : raw('')}
-<img id="card-img" src="${base}${lang}-${size}.png" alt="${fill(s.imageAlt, { company })}" width="${SIZES[size].width}" height="${SIZES[size].height}">
+<img id="card-img" src="${imagePath(card, lang, size)}" alt="${fill(s.imageAlt, { company })}" width="${SIZES[size].width}" height="${SIZES[size].height}">
 </figure>
 ${card.is_test ? h`<p class="test-note">${s.testNote}</p>` : raw('')}
 <div class="sizes" role="group" aria-label="${s.chooseSize}">${sizeButtons}</div>
@@ -216,7 +216,7 @@ ${card.activity_category ? h`<dt>${s.activity}</dt><dd>${card.activity_category}
 // Reads everything it needs from data- attributes; no user data is ever interpolated into this script.
 const READY_JS = `(function(){
 var hero=document.getElementById('hero');if(!hero)return;
-var base=hero.getAttribute('data-base')||'';var lang=hero.getAttribute('data-lang')||'en';
+var base=hero.getAttribute('data-base')||'';var lang=hero.getAttribute('data-lang')||'en';var v=hero.getAttribute('data-v')||'';
 var img=document.getElementById('card-img');var dl=document.getElementById('download');
 function beacon(kind,extra){try{var p={kind:kind,lang:lang,size:hero.getAttribute('data-size')};if(extra){for(var k in extra){p[k]=extra[k];}}
 var body=JSON.stringify(p);if(navigator.sendBeacon){navigator.sendBeacon(base+'m',new Blob([body],{type:'application/json'}));}
@@ -224,7 +224,7 @@ else{fetch(base+'m',{method:'POST',body:body,headers:{'content-type':'applicatio
 var picks=Array.prototype.slice.call(document.querySelectorAll('.sizes [data-size]'));
 picks.forEach(function(b){b.addEventListener('click',function(){var s=b.getAttribute('data-size');if(!s)return;
 picks.forEach(function(x){var on=x===b;x.classList.toggle('on',on);x.setAttribute('aria-pressed',on?'true':'false');});
-if(img){img.src=base+lang+'-'+s+'.png';}
+if(img){img.src=base+lang+'-'+s+'.png?v='+v;}
 if(dl){dl.href=base+lang+'-'+s+'.png?download=1';dl.setAttribute('download',b.getAttribute('data-file')||'');}
 hero.setAttribute('data-size',s);
 Array.prototype.forEach.call(document.querySelectorAll('a[data-lang]'),function(a){a.href='?lang='+a.getAttribute('data-lang')+'&size='+s;});

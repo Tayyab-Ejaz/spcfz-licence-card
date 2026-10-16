@@ -3,7 +3,7 @@
 import type { Context } from 'hono';
 import { getCookie } from 'hono/cookie';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
-import type { AppEnv } from '../types';
+import type { AppEnv } from '../types.js';
 
 export type AccessVerifier = (c: Context<AppEnv>) => Promise<{ email: string } | null>;
 

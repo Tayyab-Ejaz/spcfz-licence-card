@@ -1,6 +1,6 @@
 // Webhook authentication: source IP allowlist, then the per-route shared secret (ARCHITECTURE D7, section 4 and 9).
-import { timingSafeEqualStr } from '../util/crypto';
-import { ipAllowed, parseAllowlist } from '../util/ip';
+import { timingSafeEqualStr } from '../util/crypto.js';
+import { ipAllowed, parseAllowlist } from '../util/ip.js';
 
 export type AuthFailure = { status: 401 | 403; reason: string };
 

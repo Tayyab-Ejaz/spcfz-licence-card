@@ -1,9 +1,9 @@
-// Repository layer over D1. Every SQL statement in the service lives in src/db.
+// Repository layer over the D1-shaped database (src/platform/sqlite-db.ts). Every SQL statement in the service lives in src/db.
 import type {
-  CanonicalFields, CardRow, CardSource, CardStatus, EventOutcome, EventRoute, EventRow, MetricKind, SettingKey,
-} from '../types';
-import { ulid } from '../util/crypto';
-import { nowIso } from '../util/time';
+  CanonicalFields, CardRow, CardSource, CardStatus, D1Database, EventOutcome, EventRoute, EventRow, MetricKind, SettingKey,
+} from '../types.js';
+import { ulid } from '../util/crypto.js';
+import { nowIso } from '../util/time.js';
 
 type RawCard = Omit<CardRow, 'is_test'> & { is_test: number };
 type RawEvent = Omit<EventRow, 'errors'> & { errors: string | null };
@@ -369,4 +369,17 @@ export async function setSetting(db: D1Database, key: SettingKey, value: string)
 export async function getIntSetting(db: D1Database, key: SettingKey, fallback: number): Promise<number> {
   const v = Number(await getSetting(db, key, String(fallback)));
   return Number.isFinite(v) && v >= 0 ? v : fallback;
+}
+
+/** Operational values outside SETTING_KEYS (the scheduler's last run). Not shown in the admin. */
+export async function getSettingRaw(db: D1Database, key: string): Promise<string | null> {
+  const r = await db.prepare('SELECT value FROM settings WHERE key = ?1').bind(key).first<{ value: string }>();
+  return r?.value ?? null;
+}
+
+export async function setSettingRaw(db: D1Database, key: string, value: string): Promise<void> {
+  await db
+    .prepare('INSERT INTO settings (key, value) VALUES (?1, ?2) ON CONFLICT (key) DO UPDATE SET value = excluded.value')
+    .bind(key, value)
+    .run();
 }

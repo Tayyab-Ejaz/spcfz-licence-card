@@ -1,17 +1,20 @@
 // Staff admin: Access gate, CSRF, screens and mutations (ARCHITECTURE section 8). The Access verifier is injected
 // so no JWT or network is involved; the stub either names a staff member or rejects.
-import { createExecutionContext, env, waitOnExecutionContext } from 'cloudflare:test';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Hono } from 'hono';
-import type { AppEnv, CanonicalFields, CardRow, CardStatus } from '../src/types';
-import { LANGS, SIZE_NAMES } from '../src/types';
-import { createAdminRoutes } from '../src/admin/routes';
+import type { AppEnv, CanonicalFields, CardRow, CardStatus } from '../src/types.js';
+import { LANGS, SIZE_NAMES } from '../src/types.js';
+import { createAdminRoutes } from '../src/admin/routes.js';
 import {
   findCardByLicence, getCardById, getEvent, getSetting, insertCard, insertEvent, listEvents, setCardStatus,
-} from '../src/db/cards';
-import { imageKey, putImage } from '../src/storage';
-import { randomToken } from '../src/util/crypto';
+} from '../src/db/cards.js';
+import { imageKey, putImage } from '../src/storage.js';
+import { randomToken } from '../src/util/crypto.js';
+import { flushBackground } from '../src/util/background.js';
+import { imageVersion } from '../src/storage.js';
+import { createTestEnv } from './env.js';
 
+const env = createTestEnv();
 const ACTOR = 'staff@spcfz.ae';
 const staff = new Hono<AppEnv>().route('/admin', createAdminRoutes(async () => ({ email: ACTOR })));
 const anonymous = new Hono<AppEnv>().route('/admin', createAdminRoutes(async () => null));
@@ -58,12 +61,11 @@ async function putAllImages(token: string): Promise<void> {
 }
 
 /** GET as a signed-in staff member. Sends the CSRF session cookie unless `cookie` is null (first visit). */
-async function get(path: string, o: { cookie?: string | null } = {}): Promise<{ res: Response; ctx: ExecutionContext }> {
-  const ctx = createExecutionContext();
+async function get(path: string, o: { cookie?: string | null } = {}): Promise<{ res: Response }> {
   const cookie = o.cookie === undefined ? `admin_csrf=${CSRF}` : o.cookie;
   const init: RequestInit | undefined = cookie === null ? undefined : { headers: { cookie } };
-  const res = await staff.request(path, init, env, ctx);
-  return { res, ctx };
+  const res = await staff.request(path, init, env);
+  return { res };
 }
 
 interface PostOptions {
@@ -74,16 +76,15 @@ interface PostOptions {
   headers?: Record<string, string>;
 }
 
-async function post(path: string, fields: Record<string, string> = {}, o: PostOptions = {}): Promise<{ res: Response; ctx: ExecutionContext }> {
+async function post(path: string, fields: Record<string, string> = {}, o: PostOptions = {}): Promise<{ res: Response }> {
   const params = new URLSearchParams(fields);
   const csrfField = o.csrfField === undefined ? CSRF : o.csrfField;
   if (csrfField !== null) params.set('_csrf', csrfField);
   const headers: Record<string, string> = { 'content-type': 'application/x-www-form-urlencoded', ...(o.headers ?? {}) };
   const cookie = o.cookie === undefined ? `admin_csrf=${CSRF}` : o.cookie;
   if (cookie !== null) headers['cookie'] = cookie;
-  const ctx = createExecutionContext();
-  const res = await staff.request(path, { method: 'POST', headers, body: params.toString() }, env, ctx);
-  return { res, ctx };
+  const res = await staff.request(path, { method: 'POST', headers, body: params.toString() }, env);
+  return { res };
 }
 
 async function adminEvents() {
@@ -95,20 +96,19 @@ beforeEach(async () => {
     env.DB.prepare('DELETE FROM metrics'),
     env.DB.prepare('DELETE FROM events'),
     env.DB.prepare('DELETE FROM cards'),
+    env.DB.prepare('DELETE FROM jobs'),
   ]);
 });
 
 describe('access gate', () => {
   it('503 when Access is not configured and the verifier yields nothing', async () => {
-    const ctx = createExecutionContext();
-    const res = await anonymous.request('/admin', undefined, { ...env, ACCESS_TEAM_DOMAIN: '', ACCESS_AUD: '' }, ctx);
+    const res = await anonymous.request('/admin', undefined, { ...env, ACCESS_TEAM_DOMAIN: '', ACCESS_AUD: '' });
     expect(res.status).toBe(503);
     expect(await res.text()).toContain('not configured');
   });
 
   it('401 when Access is configured but the assertion is rejected', async () => {
-    const ctx = createExecutionContext();
-    const res = await anonymous.request('/admin/cards', undefined, env, ctx);
+    const res = await anonymous.request('/admin/cards', undefined, env);
     expect(res.status).toBe(401);
     expect(await res.text()).toContain('Sign in required');
   });
@@ -171,7 +171,7 @@ describe('cards', () => {
     const body = await res.text();
     expect(body).toContain(card.licence_number);
     expect(body).toContain('شركة تجريبية');
-    expect(body).toContain(`https://licensed.test/c/${card.token}/ar-story.png`);
+    expect(body).toContain(`https://licensed.test/c/${card.token}/ar-story.png?v=${imageVersion(card)}`);
     expect(body).toContain(`/admin/cards/${card.id}/regenerate`);
     expect(body).toContain(`/admin/cards/${card.id}/expire`);
     expect(body).toContain(`/admin/cards/${card.id}/delete`);
@@ -191,6 +191,9 @@ describe('card mutations', () => {
     expect(res.headers.get('Location')).toBe(`/admin/cards/${card.id}?m=regenerated`);
     const after = await getCardById(env.DB, card.id);
     expect(after?.status).toBe('pending');
+    const jobs = env.jobs();
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0]?.body).toEqual({ card_id: card.id, content_hash: card.content_hash });
     const events = await adminEvents();
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({ route: 'admin', outcome: 'regenerated', card_id: card.id, actor: ACTOR, http_status: 200 });
@@ -470,10 +473,11 @@ describe('CSV import (needs the intake module)', () => {
   });
 });
 
-describe('execution context', () => {
+describe('background work', () => {
   it('leaves nothing pending after a mutation', async () => {
     const card = await seedCard({ status: 'ready' });
-    const { ctx } = await post(`/admin/cards/${card.id}/regenerate`);
-    await waitOnExecutionContext(ctx);
+    await post(`/admin/cards/${card.id}/regenerate`);
+    await flushBackground();
+    expect((await getCardById(env.DB, card.id))?.status).toBe('pending');
   });
 });
