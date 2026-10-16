@@ -25,7 +25,8 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends ca-certificates tini curl \
  && rm -rf /var/lib/apt/lists/* \
  && groupadd --gid 10001 app \
- && useradd --uid 10001 --gid app --create-home --home-dir /home/app --shell /usr/sbin/nologin app
+ && useradd --uid 10001 --gid app --create-home --home-dir /home/app --shell /usr/sbin/nologin app \
+ && install -d -o 10001 -g 10001 -m 750 /data
 ENV NODE_ENV=production \
     DATA_DIR=/data \
     HOST=0.0.0.0 \
