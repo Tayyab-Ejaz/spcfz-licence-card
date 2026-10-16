@@ -73,6 +73,12 @@ export interface Env {
   TEST_SECRET_PREVIOUS?: string;
   ACCESS_TEAM_DOMAIN?: string;
   ACCESS_AUD?: string;
+  /**
+   * Local copy only (tools/local.mjs): opens /admin without Cloudflare Access, as this address, to browsers on
+   * the same machine. src/platform/config.ts refuses it unless HOST and BASE_URL are loopback, TRUST_PROXY is
+   * off, NODE_ENV is not production and Access is not configured.
+   */
+  LOCAL_ADMIN_EMAIL?: string;
 }
 
 /** Hono generic: every router in src/ is a `Hono<AppEnv>`. */

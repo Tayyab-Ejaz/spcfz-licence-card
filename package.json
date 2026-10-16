@@ -8,6 +8,7 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc -p tsconfig.build.json && node tools/build-studio.mjs",
     "start": "node dist/server.js",
+    "local": "node tools/local.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

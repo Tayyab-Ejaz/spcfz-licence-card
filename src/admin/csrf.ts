@@ -1,5 +1,7 @@
 // Double-submit CSRF for the admin forms: a random value in a Secure, HttpOnly, SameSite=Strict cookie,
 // echoed as a hidden `_csrf` field and compared on every POST. Mutations also require same-origin Sec-Fetch-Site.
+// The cookie drops Secure only when BASE_URL is plain http, which config allows for localhost alone: Safari
+// refuses Secure cookies on http://localhost, and the local copy (tools/local.mjs) has no TLS.
 import type { Context } from 'hono';
 import { getCookie, setCookie } from 'hono/cookie';
 import type { AppEnv } from '../types.js';
@@ -22,7 +24,7 @@ export function ensureCsrf(c: Context<AppEnv>): string {
     issued.set(c.req.raw, value);
     setCookie(c, CSRF_COOKIE, value, {
       path: '/admin',
-      secure: true,
+      secure: !(c.env.BASE_URL ?? '').startsWith('http:'),
       httpOnly: true,
       sameSite: 'Strict',
       maxAge: 60 * 60 * 12,

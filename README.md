@@ -6,10 +6,14 @@ and delivered through a personal page at **https://licensed.spcfz.ae/c/{token}**
 
 **Status, 16 October 2026: live at https://licensed.spcfz.ae** as the Docker
 container `spcfz-licence-card` on 13.206.34.102, behind Apache and Cloudflare.
-The personal page is being replaced by the customer studio from SPC's design
-(docs/ARCHITECTURE.md section 7); built and verified locally, not yet
-deployed. Webhooks are rejected until the ERP's IP addresses are added (ERP
-work on hold); the admin answers 503 until Cloudflare Access is set up.
+The personal page is the customer studio from SPC's design
+(docs/ARCHITECTURE.md section 7), live since 16 October 2026. Webhooks are
+rejected until the ERP's IP addresses are added (ERP work on hold); the admin
+answers 503 until Cloudflare Access is set up.
+
+Work now happens on the local copy first: `npm run local` runs the whole
+product at http://localhost:8787, admin included (docs/DEV.md "Local copy").
+Production changes wait until SPC says the product is ready.
 
 ## Documents
 
@@ -48,5 +52,4 @@ write-back, print-ready files, and any change to www.spcfz.ae.
 1. Cloudflare Access for `/admin*`, then put the team domain and audience tag in the env file (docs/CLOUDFLARE-SETUP.md step 3).
 2. ERP team: their outbound IP addresses into `ERP_IP_ALLOWLIST` and the WAF rule; hand them the test secret; first test posts.
 3. Rate-limit rule on `/c/*` before launch.
-4. Hand docs/DESIGN-HANDOFF.md to the designer; swap the placeholder template when it lands.
-5. Review docs/ARABIC-STRINGS.md.
+4. Review docs/ARABIC-STRINGS.md.

@@ -20,7 +20,8 @@ import { mapPayload } from '../intake/mapper.js';
 import { validateCanonical } from '../intake/validate.js';
 import { hashFields, upsertFromCanonical } from '../intake/upsert.js';
 import type { AccessVerifier } from './access.js';
-import { isAccessConfigured, verifyAccessJwt } from './access.js';
+import { isAccessConfigured } from './access.js';
+import { isLocalAdminEnabled, verifyAdmin } from './local.js';
 import { csrfFailure, csrfToken, ensureCsrf } from './csrf.js';
 import type { AdminStatus } from './layout.js';
 import {
@@ -308,6 +309,17 @@ export function createAdminRoutes(verify: AccessVerifier): Hono<AppEnv> {
     adminHeaders(c, originOf(c.env.BASE_URL ?? ''));
     const identity = await verify(c);
     if (!identity) {
+      if (isLocalAdminEnabled(c.env)) {
+        const at = `${c.env.BASE_URL}/admin`;
+        return respond(
+          c,
+          {
+            title: 'Local admin only',
+            body: h`<p>This copy runs without Cloudflare Access, so its admin answers only to a browser on this computer at <a href="${at}">${at}</a>.</p>`,
+          },
+          403,
+        );
+      }
       if (!isAccessConfigured(c.env)) {
         return respond(
           c,
@@ -712,4 +724,4 @@ ${dryTable(dry)}
   return app;
 }
 
-export const adminRoutes: Hono<AppEnv> = createAdminRoutes(verifyAccessJwt);
+export const adminRoutes: Hono<AppEnv> = createAdminRoutes(verifyAdmin);

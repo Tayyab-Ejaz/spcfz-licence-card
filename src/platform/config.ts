@@ -27,6 +27,13 @@ export const DEFAULT_PORT = 8787;
 export const DEFAULT_HOST = '127.0.0.1';
 export const DEFAULT_TRUST_PROXY: TrustProxy = 'local-proxy';
 
+/** Host names that only ever reach this machine. Brackets are stripped from IPv6 literals before the lookup. */
+const LOOPBACK_NAMES = new Set(['localhost', '127.0.0.1', '::1']);
+
+function isLoopbackName(name: string): boolean {
+  return LOOPBACK_NAMES.has(name.trim().toLowerCase().replace(/^\[|\]$/g, ''));
+}
+
 /**
  * Minimal .env parser: `KEY=value` per line, `#` comments, blank lines, optional `export `, optional
  * single or double quotes around the value (double quotes understand \n). No interpolation.
@@ -118,11 +125,26 @@ export function readConfig(source: ConfigSource, envFile: string | null = null):
     errors.push('FIELD_MAP must be a JSON object mapping ERP field names to canonical names');
   }
 
+  // LOCAL_ADMIN_EMAIL opens /admin without sign-in. It is accepted only for a copy that nothing outside this machine
+  // can reach; the production container sets HOST=0.0.0.0 and NODE_ENV=production, so it refuses to start with it.
+  const localAdminRaw = text(source, 'LOCAL_ADMIN_EMAIL');
+  const accessSet = Boolean(text(source, 'ACCESS_TEAM_DOMAIN') || text(source, 'ACCESS_AUD'));
+  if (localAdminRaw !== undefined) {
+    const local = 'LOCAL_ADMIN_EMAIL is for a local copy only';
+    if (!/^[^\s@]+@[^\s@]+$/.test(localAdminRaw)) errors.push(`${local}, and must look like an email address`);
+    if (!isLoopbackName(host)) errors.push(`${local}: HOST must be 127.0.0.1, ::1 or localhost, got ${JSON.stringify(host)}`);
+    if (baseUrl && !isLoopbackName(new URL(baseUrl).hostname)) errors.push(`${local}: BASE_URL must point at localhost, got ${JSON.stringify(baseUrl)}`);
+    if (trustProxy !== 'off') errors.push(`${local}: TRUST_PROXY must be off, got ${JSON.stringify(trustProxy)}`);
+    if ((text(source, 'NODE_ENV') ?? '').toLowerCase() === 'production') errors.push(`${local}: NODE_ENV is production`);
+    if (accessSet) errors.push(`${local}: unset ACCESS_TEAM_DOMAIN and ACCESS_AUD, or remove LOCAL_ADMIN_EMAIL`);
+  }
+
   const allowlist = text(source, 'ERP_IP_ALLOWLIST') ?? '';
   if (!allowlist) warnings.push('ERP_IP_ALLOWLIST is empty: both intake routes reject every request');
   if (!text(source, 'WEBHOOK_SECRET_CURRENT')) warnings.push('WEBHOOK_SECRET_CURRENT is not set: the production intake route accepts nothing');
   if (!text(source, 'TEST_SECRET_CURRENT')) warnings.push('TEST_SECRET_CURRENT is not set: the test intake route accepts nothing');
-  if (!text(source, 'ACCESS_TEAM_DOMAIN') || !text(source, 'ACCESS_AUD')) warnings.push('ACCESS_TEAM_DOMAIN / ACCESS_AUD are not set: /admin answers 503');
+  if (localAdminRaw !== undefined) warnings.push(`LOCAL_ADMIN_EMAIL is set: /admin opens without sign-in for browsers on this machine at ${baseUrl}/admin`);
+  else if (!text(source, 'ACCESS_TEAM_DOMAIN') || !text(source, 'ACCESS_AUD')) warnings.push('ACCESS_TEAM_DOMAIN / ACCESS_AUD are not set: /admin answers 503');
   if (trustProxy === 'off') warnings.push('TRUST_PROXY=off: the socket peer is taken as the client address; only for local use');
 
   if (errors.length) return { ok: false, errors };
@@ -141,6 +163,7 @@ export function readConfig(source: ConfigSource, envFile: string | null = null):
     TEST_SECRET_PREVIOUS: text(source, 'TEST_SECRET_PREVIOUS'),
     ACCESS_TEAM_DOMAIN: text(source, 'ACCESS_TEAM_DOMAIN'),
     ACCESS_AUD: text(source, 'ACCESS_AUD'),
+    LOCAL_ADMIN_EMAIL: localAdminRaw?.toLowerCase(),
   };
   return { ok: true, config: { vars, host, port, dataDir, trustProxy, envFile, warnings } };
 }

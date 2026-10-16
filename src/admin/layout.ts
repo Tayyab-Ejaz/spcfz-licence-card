@@ -86,11 +86,14 @@ code{background:#eef2fa;padding:1px 5px;border-radius:4px;font-size:12px}
 .outcome-update{color:#7a5a00;font-weight:700}
 .outcome-unchanged{color:var(--muted)}
 .outcome-rejected{color:#7a1a1a;font-weight:700}
+.local{background:#fff4d6;color:#5c4300;border-bottom:1px solid #ecd9a0;padding:6px 16px;font-size:13px;text-align:center}
 `;
 
 export interface LayoutOptions {
   title: string;
   actor?: string | undefined;
+  /** True on a local copy (LOCAL_ADMIN_EMAIL): a band under the header says the data is on this computer only. */
+  local?: boolean | undefined;
   active?: NavKey | undefined;
   flash?: string | null | undefined;
   error?: string | string[] | null | undefined;
@@ -114,6 +117,7 @@ export function adminLayout(o: LayoutOptions): string {
 <nav>${NAV.map((n) => h`<a href="${n.href}" class="${n.key === o.active ? 'on' : ''}">${n.label}</a>`)}</nav>
 ${o.actor ? h`<span class="who">${o.actor}</span>` : EMPTY}
 </div></header>
+${o.local ? h`<div class="local">Local copy on this computer. Nothing here reaches licensed.spcfz.ae.</div>` : EMPTY}
 <main>
 <h1>${o.title}</h1>
 ${o.flash ? h`<div class="flash">${o.flash}</div>` : EMPTY}
@@ -138,8 +142,8 @@ export function adminHeaders(c: Context<AppEnv>, imgOrigin: string): void {
   );
 }
 
-export function respond(c: Context<AppEnv>, o: Omit<LayoutOptions, 'actor'>, status: AdminStatus = 200): Response | Promise<Response> {
-  return c.html(adminLayout({ ...o, actor: c.get('actor') }), status);
+export function respond(c: Context<AppEnv>, o: Omit<LayoutOptions, 'actor' | 'local'>, status: AdminStatus = 200): Response | Promise<Response> {
+  return c.html(adminLayout({ ...o, actor: c.get('actor'), local: Boolean(c.env.LOCAL_ADMIN_EMAIL) }), status);
 }
 
 // ------------------------------------------------------------------ fragments

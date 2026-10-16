@@ -3,11 +3,62 @@
 ## State
 
 Ported on 15 and 16 October 2026 from Cloudflare Workers to a Node 22
-service in Docker (docs/PORT-TO-NODE.md). Typecheck clean, all tests
-passing, `npm run build` working, and a local end-to-end run rendered all
-eight images in about six seconds. Live on 13.206.34.102 since 16 October
-2026 (docs/RUNBOOK.md). The same day the personal page became the studio and
-the server-side render (queue, Chromium, image storage) was retired.
+service in Docker (docs/PORT-TO-NODE.md). Live on 13.206.34.102 since
+16 October 2026 (docs/RUNBOOK.md). The same day the personal page became the
+studio and the server-side render (queue, Chromium, image storage) was
+retired.
+
+From 16 October 2026 the product is built and checked on the local copy
+first (below). Production changes wait until SPC says the product is ready.
+
+## Local copy
+
+One command runs the whole product on this Mac:
+
+```
+npm run local
+```
+
+It compiles the service and the studio, starts them at
+http://localhost:8787, and on first run loads the five sample licences
+(`tools/erp-samples.mjs`) through the real test webhook. It then prints the
+admin link and one link per card. Ctrl-C stops it.
+
+| Option | Does |
+|---|---|
+| `--watch` | rebuilds and restarts on any change under `src/`, `client/`, `design/` or `migrations/`; refresh the browser after "reloaded" |
+| `--seed` | loads the five samples again; the same licence numbers update the same five cards |
+| `--fresh` | deletes the local database, then loads the samples |
+| `--no-build` | starts the last build as it is |
+
+Pass options after `--`, for example `npm run local -- --watch`.
+
+The copy keeps its state in `~/.spcfz-licence-card/`, outside the repo,
+because OneDrive should not sync a live SQLite file:
+
+- `local.env` is written on first run, with this copy's own random webhook
+  secrets. To change the port, change `PORT` and `BASE_URL` together.
+- `data/` holds the database and its daily backups.
+
+**The admin needs no sign-in here.** `LOCAL_ADMIN_EMAIL` stands in for
+Cloudflare Access (`src/admin/local.ts`), and a yellow band on every admin
+screen says it is the local copy. The service refuses to start with that
+setting unless it listens on loopback, `BASE_URL` points at localhost,
+`TRUST_PROXY` is off, `NODE_ENV` is not production and Access is unset. The
+production container fails every one of those, so it would refuse to start.
+Each request is checked again: the peer must be this machine and the host
+name a loopback name on the configured port, which stops DNS rebinding.
+
+To post your own payload to the local test webhook:
+
+```
+S=$(grep '^TEST_SECRET_CURRENT=' ~/.spcfz-licence-card/local.env | cut -d= -f2-)
+curl -X POST http://localhost:8787/v1/test/licence-issued \
+  -H 'content-type: application/json' -H "X-SPC-Webhook-Secret: $S" \
+  -d '{"licence_number":"TEST-2026-0099","company_name_en":"Nimbus Publishing FZE","founder_name_en":"Sara Khan"}'
+```
+
+The answer's `page_url` opens the card.
 
 ## Toolchain
 
@@ -28,32 +79,26 @@ npm install
 npm run typecheck
 npm test
 npm run build
-cp .env.example .env && npm run dev     # http://localhost:8787
+npm run local                           # the product at http://localhost:8787 (see "Local copy")
 ```
 
-With the `.env.example` defaults, post a test licence from this machine:
-
-```
-curl -X POST http://localhost:8787/v1/test/licence-issued \
-  -H 'content-type: application/json' -H 'X-SPC-Webhook-Secret: dev-test-secret' \
-  -d '{"licence_number":"SPC-2026-00001","company_name_en":"Nimbus Publishing FZE"}'
-```
-
-The answer's `page_url` opens the card a few seconds later.
+`npm run dev` (tsx watch on `src/` only, with `.env` from `.env.example`)
+still works for server-only work; it does not rebuild the studio.
 
 ## Layout
 
 | Path | Owns |
 |---|---|
-| `src/server.ts` | process entry: config, migrations, queue worker, scheduler, HTTP |
+| `src/server.ts` | process entry: config, migrations, scheduler, HTTP |
 | `src/platform/` | SQLite database, config, migrations, scheduler, backup, client address, Cloudflare ranges |
 | `src/intake` | webhook checks, field mapping, validation, idempotent upsert |
-| `src/page` | personal page, image delivery, status, metric beacon |
-| `src/admin` | Cloudflare Access verification and staff screens |
+| `src/page` | personal page (the studio shell and its static files), metric beacon |
+| `src/admin` | Cloudflare Access verification, the local-copy gate, staff screens |
 | `src/db` | every SQL statement |
 | `src/util` | tokens, hashing, HTML escaping, dates, IP allowlist, CSV, background tasks |
 | `migrations/` | SQLite schema, applied at startup |
 | `deploy/` | Dockerfile companions: run script, env example, Apache site, Cloudflare ranges |
+| `tools/local.mjs` | the local copy (`npm run local`) |
 | `tools/deploy.sh` | deployment from this Mac, one subcommand per approval |
 
 ## Conventions
@@ -63,8 +108,8 @@ The answer's `page_url` opens the card a few seconds later.
 - Nothing from the ERP payload is stored except the canonical fields.
 - SQL uses `?1`-style placeholders. The SQLite adapter binds them by number;
   better-sqlite3 rejects them as positional values.
-- Tests build a fresh environment per file with `tests/env.ts`: temp SQLite,
-  temp image folder, queue worker off. `flushBackground()` waits for
+- Tests build a fresh environment per file with `tests/env.ts`: a temp
+  folder with its own SQLite file. `flushBackground()` waits for
   fire-and-forget work such as metric counters.
 
 ## Things learned the hard way
@@ -116,5 +161,6 @@ The personal page is a React app built from the approved design. Sources:
 `tools/erp-samples.mjs` holds five fictional licences shaped like ERP
 payloads (both languages, Arabic preference with an owner object, English
 only with a long name, ERP-style field names with a DD/MM/YYYY date, a long
-legal founder name). Load them through the real test webhook locally, or
-inside the container on the server (see the file's header).
+legal founder name). `npm run local` loads them on first run; `--seed`
+loads them again. The file's header also shows how to load them inside the
+container on the server.

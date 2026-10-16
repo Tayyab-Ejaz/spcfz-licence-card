@@ -302,6 +302,11 @@ Path prefix `/admin`, protected by Cloudflare Access (C7). The app also
 verifies the `Cf-Access-Jwt-Assertion` header against the team's keys, so the
 routes are useless if the Access policy is ever removed by mistake.
 
+On a local copy only, `LOCAL_ADMIN_EMAIL` replaces Access (`src/admin/local.ts`,
+docs/DEV.md "Local copy"). Configuration refuses it unless the service is
+reachable from the machine alone, and each request must come from loopback
+with a loopback host name.
+
 Screens:
 
 - **Cards.** Search by company or licence number; filter by status, test,
