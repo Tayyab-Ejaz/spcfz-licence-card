@@ -251,6 +251,31 @@ Photos and logos are read in the browser and never sent to the server.
 | `GET /static/studio/…` | The bundle, stylesheet, fonts and images; content-hashed names, cached for a year. |
 | `POST /c/{token}/m` | Counter beacon: download, share (network `native` or `linkedin`), caption. |
 
+### Robustness for real data (16 October 2026)
+
+The design was drawn with one sample licence. Real licences vary, so a few
+bindings adapt while leaving the design's sample exactly as drawn
+(`ROBUSTNESS_PATCHES` in tools/build-studio.mjs, values in
+client/card-data.js):
+
+- **Day One day number.** Sized for one digit ("8"); two-digit days are drawn
+  at 68 % so they stay inside the diamond.
+- **Launch Pass founder name.** The stub drew one line with an ellipsis, which
+  cut even the design's own "Mariam Fawzy" to "Mariam Fa…". A name that does
+  not fit now wraps to two balanced lines, shrinking to 75 % if needed, then
+  three lines down to 60 %; it breaks at spaces and hyphens, never mid-word
+  unless nothing else fits. The client measures the laid-out element and
+  adjusts, so the export (which clones the DOM) matches the preview.
+- **Long legal names** from the ERP are shortened to first and last name when
+  over the design's 40-character field.
+
+`tools/stress-cards.mjs` renders every style, format, language, "who it is
+about" and headline with long, short, missing and two-digit-date data
+(378 cases on 16 October 2026) and fails on text outside the card, clipped
+text, overlapping text, truncated text, or a day number outside its diamond.
+`tools/compare-design.mjs` renders with `designExact` so it still proves the
+design's own rendering is pixel-identical.
+
 ### Deviations from the design runtime, on purpose
 
 - Style strings are split on ";" only outside quotes and parentheses. The

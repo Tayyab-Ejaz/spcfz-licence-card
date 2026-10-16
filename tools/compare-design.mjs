@@ -26,6 +26,9 @@ const SAMPLE = {
   activity_ar: 'استشارات مالية للشركات الصغيرة', lang: 'en', is_test: false,
   // The design pre-fills these from the licence; production data carries none, so they exist only here.
   name_en: 'Mariam Fawzy', role_en: 'Founder', name_ar: 'مريم فوزي', role_ar: 'المؤسِّسة',
+  // Render the design's own sizes: the data fixes (two-digit days, Launch Pass names that do not fit,
+  // including the design's own "Mariam Fa…") are deliberate and are checked by tools/stress-cards.mjs.
+  designExact: true,
 };
 const card = { token: SAMPLE.token, company_name_en: SAMPLE.company_en, company_name_ar: SAMPLE.company_ar, licence_number: SAMPLE.licence_number,
   issued_on: SAMPLE.issued_on, activity_category: SAMPLE.activity_en, activity_category_ar: SAMPLE.activity_ar, preferred_language: 'en', is_test: false };

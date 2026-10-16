@@ -106,4 +106,15 @@ The personal page is a React app built from the approved design. Sources:
 4. Prove it: `npm run compare-design -- "<dir with the exports>" <out dir>`.
    Every state should report 0 differing pixels. Diff images land in the
    out dir.
-5. Commit `design/source/` with the code.
+5. Stress it: `npm run stress-cards -- <out dir>` (378 cases with awkward
+   data; add `--shots all` to save every card for review). Fix anything it
+   reports with a robustness patch in tools/build-studio.mjs.
+6. Commit `design/source/` with the code.
+
+### Test data
+
+`tools/erp-samples.mjs` holds five fictional licences shaped like ERP
+payloads (both languages, Arabic preference with an owner object, English
+only with a long name, ERP-style field names with a DD/MM/YYYY date, a long
+legal founder name). Load them through the real test webhook locally, or
+inside the container on the server (see the file's header).

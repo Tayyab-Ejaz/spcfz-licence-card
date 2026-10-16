@@ -59,6 +59,15 @@ prints its page link. Running it again updates the same card. Downloads of
 test cards carry a TEST watermark, and test cards are deleted automatically
 after 30 days. `TEST_LANG=ar` makes the page open with the Arabic card.
 
+## Load the sample ERP licences
+
+```
+ssh root@13.206.34.102 "docker exec -i -w /app spcfz-licence-card node --input-type=module" < tools/erp-samples.mjs
+```
+
+Creates or refreshes five fictional TEST licences that look like ERP data and
+prints their page links (docs/DEV.md, "Test data").
+
 ## Logs, restart, status
 
 ```

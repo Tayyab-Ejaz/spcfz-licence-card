@@ -43,6 +43,29 @@ const DATA_PATCHES = {
     ['<a href="#" ', '<a href="{{ portalUrl }}" '],
   ],
 };
+// Robustness patches for real data, applied to both layouts (docs/ARCHITECTURE.md section 7). Each binds a
+// value that client/card-data.js sets to the design's own value for the design's sample data, so the
+// sample still renders pixel-identically, and adapts it for data the design did not show.
+const ROBUSTNESS_PATCHES = [
+  // Day One: the day number was sized for one digit ("8"); two digits must stay inside the diamond.
+  ['font-size:260px;font-weight:800;line-height:1;letter-spacing:-.06em;color:var(--spc-ink)">{{ calDay }}',
+    'font-size:{{ calDaySize }}px;font-weight:800;line-height:1;letter-spacing:-.06em;color:var(--spc-ink)">{{ calDay }}'],
+  ['font-size:160px;font-weight:800;line-height:1;letter-spacing:-.06em;color:var(--spc-ink)">{{ calDay }}',
+    'font-size:{{ calDaySizeLs }}px;font-weight:800;line-height:1;letter-spacing:-.06em;color:var(--spc-ink)">{{ calDay }}'],
+  // Launch Pass stub: one line with an ellipsis cuts long founder names; let them wrap to two lines.
+  [/opacity:\{\{ nameOpacity \}\};max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">\{\{ nameText \}\}<\/span>(\s*)<sc-if value="\{\{ hasRole \}\}"><span style="font-size:20px/,
+    'opacity:{{ nameOpacity }};max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;{{ stubNameXtra }}">{{ nameText }}</span>$1<sc-if value="{{ hasRole }}"><span style="font-size:20px'],
+  [/opacity:\{\{ nameOpacity \}\};max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">\{\{ nameText \}\}<\/span>(\s*)<sc-if value="\{\{ hasRole \}\}"><span style="font-size:15px/,
+    'opacity:{{ nameOpacity }};max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;{{ stubNameXtra }}">{{ nameText }}</span>$1<sc-if value="{{ hasRole }}"><span style="font-size:15px'],
+];
+// Mark the stub name so client/card-data.js can measure the laid-out element and shrink it until it fits.
+ROBUSTNESS_PATCHES.push(
+  ['<span style="font-size:{{ stubNameSq }}px;', '<span data-fit="stub" style="font-size:{{ stubNameSq }}px;'],
+  ['<span style="font-size:{{ stubNameLs }}px;', '<span data-fit="stub" style="font-size:{{ stubNameLs }}px;'],
+);
+DATA_PATCHES.studio.push(...ROBUSTNESS_PATCHES);
+DATA_PATCHES.mobile.push(...ROBUSTNESS_PATCHES);
+
 // Sample values that must not survive into the markup after patching (input placeholders excepted).
 const LEFTOVERS = [/Lumen/, /4425153/, /\b\d{1,2} Oct(ober)? 2026\b/];
 

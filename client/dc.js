@@ -175,6 +175,8 @@ export class Host extends React.Component {
     this.logic.__host = this;
     if (props.initialState) this.logic.state = { ...this.logic.state, ...props.initialState };
     this.prevLogicState = null;
+    // Test hook for tools/stress-cards.mjs. Only card data built by the test tools sets `debug`; the server never does.
+    if (props.userProps && props.userProps.card && props.userProps.card.debug === true) window.__dcHost = this;
   }
   __setLogicState(update, cb) {
     const prev = this.logic.state;

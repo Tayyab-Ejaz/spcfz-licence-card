@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "build:studio": "node tools/build-studio.mjs",
-    "compare-design": "node tools/compare-design.mjs"
+    "compare-design": "node tools/compare-design.mjs",
+    "stress-cards": "node tools/stress-cards.mjs"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.5",
