@@ -6,11 +6,13 @@
   "description": "Licence-issued social creative for SPC Free Zone customers, served at licensed.spcfz.ae (self-hosted Node 22 service)",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && node tools/build-studio.mjs",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "build:studio": "node tools/build-studio.mjs",
+    "compare-design": "node tools/compare-design.mjs"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.5",
@@ -22,6 +24,13 @@
   "devDependencies": {
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^26.6.5",
+    "esbuild": "^0.28.2",
+    "html-to-image": "1.11.11",
+    "parse5": "^8.0.1",
+    "pixelmatch": "^8.0.0",
+    "pngjs": "^7.0.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",
     "vitest": "^4.1.11"

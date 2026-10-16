@@ -5,10 +5,11 @@ generated for every customer the moment the ERP issues a business licence,
 and delivered through a personal page at **https://licensed.spcfz.ae/c/{token}**.
 
 **Status, 16 October 2026: live at https://licensed.spcfz.ae** as the Docker
-container `spcfz-licence-card` (image `86e838a937cf`) on 13.206.34.102,
-behind Apache and Cloudflare. Webhooks are rejected until the ERP's IP
-addresses are added; the admin answers 503 until Cloudflare Access is set
-up. Every later change on the server needs approval (docs/RUNBOOK.md).
+container `spcfz-licence-card` on 13.206.34.102, behind Apache and Cloudflare.
+The personal page is being replaced by the customer studio from SPC's design
+(docs/ARCHITECTURE.md section 7); built and verified locally, not yet
+deployed. Webhooks are rejected until the ERP's IP addresses are added (ERP
+work on hold); the admin answers 503 until Cloudflare Access is set up.
 
 ## Documents
 

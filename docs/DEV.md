@@ -77,3 +77,34 @@ The answer's `page_url` opens the card a few seconds later.
 - Under Workers, `routes` was inherited by every environment. That design is
   gone, but the lesson stands: check that nothing but production can claim
   licensed.spcfz.ae.
+
+## Customer studio (client/)
+
+The personal page is a React app built from the approved design. Sources:
+
+| Path | What |
+|---|---|
+| `design/source/{studio,mobile}/template.html` | the design's templates, unpacked from the exports |
+| `design/source/{studio,mobile}/logic.js` | the design's logic classes, verbatim; never edit by hand |
+| `design/source/assets/` | fonts and images, named by content hash |
+| `client/` | renderer (`dc.js`), design-system components (`ds.js`), data injection (`card-data.js`), entry (`main.js`) |
+| `tools/build-studio.mjs` | design + client → `public/studio/` (run by `npm run build`) |
+
+`npm run build` compiles the server and the studio. `client/generated/` and
+`public/` are build output and are not committed.
+
+### Updating the design
+
+1. Export both studio designs from Claude Design as Standalone HTML.
+2. Unpack them:
+   ```
+   node tools/extract-design.mjs "<…>/License Announcement Studio - Standalone.html" studio
+   node tools/extract-design.mjs "<…>/License Announcement Mobile - Standalone.html" mobile
+   ```
+3. `npm run build`. If a data patch in `tools/build-studio.mjs` no longer
+   matches (the designer moved the sample company, date, activity, licence
+   number or portal link), the build stops and names it; update the patch.
+4. Prove it: `npm run compare-design -- "<dir with the exports>" <out dir>`.
+   Every state should report 0 differing pixels. Diff images land in the
+   out dir.
+5. Commit `design/source/` with the code.

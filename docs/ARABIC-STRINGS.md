@@ -1,5 +1,7 @@
 # Arabic strings for review
 
+> **Status, 16 October 2026.** The personal page is now the studio from SPC's design. The page strings below (section "Personal page") are no longer shown. The studio's Arabic text — card labels, the six headline presets, the captions in three tones — comes from the design itself (design/source/*/logic.js) and still needs the same native-reader sign-off. The server-rendered card strings and the default caption below are only used by the admin's server render.
+
 Drafted by Claude on 15 October 2026. None has been reviewed by a native
 reader. The user signs these off. Edit the Arabic column, or the source file
 named in each section, and say which changed.

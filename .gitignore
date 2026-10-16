@@ -10,3 +10,6 @@ data/
 *.log
 .DS_Store
 coverage/
+# Built by tools/build-studio.mjs
+client/generated/
+public/

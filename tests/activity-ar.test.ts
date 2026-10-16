@@ -8,7 +8,6 @@ import { validateCanonical } from '../src/intake/validate.js';
 import { hashFields } from '../src/intake/upsert.js';
 import { findCardByLicence } from '../src/db/cards.js';
 import { cardText } from '../src/render/template.js';
-import { activityFor } from '../src/page/view.js';
 import { createTestEnv } from './env.js';
 
 const AR = 'نشر الكتب';
@@ -72,8 +71,7 @@ describe('hashFields', () => {
   });
 });
 
-describe('card and page text', () => {
-  const card = { activity_category: EN, activity_category_ar: AR } as Pick<CardRow, 'activity_category' | 'activity_category_ar'>;
+describe('server-rendered card text', () => {
   const full = (o: Partial<CardRow>): CardRow => ({
     id: 'x', token: 'AbCdEfGhIjKlMnOpQrStUv', licence_number: 'SPC-1', is_test: false, company_name_en: 'Nimbus FZE',
     company_name_ar: null, licence_type: null, activity_category: EN, activity_category_ar: null, issued_on: '2026-10-16',
@@ -87,11 +85,6 @@ describe('card and page text', () => {
   });
   it('the Arabic card falls back to the English activity', () => {
     expect(cardText(full({}), 'ar').category).toBe(EN);
-  });
-  it('the page follows the same rule', () => {
-    expect(activityFor(card, 'ar')).toBe(AR);
-    expect(activityFor(card, 'en')).toBe(EN);
-    expect(activityFor({ activity_category: null, activity_category_ar: null }, 'ar')).toBeNull();
   });
 });
 

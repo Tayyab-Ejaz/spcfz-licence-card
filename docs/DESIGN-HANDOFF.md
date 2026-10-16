@@ -1,5 +1,7 @@
 # Design handoff: what the card design must contain
 
+> **Superseded on 16 October 2026.** SPC supplied the full studio design (License Announcement Studio and Mobile). The card designs, sizes and behaviour now come from those exports; see docs/ARCHITECTURE.md section 7. This brief is kept for history.
+
 Version 0.1, 15 October 2026. For the designer producing the "officially
 licensed at SPC Free Zone" social creative. The design is turned into an HTML
 template that a browser renders to PNG, so everything below is about making

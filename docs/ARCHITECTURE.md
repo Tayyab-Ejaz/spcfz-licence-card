@@ -236,45 +236,74 @@ Three attempts with backoff in the SQLite jobs table, then the dead-letter
 handler, which marks the card `failed` with the error. The admin
 shows failed cards and offers a retry.
 
-## 7. Personal page
+## 7. Personal page: the customer studio
+
+Since 16 October 2026 the personal page is the **License Announcement
+Studio**, implemented from the approved design exports ("License
+Announcement Studio" for desktop, "License Announcement Mobile" for
+phones). The customer builds the card in the browser and exports it there;
+the server only provides the licence data and the static files.
+
+### What the customer can do (from the design)
+
+- Choose one of three styles (Daylight, Launch Pass, Day One), a format
+  (square 1080 × 1080, portrait 1080 × 1350, landscape 1200 × 627) and the
+  card language (English or Arabic, right to left).
+- Choose who the card is about (you and your company, the company, just
+  you), an image (photo with pan and zoom, logo, or initials), name, role and
+  activity in each language, and a headline (six presets or their own).
+- Get a suggested caption in three tones, edit it, copy it.
+- Download a PNG at twice the native size, share it through the device
+  share sheet where supported, or open LinkedIn with the caption copied.
+- Custom text is checked in the browser for profanity, implied endorsement by
+  SPC or the Government of Sharjah, and claims such as "best" or "#1".
+- The company name is locked to the licence ("as registered on license …").
+
+Photos and logos are read in the browser and never sent to the server.
+
+### Implementation
+
+- `design/source/` holds the exports unpacked by `tools/extract-design.mjs`:
+  each layout's template, its logic class verbatim, and the fonts and images.
+- `tools/build-studio.mjs` turns the sample values in the templates
+  (company, issue date, activity, licence number, portal link) into
+  bindings, compiles each template to an AST, wraps each logic class as a
+  module, and bundles `client/` with esbuild into `public/studio/`.
+- `client/dc.js` renders the AST with React 18.3.1, reproducing the design
+  runtime's behaviour. `client/card-data.js` subclasses each logic class to
+  inject the licence's data. `client/ds.js` holds the design system's Button,
+  Input and Toast. html-to-image 1.11.11 produces the PNG, as in the design.
+- The mobile layout is used below 760 px viewport width, the desktop layout
+  above; edits carry over when the layout switches.
+- `tools/compare-design.mjs` renders the exports and the build side by side
+  in headless Chrome and diffs 30 states pixel by pixel. On 16 October 2026
+  every state matched with zero differing pixels.
 
 ### Routes
 
 | Route | Purpose |
 |---|---|
-| `GET /c/{token}` | The page. `?lang=ar` or `?lang=en` overrides the default. |
-| `GET /c/{token}/{lang}-{size}.png` | The image from disk. `?download=1` adds a `Content-Disposition: attachment` header with a filename built from the company name. |
-| `GET /c/{token}/status` | `{ status }` JSON, polled every 3 seconds while pending. |
-| `POST /c/{token}/m` | Counter beacon: `{ kind, lang, size, network }`. |
+| `GET /c/{token}` | The studio shell: the stylesheet, the bundle, and the card data as JSON in `<script id="card-data">`. Served for pending, ready and failed cards alike; nothing waits for the server render. Expired cards get 410, unknown tokens 404. |
+| `GET /static/studio/…` | The bundle, stylesheet, fonts and images; content-hashed names, cached for a year. |
+| `POST /c/{token}/m` | Counter beacon: download, share (network `native` or `linkedin`), caption. |
+| `GET /c/{token}/status`, `GET /c/{token}/{lang}-{size}.png` | Kept for the admin: the server-side render still runs. |
 
-### Behaviour
+### Deviations from the design runtime, on purpose
 
-- Default language is `preferred_language`; the toggle switches both the UI
-  and the images shown.
-- States: `pending` shows "preparing your card" and polls; `ready` shows the
-  card; `failed` shows the pending view with a contact line, never an error
-  code; `expired` says the card is no longer available and gives the SPC
-  contact page.
-- Size picker with a preview and a Download button per size.
-- Share buttons: LinkedIn, X, Facebook and WhatsApp share the page URL.
-  Instagram has no web share, so the page says "download the square or story
-  image and paste the caption".
-- "Copy caption" copies a language-specific caption containing the company
-  name and a tracked link to www.spcfz.ae. Default captions ship in English and
-  Arabic as settings; the Arabic one must be reviewed by a native reader
-  before launch.
-- Open Graph tags: title "{company} is officially licensed at SPC Free Zone",
-  the landscape image in the page language, `summary_large_image` for X.
-- `noindex` via meta and `X-Robots-Tag`. This does not stop social previews.
-- Content Security Policy with no third-party scripts unless `gtm_enabled`.
-- Visiting a test card shows a TEST ribbon over the image and in the title.
+- Style strings are split on ";" only outside quotes and parentheses. The
+  runtime split on every ";", which broke uploaded photos and logos (they are
+  `data:image/...;base64,` URLs); in the original export an uploaded photo
+  does not appear on the card.
+- The logic's `componentDidUpdate` receives the previous state, so the mobile
+  layout's share pre-render works as written.
 
-### Caching
+### Headers
 
-Pages are served with `Cache-Control: private, no-store`. Image URLs carry
-`?v=` plus the first eight characters of the card's content hash and are
-served `immutable` for a year, so a regenerated card gets new URLs and no
-purge is needed.
+`Cache-Control: private, no-store`, `X-Robots-Tag: noindex, nofollow`, and a
+CSP of `script-src 'self'` plus a nonce for the optional GTM snippet,
+`style-src 'self'`, `img-src 'self' data: blob:`, `font-src 'self' data:`,
+`connect-src 'self'`, `base-uri 'self'` (html-to-image sets a same-origin
+base while inlining fonts), `frame-ancestors 'none'`.
 
 ## 8. Admin
 

@@ -10,5 +10,6 @@ data
 coverage
 tests
 docs
-tools
 .DS_Store
+client/generated
+public

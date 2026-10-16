@@ -1,0 +1,25 @@
+{
+  "prefillFromLicense": {
+    "editor": "boolean",
+    "default": true,
+    "tsType": "boolean",
+    "section": "Starting state"
+  },
+  "samplePhoto": {
+    "editor": "boolean",
+    "default": false,
+    "tsType": "boolean",
+    "section": "Starting state"
+  },
+  "startTemplate": {
+    "editor": "enum",
+    "options": [
+      "daylight",
+      "pass",
+      "dayone"
+    ],
+    "default": "dayone",
+    "tsType": "string",
+    "section": "Starting state"
+  }
+}

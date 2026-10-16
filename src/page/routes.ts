@@ -1,7 +1,7 @@
 // Personal page: the page itself, status JSON, image delivery from the bucket and the counter beacon (ARCHITECTURE section 7).
 import { Hono } from 'hono';
 import type { Context } from 'hono';
-import type { AppEnv, Lang, MetricKind, Size } from '../types.js';
+import type { AppEnv, Lang, MetricKind } from '../types.js';
 import { isLang, isSize } from '../types.js';
 import { bumpMetric, getCardByToken, getSettings } from '../db/cards.js';
 import type { MetricKey } from '../db/cards.js';
@@ -10,9 +10,8 @@ import { background } from '../util/background.js';
 import { TOKEN_RE, bytesToBase64 } from '../util/crypto.js';
 import { safeFilename } from '../util/html.js';
 import { todayInDubai } from '../util/time.js';
-import {
-  buildCaption, displayName, renderExpiredPage, renderNotFoundPage, renderPendingPage, renderReadyPage,
-} from './view.js';
+import { renderExpiredPage, renderNotFoundPage } from './view.js';
+import { renderStudioShell, studioCsp } from './studio.js';
 
 const IMAGE_FILE_RE = /^(en|ar)-(square|portrait|story|landscape)\.png$/;
 const GTM_ID_RE = /^GTM-[A-Z0-9]{4,12}$/;
@@ -20,9 +19,6 @@ const BEACON_LIMIT = 1024;
 
 /** Image URLs are versioned (src/storage.ts), so a copy may live at the edge and in browsers for a year. */
 export const IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
-
-const DEFAULT_CAPTION_EN =
-  "We're officially licensed at SPC Free Zone! {company} is now a licensed business in Sharjah. #SPCFreeZone #Sharjah #BusinessSetup {link}";
 
 function makeNonce(): string {
   return bytesToBase64(crypto.getRandomValues(new Uint8Array(16)));
@@ -49,10 +45,10 @@ function buildCsp(nonce: string, gtm: boolean): string {
   ].join('; ');
 }
 
-function pageHeaders(c: Context<AppEnv>, nonce: string, gtm: boolean): void {
+function pageHeaders(c: Context<AppEnv>, nonce: string, gtm: boolean, studio = false): void {
   c.header('Cache-Control', 'private, no-store');
   c.header('X-Robots-Tag', 'noindex, nofollow');
-  c.header('Content-Security-Policy', buildCsp(nonce, gtm));
+  c.header('Content-Security-Policy', studio ? studioCsp(nonce, gtm) : buildCsp(nonce, gtm));
   c.header('Referrer-Policy', 'strict-origin-when-cross-origin');
   c.header('X-Content-Type-Options', 'nosniff');
   c.header('X-Frame-Options', 'DENY');
@@ -107,21 +103,11 @@ pageRoutes.get('/c/:token', async (c) => {
   const settings = await getSettings(c.env.DB);
   const container = (c.env.GTM_CONTAINER ?? '').trim();
   const gtmContainer = settings['gtm_enabled'] === '1' && GTM_ID_RE.test(container) ? container : null;
-  pageHeaders(c, nonce, gtmContainer !== null);
+  pageHeaders(c, nonce, gtmContainer !== null, true);
 
-  if (card.status === 'pending' || card.status === 'failed') {
-    return c.html(renderPendingPage({ card, lang, nonce, failed: card.status === 'failed', gtmContainer }), 200);
-  }
-
-  const sizeQ = c.req.query('size');
-  const size: Size = isSize(sizeQ) ? sizeQ : 'square';
-  const template =
-    (lang === 'ar' ? settings['caption_ar'] : undefined) || settings['caption_en'] || DEFAULT_CAPTION_EN;
-  const caption = buildCaption(template, displayName(card, lang));
-
+  // The studio builds the card in the browser, so it never waits for the server-side render.
   if (!card.is_test) safeMetric(c, { card_id: card.id, kind: 'view', lang });
-
-  return c.html(renderReadyPage({ env: c.env, card, lang, size, nonce, caption, gtmContainer }), 200);
+  return c.html(renderStudioShell({ card, nonce, gtmContainer }), 200);
 });
 
 // ------------------------------------------------------------------ status

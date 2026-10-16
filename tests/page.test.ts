@@ -62,7 +62,7 @@ async function call(path: string, init?: RequestInit): Promise<{ res: Response }
 }
 
 function nonceFromCsp(csp: string): string {
-  const m = /script-src 'nonce-([^']+)'/.exec(csp);
+  const m = /script-src [^;]*'nonce-([^']+)'/.exec(csp);
   if (!m || !m[1]) throw new Error(`no script nonce in CSP: ${csp}`);
   return m[1];
 }
@@ -92,103 +92,82 @@ describe('GET /c/:token', () => {
     expect(await res.text()).toContain('This link is not valid');
   });
 
-  it('shows the preparing view with the poller while pending', async () => {
-    const card = await seedCard();
-    const { res } = await call(`/c/${card.token}`);
-    expect(res.status).toBe(200);
-    const body = await res.text();
-    expect(body).toContain('Preparing your card');
-    expect(body).toContain(`data-base="/c/${card.token}/"`);
-    expect(body).toContain("'status'");
-    expect(body).not.toContain('wa.me/971502387267');
-  });
+  function embedded(body: string): Record<string, unknown> {
+    const m = /<script type="application\/json" id="card-data">([\s\S]*?)<\/script>/.exec(body);
+    if (!m || m[1] === undefined) throw new Error('no card-data script');
+    return JSON.parse(m[1]) as Record<string, unknown>;
+  }
 
-  it('shows the preparing view plus the WhatsApp line when failed, never an error code', async () => {
-    const card = await seedCard({ status: 'failed' });
-    const { res } = await call(`/c/${card.token}`);
-    expect(res.status).toBe(200);
-    const body = await res.text();
-    expect(body).toContain('Preparing your card');
-    expect(body).toContain('https://wa.me/971502387267');
-    expect(body).not.toContain('failed');
-  });
+  for (const status of ['pending', 'ready', 'failed'] as const) {
+    it(`serves the studio straight away for a ${status} card`, async () => {
+      const card = await seedCard({ status });
+      const { res } = await call(`/c/${card.token}`);
+      expect(res.status).toBe(200);
+      const body = await res.text();
+      expect(body).toContain('<div id="dc-root"></div>');
+      expect(body).toContain('<title>Nimbus Publishing FZE is licensed · SPC Free Zone</title>');
+      expect(body).toMatch(/<link rel="stylesheet" href="\/static\/studio\/[^"]+\.css">/);
+      expect(body).toMatch(/<script src="\/static\/studio\/[^"]+\.js" defer><\/script>/);
+    });
+  }
 
-  it('renders the ready page with the company, OG tags and privacy headers', async () => {
+  it('embeds only what the card shows', async () => {
     const card = await seedCard({ status: 'ready' });
-    const { res } = await call(`/c/${card.token}`);
-    await flushBackground();
-    expect(res.status).toBe(200);
-    const body = await res.text();
-    expect(body).toContain('Nimbus Publishing FZE');
-    expect(body).toContain(`<meta property="og:image" content="https://licensed.test/c/${card.token}/en-landscape.png?v=${imageVersion(card)}">`);
-    expect(body).toContain(`data-v="${imageVersion(card)}"`);
-    expect(body).toContain('<meta name="twitter:card" content="summary_large_image">');
-    expect(body).toContain('Nimbus Publishing FZE is officially licensed at SPC Free Zone');
-    expect(body).toContain('dir="ltr"');
-    expect(body).toContain(`https://licensed.test/c/${card.token}`);
-    expect(body).toContain('utm_source=licensed-card');
-    expect(res.headers.get('Cache-Control')).toBe('private, no-store');
-    expect(res.headers.get('X-Robots-Tag')).toBe('noindex, nofollow');
-    expect(res.headers.get('Referrer-Policy')).toBe('strict-origin-when-cross-origin');
-    expect(res.headers.get('Content-Type')).toContain('text/html');
+    const body = await (await call(`/c/${card.token}`)).res.text();
+    expect(embedded(body)).toEqual({
+      token: card.token, company_en: 'Nimbus Publishing FZE', company_ar: null, licence_number: card.licence_number,
+      issued_on: '2026-10-01', activity_en: 'Publishing', activity_ar: null, lang: 'en', is_test: false,
+    });
   });
 
-  it('issues a CSP whose nonce matches the inline script and style', async () => {
+  it('carries the Arabic names and the preferred language', async () => {
+    const card = await seedCard({ status: 'ready', fields: { company_name_ar: 'نيمبوس للنشر', activity_category_ar: 'النشر', preferred_language: 'ar' } });
+    const data = embedded(await (await call(`/c/${card.token}`)).res.text());
+    expect(data).toMatchObject({ company_ar: 'نيمبوس للنشر', activity_ar: 'النشر', lang: 'ar' });
+  });
+
+  it('cannot be broken out of the embedded JSON', async () => {
+    const evil = '</script><script>alert(1)</script><!--';
+    const card = await seedCard({ status: 'ready', fields: { company_name_en: `Nimbus ${evil}` } });
+    const body = await (await call(`/c/${card.token}`)).res.text();
+    expect(body).not.toContain('<script>alert(1)');
+    expect(embedded(body)['company_en']).toBe(`Nimbus ${evil}`);
+  });
+
+  it('sends a strict CSP and private, noindex headers', async () => {
     const card = await seedCard({ status: 'ready' });
     const { res } = await call(`/c/${card.token}`);
     const csp = res.headers.get('Content-Security-Policy') ?? '';
-    expect(csp).toContain("default-src 'none'");
+    expect(csp).toMatch(/script-src 'self' 'nonce-[^']+'/);
+    expect(csp).toContain("style-src 'self'");
+    expect(csp).toContain("img-src 'self' data: blob:");
     expect(csp).toContain("frame-ancestors 'none'");
-    expect(csp).not.toContain('googletagmanager');
-    const nonce = nonceFromCsp(csp);
-    const body = await res.text();
-    expect(body).toContain(`<script nonce="${nonce}">`);
-    expect(body).toContain(`<style nonce="${nonce}">`);
-    expect(csp).toContain(`style-src 'nonce-${nonce}'`);
+    expect(csp).not.toContain('unsafe-inline');
+    expect(csp).not.toContain('unsafe-eval');
+    expect(res.headers.get('X-Robots-Tag')).toBe('noindex, nofollow');
+    expect(res.headers.get('Cache-Control')).toBe('private, no-store');
   });
 
   it('uses a fresh nonce per request', async () => {
     const card = await seedCard({ status: 'ready' });
-    const a = await call(`/c/${card.token}`);
-    const b = await call(`/c/${card.token}`);
-    expect(nonceFromCsp(a.res.headers.get('Content-Security-Policy') ?? '')).not.toBe(
-      nonceFromCsp(b.res.headers.get('Content-Security-Policy') ?? ''),
-    );
+    const a = nonceFromCsp((await call(`/c/${card.token}`)).res.headers.get('Content-Security-Policy') ?? '');
+    const b = nonceFromCsp((await call(`/c/${card.token}`)).res.headers.get('Content-Security-Policy') ?? '');
+    expect(a).not.toBe(b);
   });
 
-  it('?lang=ar renders RTL and falls back to the English name', async () => {
+  it('loads Google Tag Manager only when switched on, with the nonce', async () => {
     const card = await seedCard({ status: 'ready' });
-    const { res } = await call(`/c/${card.token}?lang=ar`);
-    expect(res.status).toBe(200);
+    const off = await (await call(`/c/${card.token}`)).res.text();
+    expect(off).not.toContain('googletagmanager');
+    await env.DB.prepare("UPDATE settings SET value = '1' WHERE key = 'gtm_enabled'").run();
+    const gtmEnv = { ...env, GTM_CONTAINER: 'GTM-PZ8R4DN' };
+    const res = await app.request(`/c/${card.token}`, undefined, gtmEnv);
     const body = await res.text();
-    expect(body).toContain('dir="rtl"');
-    expect(body).toContain('lang="ar"');
-    expect(body).toContain('Nimbus Publishing FZE');
-    expect(body).toContain(`https://licensed.test/c/${card.token}/ar-landscape.png?v=${imageVersion(card)}`);
-    expect(body).toContain(`src="/c/${card.token}/ar-square.png?v=${imageVersion(card)}"`);
-  });
-
-  it('shows the Arabic name when the card has one', async () => {
-    const card = await seedCard({ status: 'ready', fields: { company_name_ar: 'نيمبوس للنشر' } });
-    const { res } = await call(`/c/${card.token}?lang=ar`);
-    const body = await res.text();
-    expect(body).toContain('نيمبوس للنشر');
-    expect(body).toContain('نيمبوس للنشر مرخّصة رسمياً');
-  });
-
-  it('defaults to preferred_language and ignores junk ?lang', async () => {
-    const card = await seedCard({ status: 'ready', fields: { preferred_language: 'ar' } });
-    const { res } = await call(`/c/${card.token}?lang=fr`);
-    expect(await res.text()).toContain('dir="rtl"');
-  });
-
-  it('honours ?size and defaults to square', async () => {
-    const card = await seedCard({ status: 'ready' });
-    const dflt = await (await call(`/c/${card.token}`)).res.text();
-    expect(dflt).toContain(`href="/c/${card.token}/en-square.png?download=1"`);
-    const story = await (await call(`/c/${card.token}?size=story`)).res.text();
-    expect(story).toContain(`href="/c/${card.token}/en-story.png?download=1"`);
-    expect(story).toContain(`src="/c/${card.token}/en-story.png?v=${imageVersion(card)}"`);
+    const nonce = nonceFromCsp(res.headers.get('Content-Security-Policy') ?? '');
+    expect(body).toContain(`<script nonce="${nonce}">`);
+    expect(body).toContain('"GTM-PZ8R4DN"');
+    expect(res.headers.get('Content-Security-Policy')).toContain('https://www.googletagmanager.com');
+    await env.DB.prepare("UPDATE settings SET value = '0' WHERE key = 'gtm_enabled'").run();
   });
 
   it('answers 410 for an expired card', async () => {
@@ -200,28 +179,21 @@ describe('GET /c/:token', () => {
     expect(body).toContain('https://www.spcfz.ae/contact-us/');
   });
 
-  it('marks a test card with the ribbon and [TEST] in the title', async () => {
+  it('marks a test card in the title and does not count its views', async () => {
     const card = await seedCard({ status: 'ready', is_test: true });
     const { res } = await call(`/c/${card.token}`);
     await flushBackground();
     const body = await res.text();
     expect(body).toContain('<title>[TEST] ');
-    expect(body).toContain('class="ribbon"');
+    expect(embedded(body)['is_test']).toBe(true);
     expect(await metricsForCard(env.DB, card.id)).toEqual([]);
   });
 
-  it('records a view metric for a live ready card', async () => {
-    const card = await seedCard({ status: 'ready' });
+  it('records a view, even while the server-side render is still pending', async () => {
+    const card = await seedCard();
     await call(`/c/${card.token}?lang=ar`);
     await flushBackground();
     expect(await metricsForCard(env.DB, card.id)).toEqual([{ kind: 'view', lang: 'ar', size: '', network: '', count: 1 }]);
-  });
-
-  it('does not count a view while pending', async () => {
-    const card = await seedCard();
-    await call(`/c/${card.token}`);
-    await flushBackground();
-    expect(await metricsForCard(env.DB, card.id)).toEqual([]);
   });
 });
 
