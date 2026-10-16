@@ -30,7 +30,7 @@ tools/deploy.sh status
 A start stops the old container before the new one opens the database, so
 there are roughly ten seconds of 502s from Apache.
 
-## First-time setup (done once)
+## First-time setup (done 16 October 2026)
 
 1. `tools/deploy.sh release`
 2. `tools/deploy.sh env-init` creates the env file with two random secrets.
@@ -41,6 +41,12 @@ there are roughly ten seconds of 502s from Apache.
    tests again and reloads gracefully. If the test fails, the file is
    removed and Apache is not reloaded.
 6. In Cloudflare, add DNS `A licensed 13.206.34.102`, proxied.
+
+Install the vhost **before** the DNS record. This server has no catch-all
+HTTPS site: Apache answers an unknown HTTPS hostname with the first SSL site
+alphabetically, which is announcements. On 16 October the DNS record went in
+first and licensed.spcfz.ae briefly showed the announcements page until the
+vhost was installed.
 
 ## Logs, restart, status
 

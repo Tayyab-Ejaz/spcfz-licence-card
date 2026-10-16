@@ -4,10 +4,11 @@ A shareable "We're officially licensed at SPC Free Zone" social creative,
 generated for every customer the moment the ERP issues a business licence,
 and delivered through a personal page at **https://licensed.spcfz.ae/c/{token}**.
 
-**Status, 16 October 2026: ported to a Node service in Docker for SPC's own
-server (13.206.34.102). Typecheck clean, all tests passing, a local run
-rendered all eight images.** Not deployed; the server steps are in
-docs/RUNBOOK.md and each needs approval.
+**Status, 16 October 2026: live at https://licensed.spcfz.ae** as the Docker
+container `spcfz-licence-card` (image `86e838a937cf`) on 13.206.34.102,
+behind Apache and Cloudflare. Webhooks are rejected until the ERP's IP
+addresses are added; the admin answers 503 until Cloudflare Access is set
+up. Every later change on the server needs approval (docs/RUNBOOK.md).
 
 ## Documents
 
@@ -42,8 +43,8 @@ write-back, print-ready files, and any change to www.spcfz.ae.
 
 ## Next steps
 
-1. Deploy to 13.206.34.102 step by step (docs/RUNBOOK.md, first-time setup), each step approved.
-2. DNS, Access and WAF in Cloudflare (docs/CLOUDFLARE-SETUP.md).
-3. Forward docs/ERP-WEBHOOK.md to the ERP team; collect their IP addresses.
+1. Cloudflare Access for `/admin*`, then put the team domain and audience tag in the env file (docs/CLOUDFLARE-SETUP.md step 3).
+2. ERP team: their outbound IP addresses into `ERP_IP_ALLOWLIST` and the WAF rule; hand them the test secret; first test posts.
+3. Rate-limit rule on `/c/*` before launch.
 4. Hand docs/DESIGN-HANDOFF.md to the designer; swap the placeholder template when it lands.
 5. Review docs/ARABIC-STRINGS.md.

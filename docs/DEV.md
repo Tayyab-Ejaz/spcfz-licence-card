@@ -5,7 +5,8 @@
 Ported on 15 and 16 October 2026 from Cloudflare Workers to a Node 22
 service in Docker (docs/PORT-TO-NODE.md). Typecheck clean, all tests
 passing, `npm run build` working, and a local end-to-end run rendered all
-eight images in about six seconds. Not deployed yet.
+eight images in about six seconds. Live on 13.206.34.102 since 16 October
+2026 (docs/RUNBOOK.md).
 
 ## Toolchain
 
