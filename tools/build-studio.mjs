@@ -66,11 +66,42 @@ ROBUSTNESS_PATCHES.push(
 DATA_PATCHES.studio.push(...ROBUSTNESS_PATCHES);
 DATA_PATCHES.mobile.push(...ROBUSTNESS_PATCHES);
 
+// Phone layout changes SPC asked for on 16 October 2026:
+// - the share bar keeps only its main button: the "Download card" / "Open LinkedIn" links under Share, and the
+//   "Open LinkedIn and attach it" link under Download (phones that cannot share files), are gone;
+// - the six editing controls (Headline, Photo, Details, About, Language, Caption) show at once, as one toolbar
+//   row with the icon above the label, instead of a sideways-scrolling row where only three and a half showed;
+// - the card preview is sized from the space the page really leaves (client/card-data.js measures it into
+//   state.chromeH), so the headline, card, style switcher, toolbar and Share button fit one screen.
+DATA_PATCHES.mobile.push(
+  [/\s*<div style="display:flex;justify-content:center;gap:4px">[\s\S]*?Open LinkedIn<i [^>]*><\/i><\/span>\s*<\/div>/, ''],
+  [/\s*<div style="display:flex;justify-content:center">\s*<span sc-camel-on-click="\{\{ openLinkedIn \}\}"[\s\S]*?<\/span>\s*<\/div>/, ''],
+  ['<div style="display:flex;gap:8px;overflow-x:auto;padding:4px 16px 14px;scrollbar-width:none">',
+    '<div class="m-chips" style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;padding:2px 12px 10px">'],
+  ['position:relative;flex-shrink:0;display:inline-flex;align-items:center;gap:7px;min-height:44px;padding:0 15px;border-radius:999px;background:#fff;box-shadow:inset 0 0 0 1.5px var(--spc-border);font-size:13.5px;',
+    'position:relative;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:56px;padding:6px 2px;border-radius:14px;background:#fff;box-shadow:inset 0 0 0 1.5px var(--spc-border);font-size:11.5px;-webkit-tap-highlight-color:transparent;touch-action:manipulation;'],
+  ['<i class="ph-bold {{ c.icon }}" style="font-size:16px;color:var(--spc-blue)"></i>',
+    '<i class="ph-bold {{ c.icon }}" style="font-size:20px;color:var(--spc-blue)"></i>'],
+  ['<span style="position:absolute;top:8px;right:8px;width:8px;height:8px;border-radius:50%;background:var(--danger-500, #d92d20)"></span>',
+    '<span style="position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--danger-500, #d92d20)"></span>'],
+  ['<div style="position:sticky;bottom:0;margin-top:auto;display:flex;flex-direction:column;gap:6px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--spc-border)">',
+    '<div class="m-bar" style="position:sticky;bottom:0;margin-top:auto;display:flex;flex-direction:column;gap:6px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--spc-border)">'],
+);
+
+// Logic patches: the same exactly-once rule, applied to design/source/<layout>/logic.js before it is wrapped.
+const LOGIC_PATCHES = {
+  studio: [],
+  mobile: [
+    ['const availH = sheet ? Math.max(90, vh - 56 - sheetH - 28) : Math.max(200, vh - 420);',
+      'const availH = sheet ? Math.max(90, vh - 56 - sheetH - 28) : Math.max(180, vh - (s.chromeH || 440) - 8);'],
+  ],
+};
+
 // Sample values that must not survive into the markup after patching (input placeholders excepted).
 const LEFTOVERS = [/Lumen/, /4425153/, /\b\d{1,2} Oct(ober)? 2026\b/];
 
-function applyPatches(name, html) {
-  for (const [from, to] of DATA_PATCHES[name]) {
+function applyPatches(name, html, patches = DATA_PATCHES[name]) {
+  for (const [from, to] of patches) {
     const re = typeof from === 'string' ? new RegExp(from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g') : new RegExp(from.source, 'g');
     const n = (html.match(re) || []).length;
     if (n !== 1) throw new Error(`${name}: patch ${String(from).slice(0, 60)}… matched ${n} times, expected 1`);
@@ -204,6 +235,11 @@ function compileTemplate(layout) {
 // ------------------------------------------------------------------ css
 
 const FULL_PAGE_CSS = 'html,body{height:100%;margin:0}#dc-root,#dc-root>.sc-host{height:100%}';
+// The phone toolbar: tighter type on the narrowest handsets (320–359 px) so "Headline" fits its column, and a
+// pressed state so a tap is felt at once.
+const MOBILE_CSS = '@media (max-width:359px){.m-chips{gap:4px!important;padding-left:8px!important;padding-right:8px!important}' +
+  '.m-chips>span{font-size:10px!important;letter-spacing:-.01em}.m-chips>span>i{font-size:18px!important}}' +
+  '.m-chips>span:active{background:var(--blue-50)!important;transform:scale(.97)}.m-chips>span{transition:transform .12s ease,background .12s ease}';
 function cleanCss(css) {
   css = css.replace(/,\s*url\(["']?asset:dropped[^)]*\)\s*format\(["'][^"']*["']\)/g, '');
   css = css.replace(/url\(["']?asset:dropped[^)]*\)\s*format\(["'][^"']*["']\)\s*,\s*/g, '');
@@ -224,7 +260,7 @@ for (const layout of LAYOUTS) {
   const json = JSON.stringify(ast);
   for (const m of json.matchAll(/\/static\/studio\/a\/([a-f0-9]{16}\.[a-z0-9]+)/g)) used.add(m[1]);
   writeFileSync(path.join(GEN, `${layout}.ast.json`), json);
-  const logic = readFileSync(path.join(SRC, layout, 'logic.js'), 'utf8');
+  const logic = applyPatches(`${layout} logic`, readFileSync(path.join(SRC, layout, 'logic.js'), 'utf8'), LOGIC_PATCHES[layout]);
   if (!/class Component extends DCLogic/.test(logic)) throw new Error(`${layout}: logic.js does not define "class Component extends DCLogic"`);
   writeFileSync(path.join(GEN, `${layout}.logic.js`),
     `// GENERATED by tools/build-studio.mjs from design/source/${layout}/logic.js. Do not edit.\n` +
@@ -234,7 +270,7 @@ for (const layout of LAYOUTS) {
 const a = styles.studio.join('\n'), b = styles.mobile.join('\n');
 if (a !== b) console.warn('note: studio and mobile <helmet> styles differ; using the studio set, which both layouts were checked against');
 const hover = [...pseudoRules].map(([k, cls]) => { const [p, ...rest] = k.split('|'); const css = rest.join('|'); return `.${cls}:${p}{${importantify(css)}}`; }).join('\n');
-const css = cleanCss(a) + '\n' + hover + '\n' + FULL_PAGE_CSS + '\n';
+const css = cleanCss(a) + '\n' + hover + '\n' + FULL_PAGE_CSS + '\n' + MOBILE_CSS + '\n';
 for (const m of css.matchAll(/\/static\/studio\/a\/([a-f0-9]{16}\.[a-z0-9]+)/g)) used.add(m[1]);
 const cssName = `studio-${hash(css)}.css`;
 writeFileSync(path.join(OUT, cssName), css);

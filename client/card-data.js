@@ -110,12 +110,14 @@ export function withCardData(Base) {
     componentDidMount() {
       super.componentDidMount();
       this.fitStub();
+      this.fitChrome();
       if (document.fonts && document.fonts.status !== 'loaded') document.fonts.ready.then(() => { this.forceUpdate(); this.fitStub(); });
     }
 
     componentDidUpdate(...args) {
       super.componentDidUpdate(...args);
       this.fitStub();
+      this.fitChrome();
     }
 
     stubKey() {
@@ -129,6 +131,28 @@ export function withCardData(Base) {
      * one line at the design's size -> two lines down to 75 % -> three lines down to 60 %.
      * Each pass changes 1 px or one line, so it settles in a few frames. The export clones this DOM.
      */
+    /**
+     * Phone layout only: how much height the page needs besides the card preview (header, headline, format
+     * switch, style switcher, toolbar, Share bar), so the patched logic sizes the card to leave all of it on
+     * screen. Measured rather than assumed: a long company name wraps the headline onto more lines. The
+     * value does not depend on the card's own size, so setting it settles after one render.
+     */
+    fitChrome() {
+      if (this.state.sheet) return;
+      const tools = document.querySelector('.m-chips');
+      const bar = document.querySelector('.m-bar');
+      const card = document.querySelector('[data-lang]');
+      const section = card && card.closest('section');
+      if (!tools || !bar || !section) return;
+      let stage = card;
+      while (stage.parentElement && stage.parentElement !== section) stage = stage.parentElement;
+      const st = stage.getBoundingClientRect();
+      const sec = section.getBoundingClientRect();
+      if (!st.height) return;
+      const chrome = Math.round(st.top + window.scrollY + (sec.bottom - st.bottom) + tools.getBoundingClientRect().height + bar.getBoundingClientRect().height);
+      if (Math.abs(chrome - (this.state.chromeH || 0)) > 1) this.setState({ chromeH: chrome });
+    }
+
     fitStub() {
       if (this.props.card.designExact) return;
       const node = this.cardRef && this.cardRef.current;

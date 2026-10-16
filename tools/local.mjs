@@ -241,7 +241,9 @@ function watchAndReload(vars) {
     timer = setTimeout(reload, 300);
   };
   for (const dir of ['src', 'client', 'design', 'migrations']) watch(path.join(ROOT, dir), { recursive: true }, onChange(dir));
-  watch(path.join(ROOT, 'tools/build-studio.mjs'), onChange('tools'));
+  // The folder, not the file: git checkout and most editors replace the file, which ends a watch on it.
+  const studioBuild = onChange('tools');
+  watch(path.join(ROOT, 'tools'), (event, file) => { if (String(file ?? '') === 'build-studio.mjs') studioBuild(event, file); });
   say('watching src/, client/, design/ and migrations/; Ctrl-C stops it');
 }
 

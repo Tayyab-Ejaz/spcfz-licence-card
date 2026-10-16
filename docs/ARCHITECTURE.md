@@ -268,6 +268,11 @@ client/card-data.js):
   adjusts, so the export (which clones the DOM) matches the preview.
 - **Long legal names** from the ERP are shortened to first and last name when
   over the design's 40-character field.
+- **Phone layout** (16 October 2026, SPC's request): the six editing controls
+  sit in one toolbar row, and the share bar holds only its main button (no
+  Download or LinkedIn links). The card preview is sized from the height the
+  page measures around it, so headline, card, controls and Share fit one
+  screen on phones 360 px wide and up; a 320 × 568 phone scrolls a little.
 - **Test cards** look exactly like live ones; SPC removed the TEST
   watermark on 16 October 2026. Only the browser tab title says [TEST].
 
