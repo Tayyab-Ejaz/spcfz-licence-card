@@ -118,6 +118,14 @@ describe('GET /c/:token', () => {
     expect(data).toMatchObject({ company_ar: 'نيمبوس للنشر', activity_ar: 'النشر', lang: 'ar' });
   });
 
+  it('opens in the language ?lang= asks for, and ignores anything else', async () => {
+    const card = await seedCard({ status: 'ready', fields: { preferred_language: 'en' } });
+    expect(embedded(await (await call(`/c/${card.token}?lang=ar`)).res.text())).toMatchObject({ lang: 'ar' });
+    expect(embedded(await (await call(`/c/${card.token}?lang=xx`)).res.text())).toMatchObject({ lang: 'en' });
+    const ar = await seedCard({ status: 'ready', fields: { preferred_language: 'ar' } });
+    expect(embedded(await (await call(`/c/${ar.token}?lang=en`)).res.text())).toMatchObject({ lang: 'en' });
+  });
+
   it('cannot be broken out of the embedded JSON', async () => {
     const evil = '</script><script>alert(1)</script><!--';
     const card = await seedCard({ status: 'ready', fields: { company_name_en: `Nimbus ${evil}` } });

@@ -6,7 +6,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Hono } from 'hono';
-import type { AppEnv, CardRow } from '../types.js';
+import type { AppEnv, CardRow, Lang } from '../types.js';
 import { html, raw } from '../util/html.js';
 
 /** public/studio, resolved from this file so it works from src/ (tests, tsx) and dist/ alike. */
@@ -42,7 +42,8 @@ export interface StudioCardData {
   is_test: boolean;
 }
 
-export function cardData(card: CardRow): StudioCardData {
+/** `lang` is the card language the studio opens with: ?lang= when given, else the customer's preference. */
+export function cardData(card: CardRow, lang: Lang = card.preferred_language): StudioCardData {
   return {
     token: card.token,
     company_en: card.company_name_en,
@@ -53,7 +54,7 @@ export function cardData(card: CardRow): StudioCardData {
     activity_ar: card.activity_category_ar,
     name_en: card.founder_name_en,
     name_ar: card.founder_name_ar,
-    lang: card.preferred_language,
+    lang,
     is_test: card.is_test,
   };
 }
@@ -70,6 +71,8 @@ export function jsonForScript(value: unknown): string {
 
 export interface ShellInput {
   card: CardRow;
+  /** Card language to open with; defaults to the customer's preference. */
+  lang?: Lang;
   nonce: string;
   gtmContainer: string | null;
   manifest?: StudioManifest;
@@ -97,7 +100,7 @@ ${i.gtmContainer ? raw(gtmSnippet(i.gtmContainer, i.nonce)) : ''}
 </head>
 <body>
 <div id="dc-root"></div>
-<script type="application/json" id="card-data">${raw(jsonForScript(cardData(i.card)))}</script>
+<script type="application/json" id="card-data">${raw(jsonForScript(cardData(i.card, i.lang)))}</script>
 <script src="${m.js}" defer></script>
 </body>
 </html>`;

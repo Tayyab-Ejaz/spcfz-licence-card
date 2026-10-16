@@ -102,7 +102,7 @@ pageRoutes.get('/c/:token', async (c) => {
 
   // The studio builds the card in the browser, so it never waits for the server-side render.
   if (!card.is_test) safeMetric(c, { card_id: card.id, kind: 'view', lang });
-  return c.html(renderStudioShell({ card, nonce, gtmContainer }), 200);
+  return c.html(renderStudioShell({ card, lang, nonce, gtmContainer }), 200);
 });
 
 // ------------------------------------------------------------------ beacon
