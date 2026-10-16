@@ -89,28 +89,6 @@ export function calDaySizes(day) {
   return String(day).length > 1 ? { sq: Math.round(260 * 0.68), ls: Math.round(160 * 0.68) } : { sq: 260, ls: 160 };
 }
 
-/** A big diagonal "TEST" over a test card's export, so a staff test image can never pass for a real one. */
-function addTestWatermark(node) {
-  const mark = document.createElement('div');
-  const w = node.offsetWidth || 1080;
-  mark.setAttribute('aria-hidden', 'true');
-  Object.assign(mark.style, {
-    position: 'absolute', inset: '0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-    pointerEvents: 'none', zIndex: '9999', fontFamily: 'var(--font-sans)', color: 'rgba(7,19,41,.16)', transform: 'rotate(-24deg)',
-  });
-  const big = document.createElement('div');
-  Object.assign(big.style, { fontSize: `${Math.round(w * 0.26)}px`, fontWeight: '800', letterSpacing: '.08em', lineHeight: '1' });
-  big.textContent = 'TEST';
-  const small = document.createElement('div');
-  Object.assign(small.style, { fontSize: `${Math.round(w * 0.028)}px`, fontWeight: '700', letterSpacing: '.12em', marginTop: `${Math.round(w * 0.02)}px` });
-  small.textContent = 'TEST CARD · NOT A REAL LICENCE';
-  mark.append(big, small);
-  const restore = getComputedStyle(node).position === 'static' ? node.style.position : null;
-  if (restore !== null) node.style.position = 'relative';
-  node.appendChild(mark);
-  return () => { mark.remove(); if (restore !== null) node.style.position = restore; };
-}
-
 export function withCardData(Base) {
   return class CardLogic extends Base {
     fresh() {
@@ -174,16 +152,6 @@ export function withCardData(Base) {
       if (!this.state.stubFit || !this.state.stubFit.lastResort) this.setState({ stubFit: { key, size, lines: 3, lastResort: true } });
     }
 
-    async renderCard(asBlob) {
-      const node = this.cardRef.current;
-      const undo = this.props.card.is_test && node ? addTestWatermark(node) : null;
-      try {
-        return await super.renderCard(asBlob);
-      } finally {
-        if (undo) undo();
-      }
-    }
-
     renderVals() {
       const v = super.renderVals();
       const c = this.props.card;
@@ -208,6 +176,10 @@ export function withCardData(Base) {
         year: D.year,
         dateFull: ar ? D.fullAr : D.fullEn,
         calMonth: ar ? D.monthYearAr : D.calEn,
+        isTestCard: c.is_test === true,
+        wmBig: Math.round(v.nativeW * 0.26),
+        wmSmall: Math.round(v.nativeW * 0.028),
+        wmGap: Math.round(v.nativeW * 0.02),
         calDay: D.day,
         calDaySize: calDaySizes(D.day).sq,
         calDaySizeLs: calDaySizes(D.day).ls,

@@ -58,6 +58,13 @@ const ROBUSTNESS_PATCHES = [
   [/opacity:\{\{ nameOpacity \}\};max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">\{\{ nameText \}\}<\/span>(\s*)<sc-if value="\{\{ hasRole \}\}"><span style="font-size:15px/,
     'opacity:{{ nameOpacity }};max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;{{ stubNameXtra }}">{{ nameText }}</span>$1<sc-if value="{{ hasRole }}"><span style="font-size:15px'],
 ];
+// Test cards: a TEST watermark that is part of the card, so the preview and every export show it alike.
+const CARD_ROOT = '<div ref="{{ cardRef }}" dir="{{ dir }}" data-lang="{{ lang }}" style="position:relative;width:{{ nativeW }}px;height:{{ cardH }}px;transform:scale({{ scale }});transform-origin:0 0;overflow:hidden;font-family:var(--font-sans);-webkit-font-smoothing:antialiased;background:#fff">';
+ROBUSTNESS_PATCHES.push([CARD_ROOT, CARD_ROOT +
+  '<sc-if value="{{ isTestCard }}"><div aria-hidden="true" style="position:absolute;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;transform:rotate(-24deg);color:rgba(7,19,41,.16);font-family:var(--font-sans)">' +
+  '<span style="font-size:{{ wmBig }}px;font-weight:800;letter-spacing:.08em;line-height:1">TEST</span>' +
+  '<span style="font-size:{{ wmSmall }}px;font-weight:700;letter-spacing:.12em;margin-top:{{ wmGap }}px">TEST CARD · NOT A REAL LICENCE</span></div></sc-if>']);
+
 // Mark the stub name so client/card-data.js can measure the laid-out element and shrink it until it fits.
 ROBUSTNESS_PATCHES.push(
   ['<span style="font-size:{{ stubNameSq }}px;', '<span data-fit="stub" style="font-size:{{ stubNameSq }}px;'],

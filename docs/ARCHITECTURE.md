@@ -268,6 +268,9 @@ client/card-data.js):
   adjusts, so the export (which clones the DOM) matches the preview.
 - **Long legal names** from the ERP are shortened to first and last name when
   over the design's 40-character field.
+- **Test cards** carry a diagonal TEST watermark as part of the card, so the
+  preview and every export show it alike (an export-only watermark flashed
+  on screen while the mobile layout pre-renders for sharing).
 
 `tools/stress-cards.mjs` renders every style, format, language, "who it is
 about" and headline with long, short, missing and two-digit-date data
