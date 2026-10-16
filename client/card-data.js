@@ -31,20 +31,63 @@ export function beacon(token, body) {
   } catch (e) { /* metrics are best effort */ }
 }
 
+/** The design's name field holds 40 characters; a longer legal name becomes first and last name. */
+export function cardName(full) {
+  const n = String(full || '').trim().replace(/\s+/g, ' ');
+  if (n.length <= 40) return n;
+  const w = n.split(' ');
+  const short = w.length > 1 ? `${w[0]} ${w[w.length - 1]}` : n;
+  return short.slice(0, 40);
+}
+
+/** A big diagonal "TEST" over a test card's export, so a staff test image can never pass for a real one. */
+function addTestWatermark(node) {
+  const mark = document.createElement('div');
+  const w = node.offsetWidth || 1080;
+  mark.setAttribute('aria-hidden', 'true');
+  Object.assign(mark.style, {
+    position: 'absolute', inset: '0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+    pointerEvents: 'none', zIndex: '9999', fontFamily: 'var(--font-sans)', color: 'rgba(7,19,41,.16)', transform: 'rotate(-24deg)',
+  });
+  const big = document.createElement('div');
+  Object.assign(big.style, { fontSize: `${Math.round(w * 0.26)}px`, fontWeight: '800', letterSpacing: '.08em', lineHeight: '1' });
+  big.textContent = 'TEST';
+  const small = document.createElement('div');
+  Object.assign(small.style, { fontSize: `${Math.round(w * 0.028)}px`, fontWeight: '700', letterSpacing: '.12em', marginTop: `${Math.round(w * 0.02)}px` });
+  small.textContent = 'TEST CARD · NOT A REAL LICENCE';
+  mark.append(big, small);
+  const restore = getComputedStyle(node).position === 'static' ? node.style.position : null;
+  if (restore !== null) node.style.position = 'relative';
+  node.appendChild(mark);
+  return () => { mark.remove(); if (restore !== null) node.style.position = restore; };
+}
+
 export function withCardData(Base) {
   return class CardLogic extends Base {
     fresh() {
       const f = super.fresh();
       const c = this.props.card;
+      const nameEn = cardName(c.name_en);
+      const nameAr = cardName(c.name_ar) || nameEn;   // like the company: no Arabic name, the English one
       return {
         ...f,
         company: c.company_en,
-        name: c.name_en || '', role: c.role_en || '',
+        name: nameEn, role: c.role_en ?? (nameEn ? 'Founder' : ''),
         activity: c.activity_en || '',
         lang: c.lang === 'ar' ? 'ar' : 'en',
         photo: null, photoNote: '',
-        ar: { company: c.company_ar || c.company_en, name: c.name_ar || '', role: c.role_ar || '', activity: c.activity_ar || '' },
+        ar: { company: c.company_ar || c.company_en, name: nameAr, role: c.role_ar ?? (nameAr ? 'المؤسس' : ''), activity: c.activity_ar || '' },
       };
+    }
+
+    async renderCard(asBlob) {
+      const node = this.cardRef.current;
+      const undo = this.props.card.is_test && node ? addTestWatermark(node) : null;
+      try {
+        return await super.renderCard(asBlob);
+      } finally {
+        if (undo) undo();
+      }
     }
 
     renderVals() {

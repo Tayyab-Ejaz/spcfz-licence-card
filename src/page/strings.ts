@@ -1,6 +1,6 @@
 // Every visitor-facing string on the personal page, in both languages.
 // The Arabic was drafted by Claude and must be reviewed by a native reader before launch (ARCHITECTURE section 12).
-import type { Lang, Size } from '../types.js';
+import type { Lang } from '../types.js';
 
 export interface PageStrings {
   dir: 'ltr' | 'rtl';
@@ -20,8 +20,6 @@ export interface PageStrings {
   activity: string;
   imageAlt: string;
   chooseSize: string;
-  sizes: Record<Size, string>;
-  sizeHints: Record<Size, string>;
   download: string;
   shareHeading: string;
   shareHint: string;
@@ -61,8 +59,6 @@ export const STRINGS: Record<Lang, PageStrings> = {
     activity: 'Activity',
     imageAlt: 'Licence card for {company}',
     chooseSize: 'Choose a size',
-    sizes: { square: 'Square', portrait: 'Portrait', story: 'Story', landscape: 'Landscape' },
-    sizeHints: { square: 'Feed posts', portrait: 'Instagram feed', story: 'Stories and status', landscape: 'Link posts' },
     download: 'Download image',
     shareHeading: 'Share the news',
     shareHint: 'Each button shares your personal page.',
@@ -100,8 +96,6 @@ export const STRINGS: Record<Lang, PageStrings> = {
     activity: 'النشاط',
     imageAlt: 'بطاقة رخصة {company}',
     chooseSize: 'اختر المقاس',
-    sizes: { square: 'مربّع', portrait: 'طولي', story: 'ستوري', landscape: 'أفقي' },
-    sizeHints: { square: 'المنشورات', portrait: 'منشورات إنستغرام', story: 'الستوري والحالة', landscape: 'منشورات الروابط' },
     download: 'تحميل الصورة',
     shareHeading: 'شارك الخبر',
     shareHint: 'كل زر يشارك صفحتك الشخصية.',

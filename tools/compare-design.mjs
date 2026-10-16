@@ -8,7 +8,7 @@
 // performs the same clicks in both, and diffs the screenshots. Writes <out>/<state>.{design,build,diff}.png
 // and prints the share of differing pixels per state. Exit code 1 if any state differs by more than 0.1 %.
 import { createServer } from 'node:http';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
@@ -81,6 +81,8 @@ async function act(page, a) {
  */
 async function shot(page) {
   await page.bringToFront();
+  await page.mouse.move(0, 0); // no hover effects in the capture
+  await new Promise((r) => setTimeout(r, 400));
   await page.evaluate(() => document.fonts.ready);
   const vh = page.viewport().height;
   const docH = await page.evaluate(() => document.documentElement.scrollHeight);
@@ -104,7 +106,9 @@ function diff(name, A, B) {
   const n = pixelmatch(a.data, b.data, d.data, w, h, { threshold: 0.1 });
   writeFileSync(path.join(outDir, `${name}.design.png`), PNG.sync.write(a));
   writeFileSync(path.join(outDir, `${name}.build.png`), PNG.sync.write(b));
-  if (n) writeFileSync(path.join(outDir, `${name}.diff.png`), PNG.sync.write(d));
+  const diffFile = path.join(outDir, `${name}.diff.png`);
+  if (n) writeFileSync(diffFile, PNG.sync.write(d));
+  else if (existsSync(diffFile)) rmSync(diffFile);
   return { n, pct: (100 * n) / (w * h), size: `${A.width}x${A.height} vs ${B.width}x${B.height}` };
 }
 
@@ -144,7 +148,12 @@ for (const plan of PLANS) {
   for (const [name, action] of plan.steps) {
     try {
       if (action) { await act(D.page, action); await act(B.page, action); }
-      const r = diff(`${plan.prefix}-${name}`, await shot(D.page), await shot(B.page));
+      let r = diff(`${plan.prefix}-${name}`, await shot(D.page), await shot(B.page));
+      // Transitions (the style tiles' ring is 0.15 s) can be caught mid-way; a real difference survives a recapture.
+      if (r.n) {
+        await new Promise((res) => setTimeout(res, 1500));
+        r = diff(`${plan.prefix}-${name}`, await shot(D.page), await shot(B.page));
+      }
       worst = Math.max(worst, r.pct);
       rows.push([`${plan.prefix}-${name}`, r.n, r.pct.toFixed(3) + ' %', r.size]);
     } catch (e) {

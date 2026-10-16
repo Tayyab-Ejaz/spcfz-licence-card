@@ -1,6 +1,7 @@
 # spcfz-licence-card container (docs/PORT-TO-NODE.md section 7).
-# Build stage compiles TypeScript and installs production dependencies; the runtime stage adds Debian's
-# Chromium so nothing is installed on the host. Runs as an unprivileged user; all state lives in /data.
+# Build stage compiles TypeScript and the customer studio and installs production dependencies. The cards
+# are built in the customer's browser, so the runtime needs no Chromium. Runs as an unprivileged user; all
+# state lives in /data.
 
 FROM node:22-bookworm-slim AS build
 WORKDIR /app
@@ -21,13 +22,11 @@ RUN npm run build && npm prune --omit=dev --no-audit --no-fund
 
 FROM node:22-bookworm-slim
 RUN apt-get update \
- && apt-get install -y --no-install-recommends chromium fonts-liberation ca-certificates tini curl \
+ && apt-get install -y --no-install-recommends ca-certificates tini curl \
  && rm -rf /var/lib/apt/lists/* \
  && groupadd --gid 10001 app \
  && useradd --uid 10001 --gid app --create-home --home-dir /home/app --shell /usr/sbin/nologin app
 ENV NODE_ENV=production \
-    PUPPETEER_SKIP_DOWNLOAD=true \
-    CHROME_PATH=/usr/bin/chromium \
     DATA_DIR=/data \
     HOST=0.0.0.0 \
     PORT=8787

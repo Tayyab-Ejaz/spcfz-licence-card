@@ -91,7 +91,7 @@ const SAMPLE = {
 };
 
 beforeEach(async () => {
-  await env.DB.batch([env.DB.prepare('DELETE FROM cards'), env.DB.prepare('DELETE FROM events'), env.DB.prepare('DELETE FROM jobs')]);
+  await env.DB.batch([env.DB.prepare('DELETE FROM cards'), env.DB.prepare('DELETE FROM events')]);
 });
 
 describe('intake routes: access checks', () => {
@@ -110,7 +110,6 @@ describe('intake routes: access checks', () => {
     expect(rows[0]?.errors).toEqual(['source address not allowed']);
     expect(rows[0]?.card_id).toBeNull();
     expect(await countCards(env.DB)).toBe(0);
-    expect(env.jobs()).toEqual([]);
   });
 
   it('rejects a missing CF-Connecting-IP header with 403', async () => {
@@ -215,7 +214,7 @@ describe('intake routes: happy path and idempotency', () => {
   it('creates a card, returns a 22-char token URL and logs created', async () => {
     const res = await post(PROD, SAMPLE);
     const body = await accepted(res);
-    expect(body.ready).toBe(false);
+    expect(body.ready).toBe(true); // the studio builds the card in the browser; nothing to wait for
     expect(body.card_id).toMatch(/^[0-9A-Z]{26}$/);
     const token = tokenOf(body.page_url);
     expect(token).toHaveLength(22);
@@ -223,7 +222,7 @@ describe('intake routes: happy path and idempotency', () => {
     const card = await getCardByToken(env.DB, token);
     expect(card).not.toBeNull();
     expect(card?.id).toBe(body.card_id);
-    expect(card?.status).toBe('pending');
+    expect(card?.status).toBe('ready');
     expect(card?.is_test).toBe(false);
     expect(card?.source).toBe('webhook');
     expect(card?.licence_number).toBe('SPC-2026-00001');
@@ -233,7 +232,7 @@ describe('intake routes: happy path and idempotency', () => {
     expect(card?.activity_category).toBe('Publishing');
     expect(card?.issued_on).toBe('2026-10-15');
     expect(card?.preferred_language).toBe('en');
-    expect(card?.template_version).toBe('placeholder-1');
+    expect(card?.template_version).toBeNull();
     expect(card?.expires_at).not.toBeNull();
     expect(card?.content_hash).toMatch(/^[0-9a-f]{64}$/);
 
@@ -244,13 +243,6 @@ describe('intake routes: happy path and idempotency', () => {
     expect(rows[0]?.card_id).toBe(body.card_id);
     expect(rows[0]?.errors).toBeNull();
     expect(rows[0]?.raw_body).toBeNull();
-
-    // The render job is queued. The worker is off in tests, so the row is still there to inspect.
-    const jobs = env.jobs();
-    expect(jobs).toHaveLength(1);
-    expect(jobs[0]?.state).toBe('queued');
-    expect(jobs[0]?.attempts).toBe(0);
-    expect(jobs[0]?.body).toEqual({ card_id: body.card_id, content_hash: card?.content_hash });
   });
 
   it('answers unchanged for the same payload, same URL, still one card', async () => {
@@ -259,7 +251,6 @@ describe('intake routes: happy path and idempotency', () => {
     expect(second.page_url).toBe(first.page_url);
     expect(second.card_id).toBe(first.card_id);
     expect(await countCards(env.DB)).toBe(1);
-    expect(env.jobs()).toHaveLength(1); // unchanged: nothing new was enqueued
 
     const unchanged = await listEvents(env.DB, { route: 'production', outcome: 'unchanged' });
     expect(unchanged.total).toBe(1);
@@ -268,7 +259,7 @@ describe('intake routes: happy path and idempotency', () => {
     expect(created.total).toBe(1);
   });
 
-  it('updates in place when the company name changes: same token, new hash, pending', async () => {
+  it('updates in place when the company name changes: same token, new hash, ready', async () => {
     const first = await accepted(await post(PROD, SAMPLE));
     const token = tokenOf(first.page_url);
     const before = await getCardByToken(env.DB, token);
@@ -282,11 +273,8 @@ describe('intake routes: happy path and idempotency', () => {
     expect(after?.token).toBe(before?.token);
     expect(after?.company_name_en).toBe('Nimbus Publishing and Media FZE');
     expect(after?.content_hash).not.toBe(before?.content_hash);
-    expect(after?.status).toBe('pending');
+    expect(after?.status).toBe('ready');
     expect(await countCards(env.DB)).toBe(1);
-    const jobs = env.jobs();
-    expect(jobs).toHaveLength(2);
-    expect(jobs[1]?.body).toEqual({ card_id: first.card_id, content_hash: after?.content_hash });
 
     const updated = await listEvents(env.DB, { route: 'production', outcome: 'updated' });
     expect(updated.total).toBe(1);
@@ -547,3 +535,40 @@ describe('auth helpers', () => {
     expect(await checkSecret('z', 'x', 'y')).toBe(false);
   });
 });
+
+describe('founder name', () => {
+  it('maps founder or owner names, from plain fields or person objects, with an Arabic sibling', () => {
+    expect(mapPayload({ founder_name: 'Mariam Fawzy', founder_name_ar: 'مريم فوزي' }, '{}')).toMatchObject({ founder_name_en: 'Mariam Fawzy', founder_name_ar: 'مريم فوزي' });
+    expect(mapPayload({ OwnerName: 'Omar Haddad' }, '{}')).toMatchObject({ founder_name_en: 'Omar Haddad' });
+    expect(mapPayload({ owner: { full_name: 'Omar Haddad', name_ar: 'عمر حداد', email: 'o@x.ae' } }, '{}'))
+      .toEqual({ founder_name_en: 'Omar Haddad', founder_name_ar: 'عمر حداد' });
+    expect(mapPayload({ shareholders: [{ name: 'Lina Saeed' }, { name: 'Other' }] }, '{}')).toEqual({ founder_name_en: 'Lina Saeed' });
+  });
+
+  it('never stores contact details that came with the person', () => {
+    const out = mapPayload({ owner: { name: 'Omar Haddad', email: 'o@x.ae', phone: '+971' } }, '{}');
+    expect(JSON.stringify(out)).not.toContain('o@x.ae');
+    expect(JSON.stringify(out)).not.toContain('+971');
+  });
+
+  it('accepts long legal names rather than rejecting the licence', () => {
+    const long = 'Mohammed bin Abdullah bin Rashid Al Example Al Somebody';
+    const v = validateCanonical({ licence_number: 'SPC-1', company_name_en: 'Nimbus FZE', founder_name_en: long });
+    expect(v.ok && v.fields.founder_name_en).toBe(long);
+    const bogus = validateCanonical({ licence_number: 'SPC-1', company_name_en: 'Nimbus FZE', founder_name_en: 'x'.repeat(121) });
+    expect(bogus.ok).toBe(false);
+  });
+
+  it('stores the founder through the webhook and counts a change as an update', async () => {
+    const first = await accepted(await post(PROD, { ...SAMPLE, founder_name: 'Mariam Fawzy' }));
+    const card = await getCardByToken(env.DB, tokenOf(first.page_url));
+    expect(card?.founder_name_en).toBe('Mariam Fawzy');
+    expect(card?.founder_name_ar).toBeNull();
+    const second = await accepted(await post(PROD, { ...SAMPLE, founder_name: 'Mariam Fawzy', founder_name_ar: 'مريم فوزي' }));
+    expect(second.card_id).toBe(first.card_id);
+    const after = await getCardByToken(env.DB, tokenOf(first.page_url));
+    expect(after?.founder_name_ar).toBe('مريم فوزي');
+    expect(after?.content_hash).not.toBe(card?.content_hash);
+  });
+});
+

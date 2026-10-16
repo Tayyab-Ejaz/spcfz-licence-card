@@ -1,5 +1,7 @@
 # Port to a self-hosted Node service
 
+> **16 October 2026:** the render queue, the filesystem bucket and Chromium described below were retired when the personal page became the studio (docs/ARCHITECTURE.md sections 6 and 7). The rest of this document still describes the platform.
+
 Decided by the user on 15 October 2026: the service runs on an SPC server
 (AWS, 13.206.34.102, the marketing-dashboard box, Ubuntu 24.04 with aaPanel
 Apache) instead of Cloudflare Workers. Cloudflare stays as the

@@ -1,24 +1,19 @@
-// Personal page: the page itself, status JSON, image delivery from the bucket and the counter beacon (ARCHITECTURE section 7).
+// Personal page: the studio shell and the counter beacon (ARCHITECTURE section 7).
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import type { AppEnv, Lang, MetricKind } from '../types.js';
 import { isLang, isSize } from '../types.js';
 import { bumpMetric, getCardByToken, getSettings } from '../db/cards.js';
 import type { MetricKey } from '../db/cards.js';
-import { imageKey } from '../storage.js';
 import { background } from '../util/background.js';
 import { TOKEN_RE, bytesToBase64 } from '../util/crypto.js';
-import { safeFilename } from '../util/html.js';
 import { todayInDubai } from '../util/time.js';
 import { renderExpiredPage, renderNotFoundPage } from './view.js';
 import { renderStudioShell, studioCsp } from './studio.js';
 
-const IMAGE_FILE_RE = /^(en|ar)-(square|portrait|story|landscape)\.png$/;
 const GTM_ID_RE = /^GTM-[A-Z0-9]{4,12}$/;
 const BEACON_LIMIT = 1024;
 
-/** Image URLs are versioned (src/storage.ts), so a copy may live at the edge and in browsers for a year. */
-export const IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 
 function makeNonce(): string {
   return bytesToBase64(crypto.getRandomValues(new Uint8Array(16)));
@@ -108,57 +103,6 @@ pageRoutes.get('/c/:token', async (c) => {
   // The studio builds the card in the browser, so it never waits for the server-side render.
   if (!card.is_test) safeMetric(c, { card_id: card.id, kind: 'view', lang });
   return c.html(renderStudioShell({ card, nonce, gtmContainer }), 200);
-});
-
-// ------------------------------------------------------------------ status
-
-pageRoutes.get('/c/:token/status', async (c) => {
-  c.header('Cache-Control', 'no-store');
-  c.header('X-Robots-Tag', 'noindex, nofollow');
-  const token = c.req.param('token');
-  if (!TOKEN_RE.test(token)) return c.json({ error: 'not_found' }, 404);
-  const card = await getCardByToken(c.env.DB, token);
-  if (!card) return c.json({ error: 'not_found' }, 404);
-  return c.json({ status: card.status }, 200);
-});
-
-// ------------------------------------------------------------------ images
-
-pageRoutes.get('/c/:token/:file', async (c) => {
-  const token = c.req.param('token');
-  const file = c.req.param('file');
-  const m = IMAGE_FILE_RE.exec(file);
-  const lang = m?.[1];
-  const size = m?.[2];
-  if (!TOKEN_RE.test(token) || !isLang(lang) || !isSize(size)) return c.text('Not found', 404);
-
-  const card = await getCardByToken(c.env.DB, token);
-  if (!card || card.status === 'expired') return c.text('Not found', 404);
-
-  const download = c.req.query('download') === '1';
-
-  const obj = await c.env.BUCKET.get(imageKey(token, lang, size));
-  if (!obj) return c.text('Not found', 404);
-
-  // Plain image URLs are versioned (`?v=`, src/storage.ts) and cacheable for a year. The download variant
-  // counts a download on every click, so it must never be answered from a shared cache.
-  const headers = new Headers({
-    'Content-Type': 'image/png',
-    'Content-Length': String(obj.size),
-    'Cache-Control': download ? 'private, no-store' : IMAGE_CACHE_CONTROL,
-    ETag: obj.httpEtag,
-    'X-Content-Type-Options': 'nosniff',
-  });
-
-  if (download) {
-    const filename = `${safeFilename(card.company_name_en, `${lang}-${size}`)}.png`;
-    headers.set('Content-Disposition', `attachment; filename="${filename}"`);
-    if (!card.is_test) safeMetric(c, { card_id: card.id, kind: 'download', lang, size });
-  } else if (c.req.header('If-None-Match') === obj.httpEtag) {
-    headers.delete('Content-Length');
-    return new Response(null, { status: 304, headers });
-  }
-  return new Response(obj.body, { status: 200, headers });
 });
 
 // ------------------------------------------------------------------ beacon

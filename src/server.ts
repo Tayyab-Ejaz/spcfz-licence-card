@@ -1,5 +1,5 @@
 // Process entry (docs/PORT-TO-NODE.md section 3): reads the configuration, opens DATA_DIR, applies the
-// migrations, starts the queue worker and the daily scheduler, and serves the Hono app with
+// migrations, starts the daily scheduler, and serves the Hono app with
 // @hono/node-server. `startServer` is exported so tests can run the real thing on an ephemeral port.
 import { realpathSync, promises as fs } from 'node:fs';
 import type { AddressInfo } from 'node:net';
@@ -14,15 +14,12 @@ import { CLIENT_IP_HEADER, resolveClientIp, withClientIp } from './platform/clie
 import { CACHE_FILE_NAME, CloudflareRanges } from './platform/cloudflare-ips.js';
 import { loadConfig } from './platform/config.js';
 import type { ServerConfig } from './platform/config.js';
-import { FsBucket } from './platform/fs-bucket.js';
 import { MIGRATIONS_DIR, applyMigrations } from './platform/migrate.js';
 import { Scheduler } from './platform/scheduler.js';
 import { SqliteDb } from './platform/sqlite-db.js';
-import { SqliteQueue } from './platform/sqlite-queue.js';
 import type { Env } from './types.js';
 
 export const DB_FILE_NAME = 'licence-card.sqlite';
-export const IMAGES_DIR_NAME = 'images';
 
 export type Logger = (message: string, data?: Record<string, unknown>) => void;
 
@@ -34,8 +31,6 @@ export interface StartOptions {
   config: ServerConfig;
   /** fetch used for Cloudflare's range list under TRUST_PROXY=cloudflare; null keeps to the bundled list (tests). */
   cloudflareFetch?: typeof fetch | null;
-  /** False keeps the render worker off (tests). */
-  queueEnabled?: boolean;
   /** False keeps the daily scheduler off (tests). */
   schedulerEnabled?: boolean;
   log?: Logger;
@@ -46,7 +41,6 @@ export interface RunningServer {
   port: number;
   env: Env;
   db: SqliteDb;
-  queue: SqliteQueue;
   scheduler: Scheduler | null;
   close(): Promise<void>;
 }
@@ -66,14 +60,12 @@ export async function startServer(options: StartOptions): Promise<RunningServer>
   const { config } = options;
   const log = options.log ?? defaultLog;
 
-  await fs.mkdir(path.join(config.dataDir, IMAGES_DIR_NAME), { recursive: true });
+  await fs.mkdir(config.dataDir, { recursive: true });
   const db = SqliteDb.open(path.join(config.dataDir, DB_FILE_NAME));
   const applied = applyMigrations(db, MIGRATIONS_DIR);
   if (applied.length) log('migrations applied', { applied });
 
-  const bucket = new FsBucket(path.join(config.dataDir, IMAGES_DIR_NAME));
-  const queue = new SqliteQueue(db, { enabled: options.queueEnabled ?? true, log });
-  const env: Env = { DB: db, BUCKET: bucket, RENDER_QUEUE: queue, ...config.vars };
+  const env: Env = { DB: db, ...config.vars };
 
   let cloudflare: CloudflareRanges | null = null;
   if (config.trustProxy === 'cloudflare') {
@@ -98,8 +90,6 @@ export async function startServer(options: StartOptions): Promise<RunningServer>
   });
   const address = server.address() as AddressInfo;
 
-  queue.start(env);
-
   let scheduler: Scheduler | null = null;
   if (options.schedulerEnabled ?? true) {
     scheduler = new Scheduler(env, (e) => dailyTask(e, db, cloudflare, log), { log });
@@ -115,7 +105,6 @@ export async function startServer(options: StartOptions): Promise<RunningServer>
     port: address.port,
     env,
     db,
-    queue,
     scheduler,
     async close(): Promise<void> {
       if (closed) return;
@@ -123,7 +112,6 @@ export async function startServer(options: StartOptions): Promise<RunningServer>
       if ('closeAllConnections' in server && typeof server.closeAllConnections === 'function') server.closeAllConnections();
       await new Promise<void>((resolve) => server.close(() => resolve()));
       if (scheduler) await scheduler.stop();
-      await queue.stop();
       db.close();
     },
   };

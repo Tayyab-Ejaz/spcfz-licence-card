@@ -3,15 +3,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Hono } from 'hono';
 import type { AppEnv, CanonicalFields, CardRow, CardStatus } from '../src/types.js';
-import { LANGS, SIZE_NAMES } from '../src/types.js';
 import { createAdminRoutes } from '../src/admin/routes.js';
 import {
   findCardByLicence, getCardById, getEvent, getSetting, insertCard, insertEvent, listEvents, setCardStatus,
 } from '../src/db/cards.js';
-import { imageKey, putImage } from '../src/storage.js';
 import { randomToken } from '../src/util/crypto.js';
 import { flushBackground } from '../src/util/background.js';
-import { imageVersion } from '../src/storage.js';
 import { createTestEnv } from './env.js';
 
 const env = createTestEnv();
@@ -19,7 +16,6 @@ const ACTOR = 'staff@spcfz.ae';
 const staff = new Hono<AppEnv>().route('/admin', createAdminRoutes(async () => ({ email: ACTOR })));
 const anonymous = new Hono<AppEnv>().route('/admin', createAdminRoutes(async () => null));
 const CSRF = 'x'.repeat(32);
-const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 73, 72, 68, 82]);
 
 let seq = 0;
 
@@ -27,7 +23,6 @@ interface SeedOptions {
   fields?: Partial<CanonicalFields>;
   is_test?: boolean;
   status?: CardStatus;
-  template_version?: string;
 }
 
 async function seedCard(o: SeedOptions = {}): Promise<CardRow> {
@@ -42,23 +37,20 @@ async function seedCard(o: SeedOptions = {}): Promise<CardRow> {
       licence_type: 'Commercial',
       activity_category: 'Publishing',
       activity_category_ar: null,
+      founder_name_en: null,
+      founder_name_ar: null,
       issued_on: '2026-10-01',
       preferred_language: 'en',
       ...o.fields,
     },
     content_hash: `hash-${seq}`,
     source: 'manual',
-    template_version: o.template_version ?? 'placeholder-1',
     expires_at: o.is_test ? null : '2028-10-01T00:00:00.000Z',
   });
-  if (o.status && o.status !== 'pending') await setCardStatus(env.DB, created.id, o.status);
+  if (o.status && o.status !== 'ready') await setCardStatus(env.DB, created.id, o.status);
   const card = await getCardById(env.DB, created.id);
   if (!card) throw new Error('seed: card not found after insert');
   return card;
-}
-
-async function putAllImages(token: string): Promise<void> {
-  for (const lang of LANGS) for (const size of SIZE_NAMES) await putImage(env.BUCKET, token, lang, size, PNG);
 }
 
 /** GET as a signed-in staff member. Sends the CSRF session cookie unless `cookie` is null (first visit). */
@@ -97,7 +89,6 @@ beforeEach(async () => {
     env.DB.prepare('DELETE FROM metrics'),
     env.DB.prepare('DELETE FROM events'),
     env.DB.prepare('DELETE FROM cards'),
-    env.DB.prepare('DELETE FROM jobs'),
   ]);
 });
 
@@ -131,19 +122,18 @@ describe('access gate', () => {
     expect(cookie).toContain('SameSite=Strict');
   });
 
-  it('shows failed cards and rejected events on the dashboard', async () => {
-    const card = await seedCard({ status: 'failed' });
+  it('shows rejected events on the dashboard', async () => {
     await insertEvent(env.DB, { route: 'production', source_ip: '203.0.113.10', http_status: 400, outcome: 'rejected', errors: ['licence_number: required'] });
     const body = await (await get('/admin')).res.text();
-    expect(body).toContain(card.company_name_en);
     expect(body).toContain('licence_number: required');
+    expect(body).not.toContain('Recent failed cards');
   });
 });
 
 describe('cards', () => {
   it('lists cards and filters by status', async () => {
     const ready = await seedCard({ status: 'ready' });
-    const failed = await seedCard({ status: 'failed' });
+    const failed = await seedCard({ status: 'failed' }); // a status that exists only on rows from the server-render era
     const all = await (await get('/admin/cards')).res.text();
     expect(all).toContain(ready.company_name_en);
     expect(all).toContain(failed.company_name_en);
@@ -165,15 +155,18 @@ describe('cards', () => {
     expect(webhook).toContain('No cards match');
   });
 
-  it('shows the detail page with fields, image thumbnails and actions', async () => {
-    const card = await seedCard({ status: 'ready', fields: { company_name_ar: 'شركة تجريبية' } });
+  it('shows the detail page with fields, the founder and actions, and no render controls', async () => {
+    const card = await seedCard({ status: 'ready', fields: { company_name_ar: 'شركة تجريبية', founder_name_en: 'Mariam Fawzy', founder_name_ar: 'مريم فوزي' } });
     const { res } = await get(`/admin/cards/${card.id}`);
     expect(res.status).toBe(200);
     const body = await res.text();
     expect(body).toContain(card.licence_number);
     expect(body).toContain('شركة تجريبية');
-    expect(body).toContain(`https://licensed.test/c/${card.token}/ar-story.png?v=${imageVersion(card)}`);
-    expect(body).toContain(`/admin/cards/${card.id}/regenerate`);
+    expect(body).toContain('Mariam Fawzy');
+    expect(body).toContain('مريم فوزي');
+    expect(body).toContain(`https://licensed.test/c/${card.token}`);
+    expect(body).not.toContain('/regenerate');
+    expect(body).not.toContain('.png');
     expect(body).toContain(`/admin/cards/${card.id}/expire`);
     expect(body).toContain(`/admin/cards/${card.id}/delete`);
     expect(body).toContain(`name="_csrf" value="${CSRF}"`);
@@ -185,45 +178,30 @@ describe('cards', () => {
 });
 
 describe('card mutations', () => {
-  it('regenerate sets pending and writes an admin event with the actor', async () => {
-    const card = await seedCard({ status: 'ready' });
-    const { res } = await post(`/admin/cards/${card.id}/regenerate`);
-    expect(res.status).toBe(303);
-    expect(res.headers.get('Location')).toBe(`/admin/cards/${card.id}?m=regenerated`);
-    const after = await getCardById(env.DB, card.id);
-    expect(after?.status).toBe('pending');
-    const jobs = env.jobs();
-    expect(jobs).toHaveLength(1);
-    expect(jobs[0]?.body).toEqual({ card_id: card.id, content_hash: card.content_hash });
-    const events = await adminEvents();
-    expect(events).toHaveLength(1);
-    expect(events[0]).toMatchObject({ route: 'admin', outcome: 'regenerated', card_id: card.id, actor: ACTOR, http_status: 200 });
-  });
-
-  it('expire marks the card expired and deletes its images', async () => {
-    const card = await seedCard({ status: 'ready' });
-    await putAllImages(card.token);
+  it("expire marks the card expired, clears the founder's name and audits with the actor", async () => {
+    const card = await seedCard({ status: 'ready', fields: { founder_name_en: 'Mariam Fawzy' } });
     const { res } = await post(`/admin/cards/${card.id}/expire`);
     expect(res.status).toBe(303);
-    expect((await getCardById(env.DB, card.id))?.status).toBe('expired');
-    expect(await env.BUCKET.head(imageKey(card.token, 'en', 'square'))).toBeNull();
-    expect(await env.BUCKET.head(imageKey(card.token, 'ar', 'story'))).toBeNull();
-    expect((await adminEvents())[0]?.outcome).toBe('expired');
+    const after = await getCardById(env.DB, card.id);
+    expect(after?.status).toBe('expired');
+    expect(after?.founder_name_en).toBeNull();
+    const events = await adminEvents();
+    expect(events[0]).toMatchObject({ route: 'admin', outcome: 'expired', card_id: card.id, actor: ACTOR, http_status: 200 });
   });
 
-  it('un-expire sets a fresh expiry, pending status and queues a render', async () => {
+  it('un-expire sets a fresh expiry and makes the card ready again', async () => {
     const card = await seedCard({ status: 'expired' });
     const { res } = await post(`/admin/cards/${card.id}/unexpire`);
     expect(res.status).toBe(303);
     const after = await getCardById(env.DB, card.id);
-    expect(after?.status).toBe('pending');
+    expect(after?.status).toBe('ready');
+    expect((await adminEvents())[0]?.outcome).toBe('unexpired');
     expect(after?.expires_at).not.toBeNull();
     expect(new Date(after?.expires_at ?? 0).getTime()).toBeGreaterThan(Date.now() + 365 * 24 * 3600 * 1000);
   });
 
-  it('delete shows a confirm page, then removes the row, counters and R2 objects', async () => {
+  it('delete shows a confirm page, then removes the row and counters', async () => {
     const card = await seedCard({ status: 'ready' });
-    await putAllImages(card.token);
     const confirm = await get(`/admin/cards/${card.id}/delete`);
     expect(confirm.res.status).toBe(200);
     expect(await confirm.res.text()).toContain('Yes, delete this card');
@@ -233,22 +211,20 @@ describe('card mutations', () => {
     expect(res.status).toBe(303);
     expect(res.headers.get('Location')).toBe('/admin/cards?m=deleted');
     expect(await getCardById(env.DB, card.id)).toBeNull();
-    for (const lang of LANGS) {
-      for (const size of SIZE_NAMES) expect(await env.BUCKET.head(imageKey(card.token, lang, size))).toBeNull();
-    }
     const events = await adminEvents();
     expect(events[0]).toMatchObject({ outcome: 'deleted', card_id: card.id, actor: ACTOR });
   });
 
   it('404s mutations on unknown cards', async () => {
-    expect((await post('/admin/cards/nope/regenerate')).res.status).toBe(404);
+    expect((await post('/admin/cards/nope/expire')).res.status).toBe(404);
+    expect((await post('/admin/cards/nope/regenerate')).res.status).toBe(404); // the route is gone
   });
 });
 
 describe('CSRF', () => {
   it('403 without the cookie', async () => {
     const card = await seedCard({ status: 'ready' });
-    const { res } = await post(`/admin/cards/${card.id}/regenerate`, {}, { cookie: null });
+    const { res } = await post(`/admin/cards/${card.id}/expire`, {}, { cookie: null });
     expect(res.status).toBe(403);
     expect((await getCardById(env.DB, card.id))?.status).toBe('ready');
     expect(await adminEvents()).toHaveLength(0);
@@ -256,39 +232,30 @@ describe('CSRF', () => {
 
   it('403 without the hidden field or with a mismatched one', async () => {
     const card = await seedCard({ status: 'ready' });
-    expect((await post(`/admin/cards/${card.id}/regenerate`, {}, { csrfField: null })).res.status).toBe(403);
-    expect((await post(`/admin/cards/${card.id}/regenerate`, {}, { csrfField: 'y'.repeat(32) })).res.status).toBe(403);
+    expect((await post(`/admin/cards/${card.id}/expire`, {}, { csrfField: null })).res.status).toBe(403);
+    expect((await post(`/admin/cards/${card.id}/expire`, {}, { csrfField: 'y'.repeat(32) })).res.status).toBe(403);
     expect((await getCardById(env.DB, card.id))?.status).toBe('ready');
   });
 
   it('403 for a cross-site fetch even with matching tokens', async () => {
     const card = await seedCard({ status: 'ready' });
-    const { res } = await post(`/admin/cards/${card.id}/regenerate`, {}, { headers: { 'Sec-Fetch-Site': 'cross-site' } });
+    const { res } = await post(`/admin/cards/${card.id}/expire`, {}, { headers: { 'Sec-Fetch-Site': 'cross-site' } });
     expect(res.status).toBe(403);
-    const ok = await post(`/admin/cards/${card.id}/regenerate`, {}, { headers: { 'Sec-Fetch-Site': 'same-origin' } });
+    const ok = await post(`/admin/cards/${card.id}/expire`, {}, { headers: { 'Sec-Fetch-Site': 'same-origin' } });
     expect(ok.res.status).toBe(303);
   });
 });
 
 describe('settings', () => {
-  it('renders the current values', async () => {
+  it('renders the current values, without the old caption settings', async () => {
     const body = await (await get('/admin/settings')).res.text();
-    expect(body).toContain('{company}');
     expect(body).toContain('name="retention_days" value="730"');
+    expect(body).not.toContain('caption_en');
   });
 
-  it('updates captions, the GTM switch and retention days, and audits it', async () => {
-    const { res } = await post('/admin/settings', {
-      caption_en: 'Hello {company}, see {link}',
-      caption_ar: 'مرحباً {company} {link}',
-      gtm_enabled: '1',
-      retention_days: '365',
-      test_retention_days: '14',
-      raw_body_days: '3',
-    });
+  it('updates the GTM switch and retention days, and audits it', async () => {
+    const { res } = await post('/admin/settings', { gtm_enabled: '1', retention_days: '365', test_retention_days: '14', raw_body_days: '3' });
     expect(res.status).toBe(303);
-    expect(await getSetting(env.DB, 'caption_en')).toBe('Hello {company}, see {link}');
-    expect(await getSetting(env.DB, 'caption_ar')).toBe('مرحباً {company} {link}');
     expect(await getSetting(env.DB, 'gtm_enabled')).toBe('1');
     expect(await getSetting(env.DB, 'retention_days')).toBe('365');
     expect(await getSetting(env.DB, 'test_retention_days')).toBe('14');
@@ -296,58 +263,25 @@ describe('settings', () => {
     expect((await adminEvents())[0]).toMatchObject({ outcome: 'settings', actor: ACTOR });
 
     // An unchecked checkbox is simply absent from the form body.
-    await post('/admin/settings', { caption_en: 'Second {company} {link}' });
+    await post('/admin/settings', { retention_days: '365' });
     expect(await getSetting(env.DB, 'gtm_enabled')).toBe('0');
-    expect(await getSetting(env.DB, 'caption_en')).toBe('Second {company} {link}');
     expect(await getSetting(env.DB, 'retention_days')).toBe('365');
   });
 
-  it('rejects negative or non-numeric days and empty captions without saving anything', async () => {
+  it('rejects negative or non-numeric days without saving anything', async () => {
     const before = await getSetting(env.DB, 'retention_days');
-    const { res } = await post('/admin/settings', { retention_days: '-5', caption_en: '' });
+    const { res } = await post('/admin/settings', { retention_days: '-5' });
     expect(res.status).toBe(400);
-    const body = await res.text();
-    expect(body).toContain('retention_days');
-    expect(body).toContain('caption_en');
+    expect(await res.text()).toContain('retention_days');
     expect(await getSetting(env.DB, 'retention_days')).toBe(before);
-    expect(await getSetting(env.DB, 'caption_en')).not.toBe('');
     expect((await post('/admin/settings', { raw_body_days: 'abc' })).res.status).toBe(400);
   });
 });
 
-describe('re-render', () => {
-  it('counts first, then sets matching live cards to pending', async () => {
-    const a = await seedCard({ status: 'ready', template_version: 'placeholder-1' });
-    const b = await seedCard({ status: 'ready', template_version: 'placeholder-1' });
-    const other = await seedCard({ status: 'ready', template_version: 'spc-2' });
-    const test = await seedCard({ status: 'ready', is_test: true, template_version: 'placeholder-1' });
-    const expired = await seedCard({ status: 'expired', template_version: 'placeholder-1' });
-
-    const empty = await post('/admin/rerender', {});
-    expect(empty.res.status).toBe(400);
-
-    const dry = await post('/admin/rerender', { template_version: 'placeholder-1' });
-    expect(dry.res.status).toBe(200);
-    const dryBody = await dry.res.text();
-    expect(dryBody).toContain('<strong>3</strong>');
-    expect(dryBody).toContain('name="confirm" value="1"');
-    expect((await getCardById(env.DB, a.id))?.status).toBe('ready');
-
-    const apply = await post('/admin/rerender', { template_version: 'placeholder-1', confirm: '1' });
-    expect(apply.res.status).toBe(200);
-    expect(await apply.res.text()).toContain('2 cards set to pending');
-    expect((await getCardById(env.DB, a.id))?.status).toBe('pending');
-    expect((await getCardById(env.DB, b.id))?.status).toBe('pending');
-    expect((await getCardById(env.DB, other.id))?.status).toBe('ready');
-    expect((await getCardById(env.DB, test.id))?.status).toBe('ready');
-    expect((await getCardById(env.DB, expired.id))?.status).toBe('expired');
-    expect((await adminEvents())[0]?.outcome).toBe('rerender');
-  });
-
-  it('rejects malformed dates', async () => {
-    const { res } = await post('/admin/rerender', { created_after: '15/10/2026' });
-    expect(res.status).toBe(400);
-    expect(await res.text()).toContain('YYYY-MM-DD');
+describe('re-render screen', () => {
+  it('is gone, with its navigation entry', async () => {
+    expect((await get('/admin/rerender')).res.status).toBe(404);
+    expect(await (await get('/admin')).res.text()).not.toContain('/admin/rerender');
   });
 });
 
@@ -375,15 +309,6 @@ describe('events', () => {
     expect(body).toContain('<pre>');
     expect(body).toContain('&quot;LicenseNo&quot;');
     expect(body).toContain(`/admin/events/${id}/replay`);
-  });
-
-  it('replaying an event with a card but no raw body re-renders that card', async () => {
-    const card = await seedCard({ status: 'failed' });
-    const id = await insertEvent(env.DB, { route: 'production', source_ip: '203.0.113.10', http_status: 200, outcome: 'created', card_id: card.id });
-    const { res } = await post(`/admin/events/${id}/replay`);
-    expect(res.status).toBe(303);
-    expect((await getCardById(env.DB, card.id))?.status).toBe('pending');
-    expect((await adminEvents())[0]).toMatchObject({ outcome: 'replayed', card_id: card.id, actor: ACTOR });
   });
 
   it('refuses to replay an event with nothing to replay', async () => {
@@ -419,7 +344,7 @@ describe('create (needs the intake module)', () => {
     expect(card).not.toBeNull();
     expect(card?.source).toBe('manual');
     expect(card?.preferred_language).toBe('ar');
-    expect(card?.status).toBe('pending');
+    expect(card?.status).toBe('ready');
     expect(res.headers.get('Location')).toBe(`/admin/cards/${card?.id}?m=created`);
     expect((await adminEvents())[0]).toMatchObject({ outcome: 'created', card_id: card?.id, actor: ACTOR });
   });
@@ -477,8 +402,8 @@ describe('CSV import (needs the intake module)', () => {
 describe('background work', () => {
   it('leaves nothing pending after a mutation', async () => {
     const card = await seedCard({ status: 'ready' });
-    await post(`/admin/cards/${card.id}/regenerate`);
+    await post(`/admin/cards/${card.id}/expire`);
     await flushBackground();
-    expect((await getCardById(env.DB, card.id))?.status).toBe('pending');
+    expect((await getCardById(env.DB, card.id))?.status).toBe('expired');
   });
 });

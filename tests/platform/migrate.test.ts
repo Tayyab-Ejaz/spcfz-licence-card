@@ -53,7 +53,9 @@ describe('applyMigrations', () => {
     expect(applied).toContain('0001_init.sql');
     expect(applied).toContain('0002_jobs.sql');
     const tables = (db.raw.prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").all() as Array<{ name: string }>).map((t) => t.name);
-    for (const t of ['_migrations', 'cards', 'events', 'jobs', 'metrics', 'settings']) expect(tables).toContain(t);
+    for (const t of ['_migrations', 'cards', 'events', 'metrics', 'settings']) expect(tables).toContain(t);
+    // 'jobs' stays (unused since the server render was retired) so a rollback to an older image still works.
+    expect(applied).toContain('0004_founder_name.sql');
     expect(db.raw.prepare("SELECT value FROM settings WHERE key = 'retention_days'").get()).toEqual({ value: '730' });
     db.close();
   });

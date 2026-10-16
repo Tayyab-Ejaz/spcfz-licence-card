@@ -21,13 +21,14 @@ work on hold); the admin answers 503 until Cloudflare Access is set up.
 | [docs/CLOUDFLARE-SETUP.md](docs/CLOUDFLARE-SETUP.md) | the account owner | DNS, Access and WAF on the existing zone. |
 | [docs/PORT-TO-NODE.md](docs/PORT-TO-NODE.md) | developers | Why and how the service moved from Workers to Docker on SPC's server. |
 | [docs/DEV.md](docs/DEV.md) | developers | Toolchain, layout, conventions, how tests and deploys run. |
-| [docs/RUNBOOK.md](docs/RUNBOOK.md) | SPC staff operating the service | Secret rotation, allowlist changes, stuck cards, design updates, deletion. |
+| [docs/RUNBOOK.md](docs/RUNBOOK.md) | SPC staff operating the service | Secret rotation, allowlist changes, test cards, design updates, deletion. |
 | [docs/ARABIC-STRINGS.md](docs/ARABIC-STRINGS.md) | the Arabic reviewer | Every Arabic string in the card, caption and page, with its English, for sign-off. |
 
 ## Decisions already taken (15 October 2026)
 
 - Social creative, not a licence card or certificate.
-- Four sizes, two languages, eight images per licence.
+- The ERP sends the founder's name, which the studio pre-fills (16 October 2026).
+- The customer builds the card in the browser (the studio): three styles, three formats, two languages. The server stores no images. (Until 16 October 2026: four sizes rendered on the server.)
 - Personal page is the hub. The ERP's own licence-issued email carries the link.
 - Both languages for everyone, the page toggles. A missing Arabic company name
   is shown as the English name inside the Arabic layout.

@@ -42,67 +42,6 @@ export interface D1Database {
   exec(sql: string): Promise<D1ExecResult>;
 }
 
-// ------------------------------------------------------------------ platform contracts (R2 subset)
-
-export interface R2HTTPMetadata {
-  contentType?: string;
-  cacheControl?: string;
-}
-
-export interface R2PutOptions {
-  httpMetadata?: R2HTTPMetadata;
-}
-
-export interface R2Object {
-  key: string;
-  size: number;
-  /** Hex SHA-1 of the content. */
-  etag: string;
-  /** The same, quoted, ready for an ETag header. */
-  httpEtag: string;
-  uploaded: Date;
-  httpMetadata: R2HTTPMetadata;
-}
-
-export interface R2ObjectBody extends R2Object {
-  body: ReadableStream<Uint8Array>;
-  arrayBuffer(): Promise<ArrayBuffer>;
-  text(): Promise<string>;
-}
-
-export type R2PutValue = ArrayBuffer | ArrayBufferView | string | ReadableStream<Uint8Array> | Blob;
-
-export interface R2Bucket {
-  put(key: string, value: R2PutValue, options?: R2PutOptions): Promise<R2Object>;
-  get(key: string): Promise<R2ObjectBody | null>;
-  head(key: string): Promise<R2Object | null>;
-  delete(keys: string | string[]): Promise<void>;
-  list(options?: { prefix?: string }): Promise<{ objects: R2Object[]; truncated: false }>;
-}
-
-// ------------------------------------------------------------------ platform contracts (Queue subset)
-
-export interface Queue<T> {
-  send(body: T): Promise<void>;
-}
-
-export interface Message<T> {
-  readonly id: string;
-  readonly timestamp: Date;
-  readonly body: T;
-  /** 1 on first delivery. */
-  readonly attempts: number;
-  ack(): void;
-  retry(options?: { delaySeconds?: number }): void;
-}
-
-export interface MessageBatch<T> {
-  readonly queue: string;
-  readonly messages: readonly Message<T>[];
-  ackAll(): void;
-  retryAll(options?: { delaySeconds?: number }): void;
-}
-
 // ------------------------------------------------------------------ Env
 
 /**
@@ -117,10 +56,8 @@ export const TRUST_PROXY_MODES: readonly TrustProxy[] = ['off', 'cloudflare', 'l
 
 export interface Env {
   DB: D1Database;
-  BUCKET: R2Bucket;
-  RENDER_QUEUE: Queue<RenderJob>;
 
-  /** All state lives here: the SQLite file, images/, backups/, the Cloudflare range cache. */
+  /** All state lives here: the SQLite file, backups/, the Cloudflare range cache. */
   DATA_DIR: string;
   PORT: number;
   TRUST_PROXY: TrustProxy;
@@ -129,7 +66,6 @@ export interface Env {
   ERP_IP_ALLOWLIST: string;
   FIELD_MAP: string;
   GTM_CONTAINER: string;
-  TEMPLATE_VERSION: string;
 
   WEBHOOK_SECRET_CURRENT?: string;
   WEBHOOK_SECRET_PREVIOUS?: string;
@@ -137,8 +73,6 @@ export interface Env {
   TEST_SECRET_PREVIOUS?: string;
   ACCESS_TEAM_DOMAIN?: string;
   ACCESS_AUD?: string;
-  /** Chromium executable for the renderer; puppeteer's own download when unset. */
-  CHROME_PATH?: string;
 }
 
 /** Hono generic: every router in src/ is a `Hono<AppEnv>`. */
@@ -155,12 +89,12 @@ export type AppEnv = {
 export type Lang = 'en' | 'ar';
 export const LANGS: readonly Lang[] = ['en', 'ar'] as const;
 
-export type Size = 'square' | 'portrait' | 'story' | 'landscape';
+/** The studio's export formats (the customer picks one; it is reported with download and share counters). */
+export type Size = 'square' | 'portrait' | 'landscape';
 export const SIZES: Readonly<Record<Size, { width: number; height: number }>> = {
   square: { width: 1080, height: 1080 },
   portrait: { width: 1080, height: 1350 },
-  story: { width: 1080, height: 1920 },
-  landscape: { width: 1200, height: 628 },
+  landscape: { width: 1200, height: 627 },
 };
 export const SIZE_NAMES = Object.keys(SIZES) as Size[];
 
@@ -179,6 +113,8 @@ export interface CanonicalFields {
   licence_type: string | null;
   activity_category: string | null;
   activity_category_ar: string | null;  // Arabic card uses it; falls back to activity_category
+  founder_name_en: string | null;       // pre-filled on the card; personal data, deleted with the card
+  founder_name_ar: string | null;       // Arabic card uses it; falls back to founder_name_en
   issued_on: string;             // YYYY-MM-DD
   preferred_language: Lang;
 }
@@ -191,10 +127,10 @@ export interface CardRow extends CanonicalFields {
   token: string;                 // 22-char base62
   is_test: boolean;
   content_hash: string;
-  status: CardStatus;
-  render_error: string | null;
+  status: CardStatus;            // 'ready' from creation; 'pending' and 'failed' only on rows from the server-render era
+  render_error: string | null;   // legacy, always null now
   source: CardSource;
-  template_version: string | null;
+  template_version: string | null; // legacy, always null now
   created_at: string;
   updated_at: string;
   rendered_at: string | null;
@@ -205,7 +141,8 @@ export type IntakeRoute = 'production' | 'test';
 export type EventRoute = IntakeRoute | 'admin';
 export type EventOutcome =
   | 'created' | 'unchanged' | 'updated' | 'rejected'
-  | 'replayed' | 'regenerated' | 'deleted' | 'expired' | 'imported' | 'settings' | 'rerender';
+  | 'replayed' | 'deleted' | 'expired' | 'unexpired' | 'imported' | 'settings'
+  | 'regenerated' | 'rerender';  // the last two only on rows from the server-render era
 
 export interface EventRow {
   id: string;
@@ -223,15 +160,8 @@ export interface EventRow {
 
 export type MetricKind = 'view' | 'download' | 'share' | 'caption';
 
-export interface RenderJob {
-  card_id: string;
-  content_hash: string;
-}
-
 /** What `upsertFromCanonical` reports back. */
 export type UpsertOutcome = 'created' | 'unchanged' | 'updated';
 
-export const SETTING_KEYS = [
-  'caption_en', 'caption_ar', 'gtm_enabled', 'retention_days', 'test_retention_days', 'raw_body_days',
-] as const;
+export const SETTING_KEYS = ['gtm_enabled', 'retention_days', 'test_retention_days', 'raw_body_days'] as const;
 export type SettingKey = (typeof SETTING_KEYS)[number];

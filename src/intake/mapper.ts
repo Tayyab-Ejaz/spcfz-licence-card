@@ -1,4 +1,4 @@
-// Field mapping: turns whatever the ERP sends into the eight canonical keys and nothing else
+// Field mapping: turns whatever the ERP sends into the ten canonical keys and nothing else
 // (ARCHITECTURE section 4 "Field mapping", C5, C6). Pure; no I/O.
 import type { CanonicalFields } from '../types.js';
 import { isBlank, isPlainObject, normaliseKey } from './common.js';
@@ -13,6 +13,8 @@ export const CANONICAL_KEYS: readonly CanonicalKey[] = [
   'licence_type',
   'activity_category',
   'activity_category_ar',
+  'founder_name_en',
+  'founder_name_ar',
   'issued_on',
   'preferred_language',
 ];
@@ -34,6 +36,11 @@ const ALIASES: Readonly<Record<CanonicalKey, readonly string[]>> = {
   licence_type: ['licence_type', 'license_type', 'type', 'licence_category', 'license_category'],
   activity_category: ['activity_category', 'activity', 'activities', 'business_activity', 'activity_name', 'category'],
   activity_category_ar: ['activity_category_ar', 'activity_ar', 'activity_name_ar', 'business_activity_ar', 'category_ar'],
+  founder_name_en: [
+    'founder_name_en', 'founder_name', 'founder', 'owner_name_en', 'owner_name', 'owner', 'founder_name_english',
+    'shareholder_name', 'shareholders', 'investor_name', 'manager_name', 'FounderName', 'OwnerName',
+  ],
+  founder_name_ar: ['founder_name_ar', 'founder_name_arabic', 'owner_name_ar', 'founder_ar', 'owner_ar', 'FounderNameAr', 'OwnerNameAr'],
   issued_on: ['issued_on', 'issue_date', 'issued_at', 'licence_issue_date', 'license_issue_date', 'date_of_issue'],
   preferred_language: ['preferred_language', 'language', 'lang', 'locale', 'customer_language'],
 };
@@ -46,6 +53,23 @@ const ACTIVITY_NAME_KEYS: readonly string[] = [
 /** Arabic sub-fields of the same activity object. Never falls back to the English keys above. */
 const ACTIVITY_NAME_AR_KEYS: readonly string[] = [
   'name_ar', 'Description_AR', 'description_ar', 'activity_name_ar', 'title_ar',
+];
+
+/** A founder/owner sent as an object (or a list of shareholders): the name fields to read, in order. */
+const PERSON_NAME_KEYS: readonly string[] = ['name_en', 'full_name_en', 'full_name', 'name', 'english_name', 'display_name'];
+const PERSON_NAME_AR_KEYS: readonly string[] = ['name_ar', 'full_name_ar', 'arabic_name'];
+
+/** Canonical keys whose value may arrive as an object or list, with the sub-fields to read. */
+const NAMED: Partial<Record<CanonicalKey, readonly string[]>> = {
+  activity_category: ACTIVITY_NAME_KEYS,
+  activity_category_ar: ACTIVITY_NAME_AR_KEYS,
+  founder_name_en: PERSON_NAME_KEYS,
+  founder_name_ar: PERSON_NAME_AR_KEYS,
+};
+/** English key -> its Arabic sibling, read from the same object when no Arabic field is sent. */
+const SIBLINGS: ReadonlyArray<[CanonicalKey, CanonicalKey, readonly string[]]> = [
+  ['activity_category', 'activity_category_ar', ACTIVITY_NAME_AR_KEYS],
+  ['founder_name_en', 'founder_name_ar', PERSON_NAME_AR_KEYS],
 ];
 
 /** normalised alias -> canonical key, built once. The canonical names themselves are included. */
@@ -140,10 +164,8 @@ export function unwrapActivity(value: unknown, nameKeys: readonly string[] = ACT
 }
 
 function candidateFor(key: CanonicalKey, raw: unknown): unknown {
-  const v =
-    key === 'activity_category' ? unwrapActivity(raw)
-    : key === 'activity_category_ar' ? unwrapActivity(raw, ACTIVITY_NAME_AR_KEYS)
-    : raw;
+  const keys = NAMED[key];
+  const v = keys ? unwrapActivity(raw, keys) : raw;
   return isBlank(v) ? undefined : v;
 }
 
@@ -160,8 +182,8 @@ export function mapPayload(payload: unknown, fieldMapJson: string): Record<strin
   const out: Record<string, unknown> = {};
   if (!isPlainObject(payload)) return out;
 
-  // The raw value the English activity came from: its Arabic sibling (e.g. Description_AR) is read from it.
-  let activitySource: unknown;
+  // The raw value each English field came from: its Arabic sibling (e.g. Description_AR) is read from it.
+  const sources = new Map<CanonicalKey, unknown>();
 
   for (const [path, key] of parseFieldMap(fieldMapJson)) {
     if (key in out) continue;
@@ -169,7 +191,7 @@ export function mapPayload(payload: unknown, fieldMapJson: string): Record<strin
     const candidate = candidateFor(key, raw);
     if (candidate !== undefined) {
       out[key] = candidate;
-      if (key === 'activity_category') activitySource = raw;
+      sources.set(key, raw);
     }
   }
 
@@ -181,18 +203,20 @@ export function mapPayload(payload: unknown, fieldMapJson: string): Record<strin
       const candidate = candidateFor(key, raw);
       if (candidate !== undefined) {
         out[key] = candidate;
-        if (key === 'activity_category') activitySource = raw;
+        sources.set(key, raw);
         break;
       }
     }
   }
 
-  // Only an activity object can carry an Arabic sibling; a plain name (or a list of names) has none.
-  if (!('activity_category_ar' in out) && activitySource !== undefined) {
-    const first: unknown = Array.isArray(activitySource) ? (activitySource as unknown[])[0] : activitySource;
+  // Only an object can carry an Arabic sibling; a plain name (or a list of names) has none.
+  for (const [en, ar, keys] of SIBLINGS) {
+    const src = sources.get(en);
+    if (ar in out || src === undefined) continue;
+    const first: unknown = Array.isArray(src) ? (src as unknown[])[0] : src;
     if (isPlainObject(first)) {
-      const ar = unwrapActivity(first, ACTIVITY_NAME_AR_KEYS);
-      if (!isBlank(ar)) out['activity_category_ar'] = ar;
+      const v = unwrapActivity(first, keys);
+      if (!isBlank(v)) out[ar] = v;
     }
   }
 

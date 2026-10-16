@@ -50,7 +50,7 @@ files, any change to www.spcfz.ae, customer accounts, customer-editable text.
 | C3 | A separate test endpoint with its own secret, instead of a flag in the payload. Test cards carry a TEST ribbon, are excluded from counters, and are purged after 30 days. | D8, and the ERP team can test without being able to mark payloads. |
 | C4 | The test endpoint keeps the raw request body for 7 days. The production endpoint never stores a raw body. | The user cannot get a sample ERP record any other way. |
 | C5 | Only the licence number and the English company name are required. Everything else is optional with a fallback. ERP field names are mapped in config, not fixed. | The user has little control over what the ERP sends. |
-| C6 | Personal data is not stored. The mapper drops anything that is not on the field list, including emails and phone numbers if the ERP sends them. | Nothing in v1 needs it. |
+| C6 | Personal data is limited to the founder's name (since 16 Oct 2026, the user's decision: the ERP sends it so the studio can pre-fill it). The mapper drops everything else, including emails and phone numbers. The name is cleared when a card expires and deleted with the card. | The design pre-fills the founder; nothing else needs personal data. |
 | C7 | Admin sits behind Cloudflare Access with an SPC email allowlist. No passwords in our code. | Free at this size, gives SSO and audit for nothing. |
 | C8 | Images and records are kept two years, then the images are deleted and the page says the card has expired. | A retention rule has to exist; two years covers a licence term and a renewal. |
 | C9 | Google Tag Manager is not loaded on the page by default. A config switch can add the site container GTM-PZ8R4DN. | Marketing decision; counters cover v1 needs. |
@@ -66,9 +66,7 @@ Cloudflare Workers design; the behaviour in this document is unchanged.
 | Need | Implementation |
 |---|---|
 | HTTP endpoints, page, admin | Hono on `@hono/node-server`, port 8787 inside the container |
-| Background rendering | `jobs` table in SQLite worked by an in-process queue; 3 attempts, then the dead-letter handler |
-| Headless Chromium | puppeteer driving Debian's Chromium inside the container |
-| Image storage | files under `DATA_DIR/images/cards/<token>/` |
+| Card images | built in the customer's browser by the studio (section 7); the server stores none |
 | Records and counters | SQLite file `DATA_DIR/licence-card.sqlite`, WAL mode |
 | Daily housekeeping | in-process scheduler at 05:15 Asia/Dubai, plus a SQLite backup |
 | Admin login | Cloudflare Access |
@@ -78,12 +76,9 @@ Flow:
 
 1. ERP posts to `/v1/licence-issued` through Cloudflare and Apache.
 2. The app checks IP, secret, size and shape; normalises; finds or creates
-   the card row; inserts a render job; answers with the page URL in under a
-   second.
-3. The queue worker launches one browser, renders the eight images, writes
-   them to disk, marks the card ready.
-4. Customer opens the page from the ERP email, sees the card in their
-   language, downloads or shares.
+   the card row, ready at once; answers with the page URL in under a second.
+3. Customer opens the page from the ERP email and builds, downloads or shares
+   the card in the browser.
 
 ## 4. Intake
 
@@ -115,6 +110,8 @@ the ERP sends whatever it natively has. The canonical fields:
 | `licence_type` | no | empty | up to 60 chars |
 | `activity_category` | no | empty | up to 80 chars; first item if a list arrives |
 | `activity_category_ar` | no | empty; the Arabic card then shows `activity_category` | up to 80 chars; an explicit Arabic field, else the Arabic sibling (`name_ar`, `Description_AR`, …) of the activity object the English name came from; never an English value |
+| `founder_name_en` | no | empty; the customer types it | up to 120 chars (a long legal name never rejects the licence; the studio shortens names over 40 characters to first and last name); a plain field, or the name inside an owner/founder object or the first of a shareholder list |
+| `founder_name_ar` | no | empty; the Arabic card then shows `founder_name_en` | up to 120 chars; an explicit field, else the Arabic sibling (`name_ar`, …) of the person object |
 | `issued_on` | no | today in Asia/Dubai | ISO date, or any date the parser accepts |
 | `preferred_language` | no | `en` | `en` or `ar`, case-insensitive |
 
@@ -156,11 +153,13 @@ cards (
   licence_type TEXT,
   activity_category TEXT,
   activity_category_ar TEXT,      -- migration 0003
+  founder_name_en TEXT,           -- migration 0004; personal data, cleared at expiry
+  founder_name_ar TEXT,           -- migration 0004
   issued_on TEXT NOT NULL,        -- YYYY-MM-DD
   preferred_language TEXT NOT NULL DEFAULT 'en',
   content_hash TEXT NOT NULL,
-  status TEXT NOT NULL,           -- pending | ready | failed | expired
-  render_error TEXT,
+  status TEXT NOT NULL,           -- ready | expired (pending/failed only on rows from the server-render era)
+  render_error TEXT,              -- legacy, null
   source TEXT NOT NULL,           -- webhook | test | manual | csv | replay
   template_version TEXT,
   created_at TEXT NOT NULL, updated_at TEXT NOT NULL, rendered_at TEXT, expires_at TEXT,
@@ -195,46 +194,11 @@ settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);   -- caption_en, caption_a
 
 ## 6. Rendering
 
-### Job
-
-One queue message per card: `{ card_id, content_hash }`. The consumer reloads
-the card, skips the job if the hash no longer matches (a newer event
-superseded it), otherwise renders.
-
-### Browser session
-
-One browser per job. For each of the eight variants: `setContent` with the
-template HTML, wait for `document.fonts.ready` and for the auto-fit script to
-finish, `setViewport` to the exact pixel size at scale 1, `screenshot` as PNG.
-Budget about 6 to 10 seconds per card, so roughly 2 to 3 browser-hours a month
-at 1,000 licences, inside the plan's 10 included hours.
-
-### Template
-
-- One HTML and CSS template per size, with a `dir="rtl"` variant for Arabic.
-  Built from the approved design (see DESIGN-HANDOFF.md). A placeholder
-  template exists until then.
-- Fonts embedded as base64 `@font-face` in the HTML: Inter and Noto Kufi
-  Arabic unless the design says otherwise. The container's Chromium has
-  no Arabic system fonts, so nothing may rely on a system font.
-- Variable text zones carry a maximum font size and a minimum; the auto-fit
-  script shrinks the company name until it fits, then wraps to the allowed
-  number of lines, then truncates with an ellipsis as the last resort.
-- Every variable is HTML-escaped before insertion.
-- `template_version` is stamped on the card so a design change can be
-  re-rendered selectively from the admin.
-
-### Storage
-
-Image paths: `DATA_DIR/images/cards/{token}/{lang}-{size}.png`, with `size` in
-`square | portrait | story | landscape`. A failed render leaves the previous
-images in place.
-
-### Retries
-
-Three attempts with backoff in the SQLite jobs table, then the dead-letter
-handler, which marks the card `failed` with the error. The admin
-shows failed cards and offers a retry.
+Retired on 16 October 2026. The studio (section 7) builds the card in the
+customer's browser and exports the PNG there, so the server has no render
+queue, no Chromium and no image storage. The `jobs` table and the
+`render_error`, `rendered_at` and `template_version` columns are left in
+place, unused, so an older image can still be rolled back to.
 
 ## 7. Personal page: the customer studio
 
@@ -286,7 +250,6 @@ Photos and logos are read in the browser and never sent to the server.
 | `GET /c/{token}` | The studio shell: the stylesheet, the bundle, and the card data as JSON in `<script id="card-data">`. Served for pending, ready and failed cards alike; nothing waits for the server render. Expired cards get 410, unknown tokens 404. |
 | `GET /static/studio/…` | The bundle, stylesheet, fonts and images; content-hashed names, cached for a year. |
 | `POST /c/{token}/m` | Counter beacon: download, share (network `native` or `linkedin`), caption. |
-| `GET /c/{token}/status`, `GET /c/{token}/{lang}-{size}.png` | Kept for the admin: the server-side render still runs. |
 
 ### Deviations from the design runtime, on purpose
 
@@ -314,17 +277,15 @@ routes are useless if the Access policy is ever removed by mistake.
 Screens:
 
 - **Cards.** Search by company or licence number; filter by status, test,
-  source; open the page; regenerate; delete; mark expired.
+  source; open the page; mark expired or restore; delete. The card itself
+  is seen by opening the page.
 - **Events.** The webhook log: time, route, IP, status, outcome, errors, the
-  card. Replay re-runs a rejected or unchanged event from its stored fields,
-  or from the raw body on the test route.
+  card. Replay re-runs an event from its raw body (test route only).
 - **Create.** The same canonical fields as a form, for back-fill and for
   licences the ERP never sent.
 - **Import CSV.** Upload a CSV with canonical column names, see a dry-run
   table of what would be created, updated or rejected, then confirm.
-- **Re-render.** Pick a template version or a date range and queue a
-  re-render, with a count shown first.
-- **Settings.** Caption templates, GTM switch, retention days, mapping
+- **Settings.** GTM switch, retention days, mapping
   preview. Secrets and the IP allowlist are not editable here; they live in
   the server's env file and the WAF rule.
 
@@ -336,10 +297,9 @@ Screens:
   set the new one as current, move the old one to previous, tell the ERP team,
   clear previous after they confirm.
 - Constant-time comparison. 64 KB body limit. JSON only.
-- No personal data stored (C6). Logs record the licence number and card id,
-  never payload fields.
+- The founder's name is the only personal data (C6). Logs record the licence
+  number and card id, never payload fields.
 - Rate limits in the app, per client per minute (an IPv4 address, or an IPv6 /64) (`DEFAULT_RATE_LIMITS` in src/index.ts): 300 GET/HEAD on `/c/*`, 60 POST on `/c/*`, 20 on `/v1/*` from addresses not on the ERP allowlist (allowlisted addresses are never limited). Answers 429 with Retry-After. Cloudflare rules may add an outer layer.
-- Image download filenames are sanitised to ASCII letters, digits and dashes.
 - Strict CSP, `Referrer-Policy: strict-origin-when-cross-origin`, HSTS from
   Cloudflare.
 - Admin actions are written to the events table with the Access identity.
@@ -349,8 +309,8 @@ Screens:
 A daily cron:
 
 - deletes raw bodies past `raw_body_expires_at`;
-- deletes test cards and their images older than 30 days;
-- marks cards past `expires_at` as `expired` and deletes their images;
+- deletes test cards older than 30 days;
+- marks cards past `expires_at` as `expired` and clears the founder's name;
 - compacts metrics older than 13 months to monthly rows (day becomes `YYYY-MM`).
 
 ## 11. Environments, repository, deployment

@@ -118,10 +118,6 @@ export function readConfig(source: ConfigSource, envFile: string | null = null):
     errors.push('FIELD_MAP must be a JSON object mapping ERP field names to canonical names');
   }
 
-  // CHROME_PATH, when set, must exist.
-  const chromePath = text(source, 'CHROME_PATH');
-  if (chromePath !== undefined && !existsSync(chromePath)) errors.push(`CHROME_PATH ${chromePath} does not exist`);
-
   const allowlist = text(source, 'ERP_IP_ALLOWLIST') ?? '';
   if (!allowlist) warnings.push('ERP_IP_ALLOWLIST is empty: both intake routes reject every request');
   if (!text(source, 'WEBHOOK_SECRET_CURRENT')) warnings.push('WEBHOOK_SECRET_CURRENT is not set: the production intake route accepts nothing');
@@ -139,14 +135,12 @@ export function readConfig(source: ConfigSource, envFile: string | null = null):
     ERP_IP_ALLOWLIST: allowlist,
     FIELD_MAP: fieldMap,
     GTM_CONTAINER: text(source, 'GTM_CONTAINER') ?? '',
-    TEMPLATE_VERSION: text(source, 'TEMPLATE_VERSION') ?? 'placeholder-1',
     WEBHOOK_SECRET_CURRENT: text(source, 'WEBHOOK_SECRET_CURRENT'),
     WEBHOOK_SECRET_PREVIOUS: text(source, 'WEBHOOK_SECRET_PREVIOUS'),
     TEST_SECRET_CURRENT: text(source, 'TEST_SECRET_CURRENT'),
     TEST_SECRET_PREVIOUS: text(source, 'TEST_SECRET_PREVIOUS'),
     ACCESS_TEAM_DOMAIN: text(source, 'ACCESS_TEAM_DOMAIN'),
     ACCESS_AUD: text(source, 'ACCESS_AUD'),
-    CHROME_PATH: chromePath,
   };
   return { ok: true, config: { vars, host, port, dataDir, trustProxy, envFile, warnings } };
 }

@@ -5,13 +5,13 @@ import type { Context } from 'hono';
 import type {
   AppEnv, CanonicalFields, CardRow, CardSource, CardStatus, Env, EventOutcome, EventRoute, EventRow, SettingKey,
 } from '../types.js';
-import { LANGS, SIZE_NAMES } from '../types.js';
+import { LANGS } from '../types.js';
 import type { CardFilter } from '../db/cards.js';
 import {
-  countByStatus, countCards, deleteCard, findCardByLicence, getCardById, getEvent, getIntSetting, getSettings,
-  insertEvent, listCards, listEvents, metricsForCard, metricsTotals, setCardExpiry, setCardStatus, setSetting,
+  countByStatus, deleteCard, findCardByLicence, getCardById, getEvent, getIntSetting, getSettings,
+  expireCard, insertEvent, listCards, listEvents, metricsForCard, metricsTotals, setCardExpiry, setCardStatus, setSetting,
 } from '../db/cards.js';
-import { deleteCardImages, imageUrl, pageUrl, purgeImageCache } from '../storage.js';
+import { pageUrl } from '../storage.js';
 import { csvToObjects } from '../util/csv.js';
 import { raw } from '../util/html.js';
 import type { RawHtml } from '../util/html.js';
@@ -28,24 +28,21 @@ import {
 } from './layout.js';
 
 const PER_PAGE = 50;
-const RERENDER_CAP = 500;
 const IMPORT_CAP = 500;
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 const STATUSES: readonly CardStatus[] = ['pending', 'ready', 'failed', 'expired'];
 const SOURCES: readonly CardSource[] = ['webhook', 'test', 'manual', 'csv', 'replay'];
 const EVENT_ROUTES: readonly EventRoute[] = ['production', 'test', 'admin'];
 const EVENT_OUTCOMES: readonly EventOutcome[] = [
-  'created', 'unchanged', 'updated', 'rejected', 'replayed', 'regenerated', 'deleted', 'expired', 'imported', 'settings', 'rerender',
+  'created', 'unchanged', 'updated', 'rejected', 'replayed', 'deleted', 'expired', 'unexpired', 'imported', 'settings',
 ];
 
 const FLASH: Record<string, string> = {
-  regenerated: 'Re-render queued.',
-  expired: 'Card marked expired; its images were deleted.',
-  unexpired: 'Card restored with a fresh expiry; a re-render is queued.',
+  expired: "Card marked expired; the page now says it is no longer available and the founder's name was cleared.",
+  unexpired: "Card restored with a fresh expiry. The founder's name comes back the next time the ERP sends this licence.",
   deleted: 'Card deleted.',
-  created: 'Card created; a render is queued.',
-  updated: 'Card updated; a re-render is queued.',
+  created: 'Card created; the page is ready now.',
+  updated: 'Card updated; the page shows the new details now.',
   unchanged: 'No change: a card with these exact details already exists.',
   saved: 'Settings saved.',
 };
@@ -119,21 +116,6 @@ async function audit(c: Context<AppEnv>, outcome: EventOutcome, card_id: string 
   });
 }
 
-/** Back to pending and onto the render queue; the consumer purges the edge cache once new images are written. */
-async function enqueueRender(env: Env, card: CardRow): Promise<void> {
-  await setCardStatus(env.DB, card.id, 'pending', { render_error: null });
-  await env.RENDER_QUEUE.send({ card_id: card.id, content_hash: card.content_hash });
-}
-
-async function removeImages(env: Env, token: string): Promise<void> {
-  await deleteCardImages(env.BUCKET, token);
-  try {
-    await purgeImageCache(env, token);
-  } catch (err) {
-    console.warn('admin: cache purge failed', { token, message: err instanceof Error ? err.message : String(err) });
-  }
-}
-
 function forbidden(c: Context<AppEnv>, reason: string): Response | Promise<Response> {
   return respond(
     c,
@@ -202,6 +184,8 @@ const CREATE_FIELDS: readonly CreateField[] = [
   { key: 'licence_type', label: 'Licence type', required: false, type: 'text', hint: 'Optional, up to 60 characters.' },
   { key: 'activity_category', label: 'Activity category', required: false, type: 'text', hint: 'Optional, up to 80 characters.' },
   { key: 'activity_category_ar', label: 'Activity category (Arabic)', required: false, type: 'text', hint: 'Optional. The English activity is used on the Arabic card when empty.' },
+  { key: 'founder_name_en', label: 'Founder name', required: false, type: 'text', hint: 'Optional. Pre-filled on the card; the customer can change it.' },
+  { key: 'founder_name_ar', label: 'Founder name (Arabic)', required: false, type: 'text', hint: 'Optional. The English name is used on the Arabic card when empty.' },
   { key: 'issued_on', label: 'Issued on', required: false, type: 'date', hint: 'Today in Asia/Dubai when empty.' },
 ];
 
@@ -283,7 +267,7 @@ interface ImportFormOptions {
 
 function importForm(c: Context<AppEnv>, o: ImportFormOptions): Response | Promise<Response> {
   const token = csrfToken(c);
-  const body = h`<p class="muted">Header row with canonical column names: <code>licence_number</code> and <code>company_name_en</code> are required; <code>company_name_ar</code>, <code>licence_type</code>, <code>activity_category</code>, <code>activity_category_ar</code>, <code>issued_on</code> and <code>preferred_language</code> are optional. Headers are matched case-insensitively. Up to ${IMPORT_CAP} rows per run.</p>
+  const body = h`<p class="muted">Header row with canonical column names: <code>licence_number</code> and <code>company_name_en</code> are required; <code>company_name_ar</code>, <code>licence_type</code>, <code>activity_category</code>, <code>activity_category_ar</code>, <code>founder_name_en</code>, <code>founder_name_ar</code>, <code>issued_on</code> and <code>preferred_language</code> are optional. Headers are matched case-insensitively. Up to ${IMPORT_CAP} rows per run.</p>
 <form class="form" method="post" action="/admin/import" enctype="multipart/form-data">${csrfField(token)}
 <label>CSV file<input type="file" name="file" accept=".csv,text/csv"></label>
 <label>…or paste CSV<textarea name="csv" rows="10" dir="auto">${o.csv ?? ''}</textarea></label>
@@ -293,39 +277,14 @@ function importForm(c: Context<AppEnv>, o: ImportFormOptions): Response | Promis
   return respond(c, { title: 'Import CSV', active: 'import', error: o.errors ?? null, body }, o.status ?? 200);
 }
 
-// ------------------------------------------------------------------ re-render
-
-interface RerenderValues {
-  template_version: string;
-  created_after: string;
-  created_before: string;
-}
-
-function rerenderForm(c: Context<AppEnv>, v: RerenderValues, errors: string[] | null, status: AdminStatus = 200): Response | Promise<Response> {
-  const token = csrfToken(c);
-  const body = h`<p class="muted">Queues a fresh render for live cards matching every filter you set (test and expired cards are skipped). Up to ${RERENDER_CAP} cards per run; run again for the rest. The current template version is <code>${c.env.TEMPLATE_VERSION}</code>.</p>
-<form class="form" method="post" action="/admin/rerender">${csrfField(token)}
-<label>Template version<input name="template_version" value="${v.template_version}" placeholder="e.g. placeholder-1"><small>Cards whose stamped template_version equals this. Leave empty to ignore.</small></label>
-<div class="row">
-<label>Created on or after<input type="date" name="created_after" value="${v.created_after}"></label>
-<label>Created on or before<input type="date" name="created_before" value="${v.created_before}"></label>
-</div>
-<div><button class="btn" type="submit">Count matching cards</button></div>
-</form>`;
-  return respond(c, { title: 'Re-render', active: 'rerender', error: errors, body }, status);
-}
-
 // ------------------------------------------------------------------ settings
 
-const TEXT_SETTINGS = ['caption_en', 'caption_ar'] as const;
 const NUMERIC_SETTINGS = ['retention_days', 'test_retention_days', 'raw_body_days'] as const;
 
 function settingsForm(c: Context<AppEnv>, values: Record<string, string>, errors: string[] | null, status: AdminStatus = 200): Response | Promise<Response> {
   const token = csrfToken(c);
   const v = (k: string): string => values[k] ?? '';
   const body = h`<form class="form" method="post" action="/admin/settings">${csrfField(token)}
-<label>Caption (English)<textarea name="caption_en" rows="4" dir="ltr">${v('caption_en')}</textarea><small>Placeholders: <code>{company}</code> and <code>{link}</code>.</small></label>
-<label>Caption (Arabic)<textarea name="caption_ar" rows="4" dir="rtl">${v('caption_ar')}</textarea><small>Same placeholders. Must be reviewed by a native reader before launch.</small></label>
 <label class="check"><input type="checkbox" name="gtm_enabled" value="1"${v('gtm_enabled') === '1' ? raw(' checked') : EMPTY}> Load Google Tag Manager on the personal page <small>(container <code>${c.env.GTM_CONTAINER || 'not set'}</code>)</small></label>
 <div class="row">
 <label>Live card retention (days)<input type="number" min="0" step="1" name="retention_days" value="${v('retention_days')}"></label>
@@ -375,13 +334,11 @@ export function createAdminRoutes(verify: AccessVerifier): Hono<AppEnv> {
   app.get('/', async (c) => {
     const db = c.env.DB;
     const since = addDays(`${todayInDubai()}T00:00:00.000Z`, -7).slice(0, 10);
-    const [byStatus, totals, failed, rejected] = await Promise.all([
+    const [byStatus, totals, rejected] = await Promise.all([
       countByStatus(db),
       metricsTotals(db, since),
-      listCards(db, { status: 'failed', limit: 10 }),
       listEvents(db, { outcome: 'rejected', limit: 10 }),
     ]);
-    const token = csrfToken(c);
     const body = h`
 <h2>Live cards by status</h2>
 <div class="cards">${STATUSES.map(
@@ -394,18 +351,6 @@ export function createAdminRoutes(verify: AccessVerifier): Hono<AppEnv> {
 <div class="stat"><b>${totals.share}</b><span>Share clicks</span></div>
 <div class="stat"><b>${totals.caption}</b><span>Caption copies</span></div>
 </div>
-<h2>Recent failed cards</h2>
-${table(
-  ['Company', 'Licence', 'Updated', 'Error', ''],
-  failed.rows.map((r) => [
-    cardLink(r),
-    h`<code>${r.licence_number}</code>`,
-    h`${fmtDateTime(r.updated_at)}`,
-    h`${r.render_error ?? ''}`,
-    actionForm(`/admin/cards/${r.id}/regenerate`, 'Regenerate', token),
-  ]),
-  'No failed cards.',
-)}
 <h2>Recent rejected events</h2>
 ${eventsTable(rejected.rows)}`;
     return respond(c, { title: 'Dashboard', active: 'dashboard', flash: flashOf(c), body });
@@ -472,34 +417,27 @@ ${kv([
   ['Licence type', card.licence_type],
   ['Activity', card.activity_category],
   ['Activity (Arabic)', card.activity_category_ar ? h`<span dir="rtl">${card.activity_category_ar}</span>` : null],
+  ['Founder', card.founder_name_en],
+  ['Founder (Arabic)', card.founder_name_ar ? h`<span dir="rtl">${card.founder_name_ar}</span>` : null],
   ['Issued on', card.issued_on],
   ['Preferred language', card.preferred_language],
-  ['Status', h`${badge(card.status)} ${card.render_error ? h`<span class="muted">${card.render_error}</span>` : EMPTY}`],
+  ['Status', badge(card.status)],
   ['Test card', card.is_test ? 'yes' : 'no'],
   ['Source', card.source],
-  ['Template version', card.template_version],
   ['Content hash', h`<code>${card.content_hash}</code>`],
   ['Page', h`<a href="${url}" target="_blank" rel="noopener">${url}</a>`],
   ['Created', fmtDateTime(card.created_at)],
   ['Updated', fmtDateTime(card.updated_at)],
-  ['Rendered', fmtDateTime(card.rendered_at)],
   ['Expires', fmtDateTime(card.expires_at)],
   ['Card id', h`<code>${card.id}</code>`],
 ])}
 <div class="actions">
-${actionForm(`/admin/cards/${card.id}/regenerate`, 'Regenerate', token)}
 ${card.status === 'expired'
   ? actionForm(`/admin/cards/${card.id}/unexpire`, 'Un-expire', token, 'btn small secondary')
   : actionForm(`/admin/cards/${card.id}/expire`, 'Mark expired', token, 'btn small secondary')}
 <a class="btn small danger" href="/admin/cards/${card.id}/delete">Delete…</a>
 </div>
-<h2>Images</h2>
-<div class="thumbs">${LANGS.flatMap((lang) =>
-  SIZE_NAMES.map((size) => {
-    const src = imageUrl(c.env, card, lang, size);
-    return h`<figure><a href="${src}" target="_blank" rel="noopener"><img src="${src}" alt="${lang} ${size}" loading="lazy"></a><figcaption>${lang}-${size}</figcaption></figure>`;
-  }),
-)}</div>
+<p class="muted">The card is built in the customer's browser: open the page to see it.</p>
 <h2>Metrics (all time)</h2>
 ${table(
   ['Kind', 'Lang', 'Size', 'Network', 'Count'],
@@ -511,25 +449,13 @@ ${eventsTable(events.rows)}`;
     return respond(c, { title: card.company_name_en, active: 'cards', flash: flashOf(c), body });
   });
 
-  app.post('/cards/:id/regenerate', async (c) => {
-    const body = await readForm(c);
-    const bad = csrfFailure(c, body);
-    if (bad) return forbidden(c, bad);
-    const card = await getCardById(c.env.DB, c.req.param('id'));
-    if (!card) return notFoundPage(c, 'card');
-    await enqueueRender(c.env, card);
-    await audit(c, 'regenerated', card.id);
-    return c.redirect(`/admin/cards/${card.id}?m=regenerated`, 303);
-  });
-
   app.post('/cards/:id/expire', async (c) => {
     const body = await readForm(c);
     const bad = csrfFailure(c, body);
     if (bad) return forbidden(c, bad);
     const card = await getCardById(c.env.DB, c.req.param('id'));
     if (!card) return notFoundPage(c, 'card');
-    await setCardStatus(c.env.DB, card.id, 'expired');
-    await removeImages(c.env, card.token);
+    await expireCard(c.env.DB, card.id);
     await audit(c, 'expired', card.id);
     return c.redirect(`/admin/cards/${card.id}?m=expired`, 303);
   });
@@ -542,8 +468,8 @@ ${eventsTable(events.rows)}`;
     if (!card) return notFoundPage(c, 'card');
     const days = await getIntSetting(c.env.DB, 'retention_days', 730);
     await setCardExpiry(c.env.DB, card.id, addDays(nowIso(), days));
-    await enqueueRender(c.env, card);
-    await audit(c, 'regenerated', card.id);
+    await setCardStatus(c.env.DB, card.id, 'ready');
+    await audit(c, 'unexpired', card.id);
     return c.redirect(`/admin/cards/${card.id}?m=unexpired`, 303);
   });
 
@@ -553,7 +479,7 @@ ${eventsTable(events.rows)}`;
     const token = csrfToken(c);
     const body = h`
 <p>Delete <strong>${card.company_name_en}</strong> (<code>${card.licence_number}</code>${card.is_test ? ', test card' : ''})?</p>
-<p>The row, its counters and all eight images are removed. The page link stops working. If the ERP sends this licence again a new card with a new link is created.</p>
+<p>The row and its counters are removed. The page link stops working. If the ERP sends this licence again a new card with a new link is created.</p>
 <form method="post" action="/admin/cards/${card.id}/delete" class="actions">${csrfField(token)}
 <button type="submit" class="btn danger">Yes, delete this card</button>
 <a class="btn secondary" href="/admin/cards/${card.id}">Cancel</a>
@@ -567,7 +493,6 @@ ${eventsTable(events.rows)}`;
     if (bad) return forbidden(c, bad);
     const card = await getCardById(c.env.DB, c.req.param('id'));
     if (!card) return notFoundPage(c, 'card');
-    await removeImages(c.env, card.token);
     await deleteCard(c.env.DB, card.id);
     await audit(c, 'deleted', card.id);
     return c.redirect('/admin/cards?m=deleted', 303);
@@ -619,9 +544,7 @@ ${ev.raw_body
 <div class="actions">
 ${ev.raw_body
   ? actionForm(`/admin/events/${ev.id}/replay`, 'Replay from raw body', token)
-  : card
-    ? actionForm(`/admin/events/${ev.id}/replay`, 'Re-render the card', token)
-    : h`<span class="muted">Nothing to replay: no raw body and no card.</span>`}
+  : h`<span class="muted">Nothing to replay: only test-route events keep their raw body.</span>`}
 </div>`;
     return respond(c, { title: `Event ${ev.id}`, active: 'events', flash: flashOf(c), body });
   });
@@ -667,15 +590,7 @@ ${ev.raw_body
       return respond(c, { title: 'Replay applied', active: 'events', flash: `Event replayed: ${r.outcome}.`, body: result });
     }
 
-    if (ev.card_id) {
-      const card = await getCardById(c.env.DB, ev.card_id);
-      if (!card) return replayError(c, ev, ['The card this event points to no longer exists.']);
-      await enqueueRender(c.env, card);
-      await audit(c, 'replayed', card.id);
-      return c.redirect(`/admin/cards/${card.id}?m=regenerated`, 303);
-    }
-
-    return replayError(c, ev, ['This event has no raw body and no card, so there is nothing to replay.']);
+    return replayError(c, ev, ['This event has no raw body, so there is nothing to replay.']);
   });
 
   // ---------------------------------------------------------------- create
@@ -758,68 +673,8 @@ ${dryTable(dry)}
     return respond(c, {
       title: 'Import CSV: applied',
       active: 'import',
-      flash: 'Import applied. Renders are queued for created and updated cards.',
+      flash: 'Import applied. Created and updated cards are ready now.',
       body: result,
-    });
-  });
-
-  // ---------------------------------------------------------------- re-render
-
-  app.get('/rerender', (c) => rerenderForm(c, { template_version: '', created_after: '', created_before: '' }, null));
-
-  app.post('/rerender', async (c) => {
-    const body = await readForm(c);
-    const bad = csrfFailure(c, body);
-    if (bad) return forbidden(c, bad);
-
-    const values: RerenderValues = {
-      template_version: field(body, 'template_version'),
-      created_after: field(body, 'created_after'),
-      created_before: field(body, 'created_before'),
-    };
-    const errors: string[] = [];
-    if (values.created_after && !DATE_RE.test(values.created_after)) errors.push('created_after must be YYYY-MM-DD');
-    if (values.created_before && !DATE_RE.test(values.created_before)) errors.push('created_before must be YYYY-MM-DD');
-    if (!values.template_version && !values.created_after && !values.created_before) {
-      errors.push('Set at least one filter; re-rendering every card is not offered here.');
-    }
-    if (errors.length) return rerenderForm(c, values, errors, 400);
-
-    const filter: CardFilter = { is_test: false };
-    if (values.template_version) filter.template_version = values.template_version;
-    if (values.created_after) filter.created_after = `${values.created_after}T00:00:00.000Z`;
-    if (values.created_before) filter.created_before = addDays(`${values.created_before}T00:00:00.000Z`, 1);
-
-    if (field(body, 'confirm') !== '1') {
-      const count = await countCards(c.env.DB, filter);
-      const token = csrfToken(c);
-      const preview = h`<p><strong>${count}</strong> live ${count === 1 ? 'card matches' : 'cards match'} (expired ones among them are skipped).${
-        count > RERENDER_CAP ? h` Only the newest ${RERENDER_CAP} are queued in this run; run again for the rest.` : EMPTY
-      }</p>
-<form method="post" action="/admin/rerender" class="actions">${csrfField(token)}
-<input type="hidden" name="template_version" value="${values.template_version}">
-<input type="hidden" name="created_after" value="${values.created_after}">
-<input type="hidden" name="created_before" value="${values.created_before}">
-<input type="hidden" name="confirm" value="1">
-<button class="btn" type="submit"${count === 0 ? raw(' disabled') : EMPTY}>Queue re-render</button>
-<a class="btn secondary" href="/admin/rerender">Back</a>
-</form>`;
-      return respond(c, { title: 'Re-render: confirm', active: 'rerender', body: preview });
-    }
-
-    const { rows } = await listCards(c.env.DB, { ...filter, limit: RERENDER_CAP });
-    let queued = 0;
-    for (const card of rows) {
-      if (card.status === 'expired') continue;
-      await enqueueRender(c.env, card);
-      queued += 1;
-    }
-    await audit(c, 'rerender', null, [`${queued} cards queued`, `filter ${JSON.stringify(values)}`]);
-    return respond(c, {
-      title: 'Re-render queued',
-      active: 'rerender',
-      flash: `${queued} ${queued === 1 ? 'card' : 'cards'} set to pending and queued.`,
-      body: h`<p><a href="/admin/cards?status=pending&amp;is_test=0">Watch them in the cards list</a> or <a href="/admin/rerender">queue another batch</a>.</p>`,
     });
   });
 
@@ -835,14 +690,6 @@ ${dryTable(dry)}
     const submitted: Record<string, string> = { ...(await getSettings(c.env.DB)) };
     const errors: string[] = [];
     const updates: Array<[SettingKey, string]> = [];
-
-    for (const key of TEXT_SETTINGS) {
-      if (!(key in body)) continue;
-      const v = field(body, key);
-      submitted[key] = v;
-      if (!v) errors.push(`${key}: cannot be empty`);
-      else updates.push([key, v]);
-    }
 
     const gtm = checked(body, 'gtm_enabled') ? '1' : '0';
     submitted['gtm_enabled'] = gtm;

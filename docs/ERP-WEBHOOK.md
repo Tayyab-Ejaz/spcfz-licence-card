@@ -49,12 +49,14 @@ our side. What we need:
 | Licence type | no | Free text as you hold it. |
 | Business activity or activity category | no | One value, or a list; we use the first. |
 | Business activity, Arabic | no | Shown on the Arabic card. Send it as its own field, or inside the activity object next to the English name (for example `Description_EN` and `Description_AR`). Without it the Arabic card shows the English activity. |
+| Founder's name, English | no | Pre-filled on the card; the customer can change it. A plain field, or the name inside an owner or founder object. |
+| Founder's name, Arabic | no | Used on the Arabic card. Without it the Arabic card shows the English name. |
 | Issue date | no | Any unambiguous format. ISO `YYYY-MM-DD` is best. Defaults to today. |
 | Customer's preferred language | no | `en` or `ar`. Defaults to English. |
 
-Please do not include personal details such as the owner's name, email or
-phone number. If your system cannot leave them out, we discard them on
-receipt and never store them.
+The founder's name is the only personal detail we keep. Please do not send
+email addresses or phone numbers; if your system cannot leave them out, we
+discard them on receipt and never store them.
 
 Example:
 
@@ -66,6 +68,8 @@ Example:
   "licence_type": "Standard",
   "activity_category": "Publishing",
   "activity_category_ar": "النشر",
+  "founder_name": "Mariam Fawzy",
+  "founder_name_ar": "مريم فوزي",
   "issued_on": "2026-10-15",
   "preferred_language": "en"
 }
@@ -82,13 +86,12 @@ Normally within one second:
   "status": "accepted",
   "card_id": "01J9ZK4Q7W…",
   "page_url": "https://licensed.spcfz.ae/c/7Hk2bQpX9sLm3nVd8rTy1w",
-  "ready": false
+  "ready": true
 }
 ```
 
-Put `page_url` into the customer's licence-issued email. The page is ready a
-few seconds after we answer; if a customer opens it sooner, it shows a short
-"preparing your card" screen and refreshes itself.
+Put `page_url` into the customer's licence-issued email. The page is ready as
+soon as we answer: the customer builds and downloads the card in the browser.
 
 Sending the same licence twice is safe. You get the same `page_url` back.
 Sending the same licence with corrected details updates the card behind the

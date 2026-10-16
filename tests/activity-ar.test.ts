@@ -1,13 +1,12 @@
 // The optional Arabic activity name (migration 0003): mapping, validation, hashing, the card and the page.
 import { describe, expect, it } from 'vitest';
 import { Hono } from 'hono';
-import type { AppEnv, CardRow, CanonicalFields } from '../src/types.js';
+import type { AppEnv, CanonicalFields } from '../src/types.js';
 import { intakeRoutes } from '../src/intake/routes.js';
 import { mapPayload } from '../src/intake/mapper.js';
 import { validateCanonical } from '../src/intake/validate.js';
 import { hashFields } from '../src/intake/upsert.js';
 import { findCardByLicence } from '../src/db/cards.js';
-import { cardText } from '../src/render/template.js';
 import { createTestEnv } from './env.js';
 
 const AR = 'نشر الكتب';
@@ -65,26 +64,9 @@ describe('hashFields', () => {
   it('changes when only the Arabic activity changes', async () => {
     const f: CanonicalFields = {
       licence_number: 'SPC-1', company_name_en: 'Nimbus FZE', company_name_ar: null, licence_type: null,
-      activity_category: EN, activity_category_ar: null, issued_on: '2026-10-16', preferred_language: 'en',
+      activity_category: EN, activity_category_ar: null, founder_name_en: null, founder_name_ar: null, issued_on: '2026-10-16', preferred_language: 'en',
     };
     expect(await hashFields(f)).not.toBe(await hashFields({ ...f, activity_category_ar: AR }));
-  });
-});
-
-describe('server-rendered card text', () => {
-  const full = (o: Partial<CardRow>): CardRow => ({
-    id: 'x', token: 'AbCdEfGhIjKlMnOpQrStUv', licence_number: 'SPC-1', is_test: false, company_name_en: 'Nimbus FZE',
-    company_name_ar: null, licence_type: null, activity_category: EN, activity_category_ar: null, issued_on: '2026-10-16',
-    preferred_language: 'en', content_hash: 'h', status: 'ready', render_error: null, source: 'manual', template_version: 'placeholder-1',
-    created_at: '', updated_at: '', rendered_at: null, expires_at: null, ...o,
-  });
-
-  it('the Arabic card shows the Arabic activity, the English card the English one', () => {
-    expect(cardText(full({ activity_category_ar: AR }), 'ar').category).toBe(AR);
-    expect(cardText(full({ activity_category_ar: AR }), 'en').category).toBe(EN);
-  });
-  it('the Arabic card falls back to the English activity', () => {
-    expect(cardText(full({}), 'ar').category).toBe(EN);
   });
 });
 
@@ -110,7 +92,6 @@ describe('intake end to end', () => {
     expect(after?.activity_category_ar).toBe(AR);
     expect(after?.token).toBe(before?.token);
     expect(after?.content_hash).not.toBe(before?.content_hash);
-    expect(env.jobs()).toHaveLength(2);
   });
 });
 

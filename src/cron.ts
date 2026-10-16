@@ -1,9 +1,8 @@
 // Daily housekeeping (ARCHITECTURE section 10, C3, C4, C8). Wired to the cron trigger in src/index.ts.
 import type { CardRow, Env } from './types.js';
 import {
-  compactOldMetrics, deleteCard, getIntSetting, listExpiredCandidates, listTestCardsOlderThan, purgeRawBodies, setCardStatus,
+  compactOldMetrics, deleteCard, expireCard, getIntSetting, listExpiredCandidates, listTestCardsOlderThan, purgeRawBodies,
 } from './db/cards.js';
-import { deleteCardImages, purgeImageCache } from './storage.js';
 import { addDays, nowIso } from './util/time.js';
 
 export interface HousekeepingSummary {
@@ -15,16 +14,6 @@ export interface HousekeepingSummary {
 
 const BATCH = 200;
 const MAX_LOOPS = 10;
-
-/** Drop the eight images and evict them from the edge. A cache failure is logged, never fatal. */
-async function removeImages(env: Env, token: string): Promise<void> {
-  await deleteCardImages(env.BUCKET, token);
-  try {
-    await purgeImageCache(env, token);
-  } catch (err) {
-    console.warn('housekeeping: cache purge failed', { token, message: err instanceof Error ? err.message : String(err) });
-  }
-}
 
 /** Run `fn` over successive batches of `list()` until a short or empty batch, at most MAX_LOOPS times. Returns successes. */
 async function drain(list: () => Promise<CardRow[]>, fn: (card: CardRow) => Promise<void>, label: string): Promise<number> {
@@ -55,24 +44,22 @@ export async function runHousekeeping(env: Env, now: Date = new Date()): Promise
   // 1. Raw request bodies kept on the test route (C4).
   summary.rawBodiesPurged = await purgeRawBodies(env.DB, nowStr);
 
-  // 2. Test cards older than the test retention period, with their images (C3).
+  // 2. Test cards older than the test retention period (C3).
   const testDays = await getIntSetting(env.DB, 'test_retention_days', 30);
   const testCutoff = addDays(nowStr, -testDays);
   summary.testCardsDeleted = await drain(
     () => listTestCardsOlderThan(env.DB, testCutoff, BATCH),
     async (card) => {
-      await removeImages(env, card.token);
       await deleteCard(env.DB, card.id);
     },
     'test card delete',
   );
 
-  // 3. Live cards past expires_at: images go, the row stays so the page can say "expired" (C8).
+  // 3. Live cards past expires_at: the founder's name is cleared, the row stays so the page can say "expired" (C8).
   summary.cardsExpired = await drain(
     () => listExpiredCandidates(env.DB, nowStr, BATCH),
     async (card) => {
-      await removeImages(env, card.token);
-      await setCardStatus(env.DB, card.id, 'expired');
+      await expireCard(env.DB, card.id);
     },
     'expire',
   );

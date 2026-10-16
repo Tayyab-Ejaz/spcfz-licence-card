@@ -12,7 +12,7 @@ export function h(strings: TemplateStringsArray, ...values: unknown[]): RawHtml 
 
 export const EMPTY = raw('');
 
-export type NavKey = 'dashboard' | 'cards' | 'events' | 'create' | 'import' | 'rerender' | 'settings';
+export type NavKey = 'dashboard' | 'cards' | 'events' | 'create' | 'import' | 'settings';
 
 const NAV: ReadonlyArray<{ key: NavKey; href: string; label: string }> = [
   { key: 'dashboard', href: '/admin', label: 'Dashboard' },
@@ -20,7 +20,6 @@ const NAV: ReadonlyArray<{ key: NavKey; href: string; label: string }> = [
   { key: 'events', href: '/admin/events', label: 'Events' },
   { key: 'create', href: '/admin/create', label: 'Create' },
   { key: 'import', href: '/admin/import', label: 'Import CSV' },
-  { key: 'rerender', href: '/admin/rerender', label: 'Re-render' },
   { key: 'settings', href: '/admin/settings', label: 'Settings' },
 ];
 

@@ -2,19 +2,15 @@
 // SQLite database and image folder; BASE_URL is https://licensed.test (tests/env.ts).
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Hono } from 'hono';
-import type { AppEnv, CanonicalFields, CardRow, CardStatus, Lang, Size } from '../src/types.js';
-import { LANGS, SIZE_NAMES } from '../src/types.js';
-import { IMAGE_CACHE_CONTROL, pageRoutes } from '../src/page/routes.js';
+import type { AppEnv, CanonicalFields, CardRow, CardStatus } from '../src/types.js';
+import { pageRoutes } from '../src/page/routes.js';
 import { getCardById, insertCard, metricsForCard, setCardStatus } from '../src/db/cards.js';
-import { putImage } from '../src/storage.js';
 import { randomToken } from '../src/util/crypto.js';
 import { flushBackground } from '../src/util/background.js';
-import { imageVersion } from '../src/storage.js';
 import { createTestEnv } from './env.js';
 
 const env = createTestEnv();
 const app = new Hono<AppEnv>().route('/', pageRoutes);
-const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 73, 72, 68, 82]);
 
 let seq = 0;
 
@@ -37,23 +33,20 @@ async function seedCard(o: SeedOptions = {}): Promise<CardRow> {
       licence_type: 'Commercial',
       activity_category: 'Publishing',
       activity_category_ar: null,
+      founder_name_en: null,
+      founder_name_ar: null,
       issued_on: '2026-10-01',
       preferred_language: 'en',
       ...o.fields,
     },
     content_hash: `hash-${seq}`,
     source: 'manual',
-    template_version: 'placeholder-1',
     expires_at: o.expires_at ?? null,
   });
   if (o.status && o.status !== 'pending') await setCardStatus(env.DB, created.id, o.status);
   const card = await getCardById(env.DB, created.id);
   if (!card) throw new Error('seed: card not found after insert');
   return card;
-}
-
-async function putAllImages(token: string): Promise<void> {
-  for (const lang of LANGS) for (const size of SIZE_NAMES) await putImage(env.BUCKET, token, lang, size, PNG);
 }
 
 async function call(path: string, init?: RequestInit): Promise<{ res: Response }> {
@@ -72,7 +65,6 @@ beforeEach(async () => {
     env.DB.prepare('DELETE FROM metrics'),
     env.DB.prepare('DELETE FROM events'),
     env.DB.prepare('DELETE FROM cards'),
-    env.DB.prepare('DELETE FROM jobs'),
   ]);
 });
 
@@ -116,7 +108,7 @@ describe('GET /c/:token', () => {
     const body = await (await call(`/c/${card.token}`)).res.text();
     expect(embedded(body)).toEqual({
       token: card.token, company_en: 'Nimbus Publishing FZE', company_ar: null, licence_number: card.licence_number,
-      issued_on: '2026-10-01', activity_en: 'Publishing', activity_ar: null, lang: 'en', is_test: false,
+      issued_on: '2026-10-01', activity_en: 'Publishing', activity_ar: null, name_en: null, name_ar: null, lang: 'en', is_test: false,
     });
   });
 
@@ -197,95 +189,11 @@ describe('GET /c/:token', () => {
   });
 });
 
-describe('GET /c/:token/status', () => {
-  it('returns the status as JSON with no-store', async () => {
-    const card = await seedCard();
-    const { res } = await call(`/c/${card.token}/status`);
-    expect(res.status).toBe(200);
-    expect(res.headers.get('Cache-Control')).toBe('no-store');
-    expect(await res.json()).toEqual({ status: 'pending' });
-    await setCardStatus(env.DB, card.id, 'ready');
-    expect(await (await call(`/c/${card.token}/status`)).res.json()).toEqual({ status: 'ready' });
-  });
-
-  it('404s a bad or unknown token', async () => {
-    expect((await call('/c/bad/status')).res.status).toBe(404);
-    expect((await call(`/c/${randomToken()}/status`)).res.status).toBe(404);
-  });
-});
-
-describe('GET /c/:token/:file', () => {
-  it('serves the PNG from R2 with image headers and an ETag', async () => {
+describe('removed server-render routes', () => {
+  it('no longer serve status JSON or images', async () => {
     const card = await seedCard({ status: 'ready' });
-    await putImage(env.BUCKET, card.token, 'en', 'square', PNG);
-    const { res } = await call(`/c/${card.token}/en-square.png`);
-    await flushBackground();
-    expect(res.status).toBe(200);
-    expect(res.headers.get('Content-Type')).toBe('image/png');
-    expect(res.headers.get('Cache-Control')).toBe(IMAGE_CACHE_CONTROL);
-    expect(res.headers.get('Cache-Control')).toBe('public, max-age=31536000, immutable');
-    expect(res.headers.get('Content-Length')).toBe(String(PNG.byteLength));
-    expect(res.headers.get('ETag')).toBeTruthy();
-    expect(res.headers.get('Content-Disposition')).toBeNull();
-    expect(new Uint8Array(await res.arrayBuffer())).toEqual(PNG);
-  });
-
-  it('answers 304 to a matching If-None-Match and ignores the version query', async () => {
-    const card = await seedCard({ status: 'ready' });
-    await putImage(env.BUCKET, card.token, 'en', 'square', PNG);
-    const first = await call(`/c/${card.token}/en-square.png?v=${imageVersion(card)}`);
-    expect(first.res.status).toBe(200);
-    const etag = first.res.headers.get('ETag') ?? '';
-    expect(etag).toMatch(/^"[0-9a-f]{40}"$/);
-    const second = await call(`/c/${card.token}/en-square.png?v=stale`, { headers: { 'If-None-Match': etag } });
-    expect(second.res.status).toBe(304);
-    expect(second.res.headers.get('ETag')).toBe(etag);
-    expect(second.res.headers.get('Cache-Control')).toBe(IMAGE_CACHE_CONTROL);
-  });
-
-  it('404s when the object is missing, the name is not a card image, or the card is expired', async () => {
-    const card = await seedCard({ status: 'ready' });
-    expect((await call(`/c/${card.token}/ar-story.png`)).res.status).toBe(404);
-    expect((await call(`/c/${card.token}/en-huge.png`)).res.status).toBe(404);
-    expect((await call(`/c/${card.token}/en-square.jpg`)).res.status).toBe(404);
-    expect((await call(`/c/${randomToken()}/en-square.png`)).res.status).toBe(404);
-    await putImage(env.BUCKET, card.token, 'en', 'square', PNG);
-    await setCardStatus(env.DB, card.id, 'expired');
+    expect((await call(`/c/${card.token}/status`)).res.status).toBe(404);
     expect((await call(`/c/${card.token}/en-square.png`)).res.status).toBe(404);
-  });
-
-  it('?download=1 adds a sanitised attachment filename and records a download', async () => {
-    const card = await seedCard({ status: 'ready', fields: { company_name_en: 'Nimbus & Co. (Sharjah) FZE' } });
-    await putImage(env.BUCKET, card.token, 'en', 'square', PNG);
-    const { res } = await call(`/c/${card.token}/en-square.png?download=1`);
-    await flushBackground();
-    expect(res.status).toBe(200);
-    expect(res.headers.get('Content-Disposition')).toBe('attachment; filename="Nimbus-Co-Sharjah-FZE-en-square.png"');
-    // A download is counted on every click, so it must never come from a shared cache.
-    expect(res.headers.get('Cache-Control')).toBe('private, no-store');
-    expect(await metricsForCard(env.DB, card.id)).toEqual([{ kind: 'download', lang: 'en', size: 'square', network: '', count: 1 }]);
-  });
-
-  it('does not count downloads of test cards', async () => {
-    const card = await seedCard({ status: 'ready', is_test: true });
-    await putImage(env.BUCKET, card.token, 'ar', 'story', PNG);
-    const { res } = await call(`/c/${card.token}/ar-story.png?download=1`);
-    await flushBackground();
-    expect(res.status).toBe(200);
-    expect(res.headers.get('Content-Disposition')).toContain('attachment');
-    expect(await metricsForCard(env.DB, card.id)).toEqual([]);
-  });
-
-  it('serves every lang/size combination that exists', async () => {
-    const card = await seedCard({ status: 'ready' });
-    await putAllImages(card.token);
-    for (const lang of LANGS as readonly Lang[]) {
-      for (const size of SIZE_NAMES as readonly Size[]) {
-        const { res } = await call(`/c/${card.token}/${lang}-${size}.png`);
-        await flushBackground();
-        expect(res.status).toBe(200);
-      }
-    }
   });
 });
 
@@ -341,3 +249,13 @@ describe('POST /c/:token/m', () => {
     expect(await metricsForCard(env.DB, card.id)).toEqual([]);
   });
 });
+
+describe('founder name in the studio data', () => {
+  it('passes the founder name in both languages to the studio', async () => {
+    const card = await seedCard({ status: 'ready', fields: { founder_name_en: 'Mariam Fawzy', founder_name_ar: 'مريم فوزي' } });
+    const body = await (await call(`/c/${card.token}`)).res.text();
+    const m = /<script type="application\/json" id="card-data">([\s\S]*?)<\/script>/.exec(body);
+    expect(JSON.parse(m?.[1] ?? '{}')).toMatchObject({ name_en: 'Mariam Fawzy', name_ar: 'مريم فوزي' });
+  });
+});
+

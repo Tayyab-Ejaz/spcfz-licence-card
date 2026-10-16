@@ -25,7 +25,7 @@ function rowToEvent(r: RawEvent): EventRow {
 }
 
 const CARD_COLS =
-  'id, token, licence_number, is_test, company_name_en, company_name_ar, licence_type, activity_category, activity_category_ar, issued_on, ' +
+  'id, token, licence_number, is_test, company_name_en, company_name_ar, licence_type, activity_category, activity_category_ar, founder_name_en, founder_name_ar, issued_on, ' +
   'preferred_language, content_hash, status, render_error, source, template_version, created_at, updated_at, rendered_at, expires_at';
 
 // ------------------------------------------------------------------ cards
@@ -54,7 +54,6 @@ export interface NewCard {
   fields: CanonicalFields;
   content_hash: string;
   source: CardSource;
-  template_version: string;
   expires_at: string | null;
 }
 
@@ -66,13 +65,13 @@ export async function insertCard(db: D1Database, c: NewCard): Promise<CardRow> {
     .prepare(
       `INSERT INTO cards (id, token, licence_number, is_test, company_name_en, company_name_ar, licence_type, activity_category,
          issued_on, preferred_language, content_hash, status, render_error, source, template_version, created_at, updated_at, rendered_at, expires_at,
-         activity_category_ar)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 'pending', NULL, ?12, ?13, ?14, ?14, NULL, ?15, ?16)`,
+         activity_category_ar, founder_name_en, founder_name_ar)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 'ready', NULL, ?12, NULL, ?13, ?13, NULL, ?14, ?15, ?16, ?17)`,
     )
     .bind(
       id, c.token, f.licence_number, c.is_test ? 1 : 0, f.company_name_en, f.company_name_ar, f.licence_type,
-      f.activity_category, f.issued_on, f.preferred_language, c.content_hash, c.source, c.template_version, ts, c.expires_at,
-      f.activity_category_ar,
+      f.activity_category, f.issued_on, f.preferred_language, c.content_hash, c.source, ts, c.expires_at,
+      f.activity_category_ar, f.founder_name_en, f.founder_name_ar,
     )
     .run();
   const row = await getCardById(db, id);
@@ -80,20 +79,21 @@ export async function insertCard(db: D1Database, c: NewCard): Promise<CardRow> {
   return row;
 }
 
-/** Replace the canonical fields, reset status to pending. The token and URL never change (ARCHITECTURE C1). */
+/** Replace the canonical fields; the card is ready again (it may have expired). The token and URL never change (C1). */
 export async function updateCardFields(
   db: D1Database, id: string, fields: CanonicalFields, content_hash: string, source: CardSource,
 ): Promise<void> {
   await db
     .prepare(
       `UPDATE cards SET licence_number = ?2, company_name_en = ?3, company_name_ar = ?4, licence_type = ?5, activity_category = ?6,
-         issued_on = ?7, preferred_language = ?8, content_hash = ?9, source = ?10, status = 'pending', render_error = NULL, updated_at = ?11,
-         activity_category_ar = ?12
+         issued_on = ?7, preferred_language = ?8, content_hash = ?9, source = ?10, status = 'ready', render_error = NULL, updated_at = ?11,
+         activity_category_ar = ?12, founder_name_en = ?13, founder_name_ar = ?14
        WHERE id = ?1`,
     )
     .bind(
       id, fields.licence_number, fields.company_name_en, fields.company_name_ar, fields.licence_type, fields.activity_category,
       fields.issued_on, fields.preferred_language, content_hash, source, nowIso(), fields.activity_category_ar,
+      fields.founder_name_en, fields.founder_name_ar,
     )
     .run();
 }
@@ -120,6 +120,14 @@ export async function setCardStatus(db: D1Database, id: string, status: CardStat
     sets.push(`template_version = ?${binds.length}`);
   }
   await db.prepare(`UPDATE cards SET ${sets.join(', ')} WHERE id = ?1`).bind(...binds).run();
+}
+
+/** Expiry: the page then says the card is no longer available, and the founder's name is no longer kept. */
+export async function expireCard(db: D1Database, id: string): Promise<void> {
+  await db
+    .prepare("UPDATE cards SET status = 'expired', founder_name_en = NULL, founder_name_ar = NULL, updated_at = ?2 WHERE id = ?1")
+    .bind(id, nowIso())
+    .run();
 }
 
 export async function setCardExpiry(db: D1Database, id: string, expires_at: string | null): Promise<void> {

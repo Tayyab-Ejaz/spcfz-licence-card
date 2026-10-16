@@ -1,15 +1,12 @@
 // Daily housekeeping (ARCHITECTURE section 10): raw bodies, old test cards, expired live cards, metric compaction.
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { CanonicalFields, CardRow } from '../src/types.js';
-import { LANGS, SIZE_NAMES } from '../src/types.js';
 import { runHousekeeping } from '../src/cron.js';
 import { bumpMetric, getCardById, getEvent, insertCard, insertEvent, metricsForCard } from '../src/db/cards.js';
-import { imageKey, putImage } from '../src/storage.js';
 import { randomToken } from '../src/util/crypto.js';
 import { createTestEnv } from './env.js';
 
 const env = createTestEnv();
-const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 73, 72, 68, 82]);
 const DAY = 24 * 3600 * 1000;
 
 let seq = 0;
@@ -26,13 +23,14 @@ async function seedCard(o: { is_test?: boolean; expires_at?: string | null; fiel
       licence_type: null,
       activity_category: null,
       activity_category_ar: null,
+      founder_name_en: null,
+      founder_name_ar: null,
       issued_on: '2026-10-01',
       preferred_language: 'en',
       ...o.fields,
     },
     content_hash: `hash-${seq}`,
     source: 'webhook',
-    template_version: 'placeholder-1',
     expires_at: o.expires_at ?? null,
   });
   const card = await getCardById(env.DB, created.id);
@@ -40,22 +38,11 @@ async function seedCard(o: { is_test?: boolean; expires_at?: string | null; fiel
   return card;
 }
 
-async function putAllImages(token: string): Promise<void> {
-  for (const lang of LANGS) for (const size of SIZE_NAMES) await putImage(env.BUCKET, token, lang, size, PNG);
-}
-
-async function imagesPresent(token: string): Promise<number> {
-  let n = 0;
-  for (const lang of LANGS) for (const size of SIZE_NAMES) if (await env.BUCKET.head(imageKey(token, lang, size))) n += 1;
-  return n;
-}
-
 beforeEach(async () => {
   await env.DB.batch([
     env.DB.prepare('DELETE FROM metrics'),
     env.DB.prepare('DELETE FROM events'),
     env.DB.prepare('DELETE FROM cards'),
-    env.DB.prepare('DELETE FROM jobs'),
   ]);
 });
 
@@ -77,25 +64,20 @@ describe('runHousekeeping', () => {
     expect((await getEvent(env.DB, fresh))?.raw_body).toBe('{"fresh":true}');
   });
 
-  it('deletes test cards older than the retention period together with their images', async () => {
+  it('deletes test cards older than the retention period', async () => {
     const test = await seedCard({ is_test: true });
-    await putAllImages(test.token);
     const live = await seedCard({ expires_at: new Date(Date.now() + 700 * DAY).toISOString() });
-    await putAllImages(live.token);
 
     // Run as if 40 days have passed: the test card (created now) is past the 30-day default.
     const summary = await runHousekeeping(env, new Date(Date.now() + 40 * DAY));
     expect(summary.testCardsDeleted).toBe(1);
     expect(await getCardById(env.DB, test.id)).toBeNull();
-    expect(await imagesPresent(test.token)).toBe(0);
     // The live card is not a test card and has not expired.
-    expect((await getCardById(env.DB, live.id))?.status).toBe('pending');
-    expect(await imagesPresent(live.token)).toBe(8);
+    expect((await getCardById(env.DB, live.id))?.status).toBe('ready');
   });
 
-  it('marks live cards past expires_at as expired and deletes their images, keeping the row', async () => {
-    const gone = await seedCard({ expires_at: new Date(Date.now() - DAY).toISOString() });
-    await putAllImages(gone.token);
+  it("marks live cards past expires_at as expired and clears the founder's name, keeping the row", async () => {
+    const gone = await seedCard({ expires_at: new Date(Date.now() - DAY).toISOString(), fields: { founder_name_en: 'Mariam Fawzy', founder_name_ar: 'مريم فوزي' } });
     await bumpMetric(env.DB, { card_id: gone.id, kind: 'view', lang: 'en' }, '2026-10-01');
 
     const summary = await runHousekeeping(env);
@@ -103,7 +85,8 @@ describe('runHousekeeping', () => {
     const after = await getCardById(env.DB, gone.id);
     expect(after?.status).toBe('expired');
     expect(after?.token).toBe(gone.token);
-    expect(await imagesPresent(gone.token)).toBe(0);
+    expect(after?.founder_name_en).toBeNull();
+    expect(after?.founder_name_ar).toBeNull();
     expect(await metricsForCard(env.DB, gone.id)).toHaveLength(1);
 
     // Already expired: not counted again.
@@ -114,16 +97,12 @@ describe('runHousekeeping', () => {
     const live = await seedCard({ expires_at: new Date(Date.now() + 700 * DAY).toISOString() });
     const test = await seedCard({ is_test: true });
     const noExpiry = await seedCard({ expires_at: null });
-    await putAllImages(live.token);
-    await putAllImages(test.token);
 
     const summary = await runHousekeeping(env);
     expect(summary).toEqual({ rawBodiesPurged: 0, testCardsDeleted: 0, cardsExpired: 0, metricRowsCompacted: 0 });
-    expect((await getCardById(env.DB, live.id))?.status).toBe('pending');
+    expect((await getCardById(env.DB, live.id))?.status).toBe('ready');
     expect(await getCardById(env.DB, test.id)).not.toBeNull();
-    expect((await getCardById(env.DB, noExpiry.id))?.status).toBe('pending');
-    expect(await imagesPresent(live.token)).toBe(8);
-    expect(await imagesPresent(test.token)).toBe(8);
+    expect((await getCardById(env.DB, noExpiry.id))?.status).toBe('ready');
   });
 
   it('compacts daily metric rows older than 13 months into monthly rows', async () => {

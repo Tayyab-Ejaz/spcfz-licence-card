@@ -13,6 +13,9 @@ export const LIMITS = {
   licence_type: { max: 60 },
   activity_category: { max: 80 },
   activity_category_ar: { max: 80 },
+  // Generous: a long legal name must not reject the licence. The studio shortens it for the card.
+  founder_name_en: { max: 120 },
+  founder_name_ar: { max: 120 },
 } as const;
 
 /** Strings and finite numbers are text; everything else is not. */
@@ -100,6 +103,8 @@ export function validateCanonical(input: Record<string, unknown>, opts: { today?
   const licence_type = optionalText(input, 'licence_type', LIMITS.licence_type.max, errors);
   const activity_category = optionalText(input, 'activity_category', LIMITS.activity_category.max, errors);
   const activity_category_ar = optionalText(input, 'activity_category_ar', LIMITS.activity_category_ar.max, errors);
+  const founder_name_en = optionalText(input, 'founder_name_en', LIMITS.founder_name_en.max, errors);
+  const founder_name_ar = optionalText(input, 'founder_name_ar', LIMITS.founder_name_ar.max, errors);
 
   // issued_on: optional, any date parseDate accepts, default today in Asia/Dubai.
   let issued_on = opts.today ?? todayInDubai();
@@ -129,6 +134,8 @@ export function validateCanonical(input: Record<string, unknown>, opts: { today?
       licence_type,
       activity_category,
       activity_category_ar,
+      founder_name_en,
+      founder_name_ar,
       issued_on,
       preferred_language,
     },

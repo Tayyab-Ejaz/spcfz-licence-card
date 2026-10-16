@@ -36,7 +36,7 @@ describe('backupDatabase', () => {
     const copy = SqliteDb.open(result.file);
     try {
       expect(copy.raw.prepare("SELECT value FROM settings WHERE key = 'marker'").get()).toEqual({ value: 'present' });
-      expect(copy.raw.prepare('SELECT COUNT(*) AS n FROM _migrations').get()).toEqual({ n: 3 });
+      expect(copy.raw.prepare('SELECT COUNT(*) AS n FROM _migrations').get()).toEqual({ n: 4 });
     } finally {
       copy.close();
     }

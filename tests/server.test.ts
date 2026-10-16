@@ -5,7 +5,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { ServerConfig } from '../src/platform/config.js';
 import { appliedMigrations } from '../src/platform/migrate.js';
-import { DB_FILE_NAME, IMAGES_DIR_NAME, startServer } from '../src/server.js';
+import { DB_FILE_NAME, startServer } from '../src/server.js';
 import type { RunningServer } from '../src/server.js';
 import type { TrustProxy } from '../src/types.js';
 import { TEST_VARS, tempDir } from './env.js';
@@ -71,11 +71,9 @@ describe('server (TRUST_PROXY=local-proxy, the production mode)', () => {
     expect(await card.text()).toContain('This link is not valid');
   });
 
-  it('lays out DATA_DIR: the SQLite file, the images folder and every migration', () => {
+  it('lays out DATA_DIR: the SQLite file and every migration', () => {
     expect(existsSync(path.join(dir, DB_FILE_NAME))).toBe(true);
-    expect(existsSync(path.join(dir, IMAGES_DIR_NAME))).toBe(true);
-    expect(appliedMigrations(server.db)).toEqual(['0001_init.sql', '0002_jobs.sql', '0003_activity_ar.sql']);
-    expect(server.queue.enabled).toBe(true);
+    expect(appliedMigrations(server.db)).toEqual(['0001_init.sql', '0002_jobs.sql', '0003_activity_ar.sql', '0004_founder_name.sql']);
     expect(server.scheduler).toBeNull();
   });
 
@@ -97,7 +95,6 @@ describe('server (TRUST_PROXY=local-proxy, the production mode)', () => {
     // The event log saw the visitor's address, not the proxy's.
     const row = server.db.raw.prepare('SELECT source_ip, http_status FROM events ORDER BY received_at DESC LIMIT 1').get();
     expect(row).toEqual({ source_ip: ALLOWED, http_status: 401 });
-    expect(server.queue.listJobs()).toEqual([]);
   });
 });
 

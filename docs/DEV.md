@@ -6,7 +6,8 @@ Ported on 15 and 16 October 2026 from Cloudflare Workers to a Node 22
 service in Docker (docs/PORT-TO-NODE.md). Typecheck clean, all tests
 passing, `npm run build` working, and a local end-to-end run rendered all
 eight images in about six seconds. Live on 13.206.34.102 since 16 October
-2026 (docs/RUNBOOK.md).
+2026 (docs/RUNBOOK.md). The same day the personal page became the studio and
+the server-side render (queue, Chromium, image storage) was retired.
 
 ## Toolchain
 
@@ -19,8 +20,8 @@ export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm use 22
 npm 12 runs install scripts only for packages listed under `allowScripts`
 in `package.json` (esbuild, better-sqlite3, puppeteer). After a version bump
 of one of them: `npm install-scripts approve <pkg>` then `npm rebuild <pkg>`.
-puppeteer's install script downloads Chrome for Testing into
-`~/.cache/puppeteer`; that is the browser used on this Mac.
+puppeteer (a development dependency) downloads Chrome for Testing into
+`~/.cache/puppeteer`; only the design comparison and browser checks use it.
 
 ```
 npm install
@@ -45,14 +46,12 @@ The answer's `page_url` opens the card a few seconds later.
 | Path | Owns |
 |---|---|
 | `src/server.ts` | process entry: config, migrations, queue worker, scheduler, HTTP |
-| `src/platform/` | SQLite database, filesystem bucket, SQLite queue, config, migrations, scheduler, backup, client address, Cloudflare ranges |
+| `src/platform/` | SQLite database, config, migrations, scheduler, backup, client address, Cloudflare ranges |
 | `src/intake` | webhook checks, field mapping, validation, idempotent upsert |
-| `src/render` | queue consumer, browser session, HTML template, fonts |
 | `src/page` | personal page, image delivery, status, metric beacon |
 | `src/admin` | Cloudflare Access verification and staff screens |
 | `src/db` | every SQL statement |
 | `src/util` | tokens, hashing, HTML escaping, dates, IP allowlist, CSV, background tasks |
-| `templates/` | placeholder design and embedded fonts |
 | `migrations/` | SQLite schema, applied at startup |
 | `deploy/` | Dockerfile companions: run script, env example, Apache site, Cloudflare ranges |
 | `tools/deploy.sh` | deployment from this Mac, one subcommand per approval |

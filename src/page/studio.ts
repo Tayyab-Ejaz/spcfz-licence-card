@@ -26,7 +26,7 @@ export function studioManifest(): StudioManifest {
   return cached;
 }
 
-/** What the client reads from <script id="card-data">. Only what the card shows; no personal data. */
+/** What the client reads from <script id="card-data">. Only what the card shows. */
 export interface StudioCardData {
   token: string;
   company_en: string;
@@ -35,6 +35,9 @@ export interface StudioCardData {
   issued_on: string;
   activity_en: string | null;
   activity_ar: string | null;
+  /** The founder's name from the ERP, pre-filled on the card. */
+  name_en: string | null;
+  name_ar: string | null;
   lang: 'en' | 'ar';
   is_test: boolean;
 }
@@ -48,6 +51,8 @@ export function cardData(card: CardRow): StudioCardData {
     issued_on: card.issued_on,
     activity_en: card.activity_category,
     activity_ar: card.activity_category_ar,
+    name_en: card.founder_name_en,
+    name_ar: card.founder_name_ar,
     lang: card.preferred_language,
     is_test: card.is_test,
   };

@@ -9,7 +9,7 @@ is free.
 | What | Where |
 |---|---|
 | Container | `spcfz-licence-card`, image `spcfz-licence-card:<git sha>` |
-| State | `/opt/spcfz-licence-card/data` (SQLite, images, daily backups) |
+| State | `/opt/spcfz-licence-card/data` (SQLite and its daily backups) |
 | Settings and secrets | `/opt/spcfz-licence-card/licence-card.env`, mode 600 |
 | Releases | `/opt/spcfz-licence-card/releases/<sha>/` |
 | Apache site | `/www/server/panel/vhost/apache/licensed.spcfz.ae.conf` |
@@ -54,11 +54,10 @@ vhost was installed.
 ssh root@13.206.34.102 "docker exec -i -w /app spcfz-licence-card node --input-type=module" < tools/test-card.mjs
 ```
 
-Creates one card for "Preview Publishing FZE" with a TEST ribbon, renders it
-inside the container and prints its page link. Running it again updates the
-same card. Test cards are deleted automatically after 30 days. The service's
-own render worker wakes only for jobs it queues itself, which is why the
-script renders the card directly.
+Creates one test card for "Preview Publishing FZE" (founder Mariam Fawzy) and
+prints its page link. Running it again updates the same card. Downloads of
+test cards carry a TEST watermark, and test cards are deleted automatically
+after 30 days. `TEST_LANG=ar` makes the page open with the Arabic card.
 
 ## Logs, restart, status
 
@@ -125,7 +124,7 @@ a deploy. Counters live in memory and reset on restart.
 
 The host has no backup, by decision. The daily housekeeping at 05:15 Dubai
 time writes `data/backups/licence-card-YYYY-MM-DD.sqlite` and keeps seven.
-Images can be regenerated from the database with Admin, Re-render.
+The service stores no images: customers build their cards in the browser.
 
 ## A licence never got a card
 
@@ -133,12 +132,9 @@ Images can be regenerated from the database with Admin, Re-render.
 2. If the payload was rejected, fix `FIELD_MAP` in the env file, restart, and Replay the event.
 3. If no event exists, the ERP never reached us. Create the card in Admin, Create, or import a CSV.
 
-## A card is stuck on "preparing"
-
-1. Admin, Cards, status pending or failed. Open the card, Regenerate.
-2. `docker logs` for the card id. Usual causes: Chromium crashed, or the container hit its memory cap.
-
 ## Update the design
 
-New template under `templates/`, bump `TEMPLATE_VERSION` in the env file,
-deploy, then Admin, Re-render filtered by the old version.
+The studio is built from SPC's Claude Design exports. Follow docs/DEV.md,
+"Updating the design": re-export, run tools/extract-design.mjs, build, run
+the pixel comparison, commit, then deploy as above. Cards already issued pick
+up the new design the next time the customer opens the page.

@@ -53,7 +53,6 @@ describe('readConfig', () => {
       expect(r.config.vars.PORT).toBe(DEFAULT_PORT);
       expect(r.config.vars.TRUST_PROXY).toBe(DEFAULT_TRUST_PROXY);
       expect(r.config.vars.FIELD_MAP).toBe('{}');
-      expect(r.config.vars.TEMPLATE_VERSION).toBe('placeholder-1');
       expect(r.config.vars.ERP_IP_ALLOWLIST).toBe('');
       expect(r.config.vars.WEBHOOK_SECRET_CURRENT).toBeUndefined();
       expect(r.config.warnings.some((w) => w.includes('ERP_IP_ALLOWLIST'))).toBe(true);
@@ -75,10 +74,6 @@ describe('readConfig', () => {
     expect(readConfig({ ...MINIMAL, TRUST_PROXY: 'yes' }).ok).toBe(false);
     expect(readConfig({ ...MINIMAL, BASE_URL: 'ftp://x' }).ok).toBe(false);
     expect(readConfig({ ...MINIMAL, BASE_URL: 'licensed.spcfz.ae' }).ok).toBe(false);
-    expect(readConfig({ ...MINIMAL, CHROME_PATH: path.join(dir, 'no-such-chrome') }).ok).toBe(false);
-    const withChrome = readConfig({ ...MINIMAL, CHROME_PATH: process.execPath });
-    expect(withChrome.ok).toBe(true);
-    if (withChrome.ok) expect(withChrome.config.vars.CHROME_PATH).toBe(process.execPath);
   });
 
   it('treats blank values as unset', () => {
