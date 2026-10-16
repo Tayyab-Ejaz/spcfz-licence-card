@@ -89,7 +89,8 @@ export const TEMPLATE_METRICS: Readonly<Record<Size, TemplateMetrics>> = {
 export function cardText(card: CardRow, lang: Lang): CardTextOut {
   const arabicName = (card.company_name_ar ?? '').trim();
   const company = lang === 'ar' && arabicName ? arabicName : card.company_name_en.trim();
-  const category = (card.activity_category ?? '').trim();
+  const arabicCategory = (card.activity_category_ar ?? '').trim();
+  const category = lang === 'ar' && arabicCategory ? arabicCategory : (card.activity_category ?? '').trim();
   const s = STRINGS[lang];
   return {
     company,

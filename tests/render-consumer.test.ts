@@ -34,6 +34,7 @@ async function createCard(is_test = false): Promise<CardRow> {
       company_name_ar: 'نيمبوس للنشر م.م.ح',
       licence_type: null,
       activity_category: 'Publishing',
+      activity_category_ar: null,
       issued_on: '2026-10-15',
       preferred_language: 'en',
     },

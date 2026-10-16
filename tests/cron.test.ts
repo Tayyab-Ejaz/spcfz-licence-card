@@ -25,6 +25,7 @@ async function seedCard(o: { is_test?: boolean; expires_at?: string | null; fiel
       company_name_ar: null,
       licence_type: null,
       activity_category: null,
+      activity_category_ar: null,
       issued_on: '2026-10-01',
       preferred_language: 'en',
       ...o.fields,

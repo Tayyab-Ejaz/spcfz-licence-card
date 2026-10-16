@@ -178,6 +178,7 @@ export interface CanonicalFields {
   company_name_ar: string | null;
   licence_type: string | null;
   activity_category: string | null;
+  activity_category_ar: string | null;  // Arabic card uses it; falls back to activity_category
   issued_on: string;             // YYYY-MM-DD
   preferred_language: Lang;
 }

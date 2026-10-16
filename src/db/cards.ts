@@ -25,7 +25,7 @@ function rowToEvent(r: RawEvent): EventRow {
 }
 
 const CARD_COLS =
-  'id, token, licence_number, is_test, company_name_en, company_name_ar, licence_type, activity_category, issued_on, ' +
+  'id, token, licence_number, is_test, company_name_en, company_name_ar, licence_type, activity_category, activity_category_ar, issued_on, ' +
   'preferred_language, content_hash, status, render_error, source, template_version, created_at, updated_at, rendered_at, expires_at';
 
 // ------------------------------------------------------------------ cards
@@ -65,12 +65,14 @@ export async function insertCard(db: D1Database, c: NewCard): Promise<CardRow> {
   await db
     .prepare(
       `INSERT INTO cards (id, token, licence_number, is_test, company_name_en, company_name_ar, licence_type, activity_category,
-         issued_on, preferred_language, content_hash, status, render_error, source, template_version, created_at, updated_at, rendered_at, expires_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 'pending', NULL, ?12, ?13, ?14, ?14, NULL, ?15)`,
+         issued_on, preferred_language, content_hash, status, render_error, source, template_version, created_at, updated_at, rendered_at, expires_at,
+         activity_category_ar)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 'pending', NULL, ?12, ?13, ?14, ?14, NULL, ?15, ?16)`,
     )
     .bind(
       id, c.token, f.licence_number, c.is_test ? 1 : 0, f.company_name_en, f.company_name_ar, f.licence_type,
       f.activity_category, f.issued_on, f.preferred_language, c.content_hash, c.source, c.template_version, ts, c.expires_at,
+      f.activity_category_ar,
     )
     .run();
   const row = await getCardById(db, id);
@@ -85,12 +87,13 @@ export async function updateCardFields(
   await db
     .prepare(
       `UPDATE cards SET licence_number = ?2, company_name_en = ?3, company_name_ar = ?4, licence_type = ?5, activity_category = ?6,
-         issued_on = ?7, preferred_language = ?8, content_hash = ?9, source = ?10, status = 'pending', render_error = NULL, updated_at = ?11
+         issued_on = ?7, preferred_language = ?8, content_hash = ?9, source = ?10, status = 'pending', render_error = NULL, updated_at = ?11,
+         activity_category_ar = ?12
        WHERE id = ?1`,
     )
     .bind(
       id, fields.licence_number, fields.company_name_en, fields.company_name_ar, fields.licence_type, fields.activity_category,
-      fields.issued_on, fields.preferred_language, content_hash, source, nowIso(),
+      fields.issued_on, fields.preferred_language, content_hash, source, nowIso(), fields.activity_category_ar,
     )
     .run();
 }

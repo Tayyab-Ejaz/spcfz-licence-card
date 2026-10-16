@@ -25,6 +25,7 @@ function makeCard(overrides: Partial<CardRow> = {}): CardRow {
     company_name_ar: ARABIC_NAME,
     licence_type: 'Commercial',
     activity_category: 'Publishing',
+    activity_category_ar: null,
     issued_on: '2026-10-15',
     preferred_language: 'en',
     content_hash: 'hash-1',

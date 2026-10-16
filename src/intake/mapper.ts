@@ -1,4 +1,4 @@
-// Field mapping: turns whatever the ERP sends into the seven canonical keys and nothing else
+// Field mapping: turns whatever the ERP sends into the eight canonical keys and nothing else
 // (ARCHITECTURE section 4 "Field mapping", C5, C6). Pure; no I/O.
 import type { CanonicalFields } from '../types.js';
 import { isBlank, isPlainObject, normaliseKey } from './common.js';
@@ -12,6 +12,7 @@ export const CANONICAL_KEYS: readonly CanonicalKey[] = [
   'company_name_ar',
   'licence_type',
   'activity_category',
+  'activity_category_ar',
   'issued_on',
   'preferred_language',
 ];
@@ -32,6 +33,7 @@ const ALIASES: Readonly<Record<CanonicalKey, readonly string[]>> = {
   company_name_ar: ['company_name_ar', 'company_name_arabic', 'name_ar', 'arabic_name', 'CompanyNameAr'],
   licence_type: ['licence_type', 'license_type', 'type', 'licence_category', 'license_category'],
   activity_category: ['activity_category', 'activity', 'activities', 'business_activity', 'activity_name', 'category'],
+  activity_category_ar: ['activity_category_ar', 'activity_ar', 'activity_name_ar', 'business_activity_ar', 'category_ar'],
   issued_on: ['issued_on', 'issue_date', 'issued_at', 'licence_issue_date', 'license_issue_date', 'date_of_issue'],
   preferred_language: ['preferred_language', 'language', 'lang', 'locale', 'customer_language'],
 };
@@ -39,6 +41,11 @@ const ALIASES: Readonly<Record<CanonicalKey, readonly string[]>> = {
 /** Sub-fields read from an activity object, in order of preference. Compared after `normaliseKey`. */
 const ACTIVITY_NAME_KEYS: readonly string[] = [
   'name_en', 'name', 'Description_EN', 'description', 'activity_name', 'activity', 'title',
+];
+
+/** Arabic sub-fields of the same activity object. Never falls back to the English keys above. */
+const ACTIVITY_NAME_AR_KEYS: readonly string[] = [
+  'name_ar', 'Description_AR', 'description_ar', 'activity_name_ar', 'title_ar',
 ];
 
 /** normalised alias -> canonical key, built once. The canonical names themselves are included. */
@@ -118,12 +125,12 @@ function normalisedIndex(obj: Record<string, unknown>): Map<string, unknown> {
  * Take the first list item; from an object take the first of the known name fields.
  * Scalars pass through untouched; anything else comes back undefined.
  */
-export function unwrapActivity(value: unknown): unknown {
+export function unwrapActivity(value: unknown, nameKeys: readonly string[] = ACTIVITY_NAME_KEYS): unknown {
   let v: unknown = value;
   if (Array.isArray(v)) v = v.length > 0 ? (v as unknown[])[0] : undefined;
   if (isPlainObject(v)) {
     const index = normalisedIndex(v);
-    for (const k of ACTIVITY_NAME_KEYS) {
+    for (const k of nameKeys) {
       const hit = index.get(normaliseKey(k));
       if (!isBlank(hit)) return hit;
     }
@@ -133,7 +140,10 @@ export function unwrapActivity(value: unknown): unknown {
 }
 
 function candidateFor(key: CanonicalKey, raw: unknown): unknown {
-  const v = key === 'activity_category' ? unwrapActivity(raw) : raw;
+  const v =
+    key === 'activity_category' ? unwrapActivity(raw)
+    : key === 'activity_category_ar' ? unwrapActivity(raw, ACTIVITY_NAME_AR_KEYS)
+    : raw;
   return isBlank(v) ? undefined : v;
 }
 
@@ -150,21 +160,39 @@ export function mapPayload(payload: unknown, fieldMapJson: string): Record<strin
   const out: Record<string, unknown> = {};
   if (!isPlainObject(payload)) return out;
 
+  // The raw value the English activity came from: its Arabic sibling (e.g. Description_AR) is read from it.
+  let activitySource: unknown;
+
   for (const [path, key] of parseFieldMap(fieldMapJson)) {
     if (key in out) continue;
-    const candidate = candidateFor(key, getPath(payload, path));
-    if (candidate !== undefined) out[key] = candidate;
+    const raw = getPath(payload, path);
+    const candidate = candidateFor(key, raw);
+    if (candidate !== undefined) {
+      out[key] = candidate;
+      if (key === 'activity_category') activitySource = raw;
+    }
   }
 
   const index = normalisedIndex(payload);
   for (const key of CANONICAL_KEYS) {
     if (key in out) continue;
     for (const alias of ALIASES[key]) {
-      const candidate = candidateFor(key, index.get(normaliseKey(alias)));
+      const raw = index.get(normaliseKey(alias));
+      const candidate = candidateFor(key, raw);
       if (candidate !== undefined) {
         out[key] = candidate;
+        if (key === 'activity_category') activitySource = raw;
         break;
       }
+    }
+  }
+
+  // Only an activity object can carry an Arabic sibling; a plain name (or a list of names) has none.
+  if (!('activity_category_ar' in out) && activitySource !== undefined) {
+    const first: unknown = Array.isArray(activitySource) ? (activitySource as unknown[])[0] : activitySource;
+    if (isPlainObject(first)) {
+      const ar = unwrapActivity(first, ACTIVITY_NAME_AR_KEYS);
+      if (!isBlank(ar)) out['activity_category_ar'] = ar;
     }
   }
 

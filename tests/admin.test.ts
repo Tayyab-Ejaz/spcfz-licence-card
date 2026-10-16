@@ -41,6 +41,7 @@ async function seedCard(o: SeedOptions = {}): Promise<CardRow> {
       company_name_ar: null,
       licence_type: 'Commercial',
       activity_category: 'Publishing',
+      activity_category_ar: null,
       issued_on: '2026-10-01',
       preferred_language: 'en',
       ...o.fields,

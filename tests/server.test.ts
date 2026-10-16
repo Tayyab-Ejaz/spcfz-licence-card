@@ -71,10 +71,10 @@ describe('server (TRUST_PROXY=local-proxy, the production mode)', () => {
     expect(await card.text()).toContain('This link is not valid');
   });
 
-  it('lays out DATA_DIR: the SQLite file, the images folder and both migrations', () => {
+  it('lays out DATA_DIR: the SQLite file, the images folder and every migration', () => {
     expect(existsSync(path.join(dir, DB_FILE_NAME))).toBe(true);
     expect(existsSync(path.join(dir, IMAGES_DIR_NAME))).toBe(true);
-    expect(appliedMigrations(server.db)).toEqual(['0001_init.sql', '0002_jobs.sql']);
+    expect(appliedMigrations(server.db)).toEqual(['0001_init.sql', '0002_jobs.sql', '0003_activity_ar.sql']);
     expect(server.queue.enabled).toBe(true);
     expect(server.scheduler).toBeNull();
   });

@@ -101,6 +101,14 @@ every webhook is rejected with 403, which is visible in Admin, Events.
 Cloudflare publishes new ranges, update the file, regenerate the Apache site
 from it, and reinstall that file with an approved change.
 
+## Rate limits
+
+The app limits each visitor address per minute: 300 page, status and image
+requests, 60 counter posts, and 20 webhook calls from addresses not on the
+ERP allowlist. Visitors over a limit get 429 with Retry-After. The numbers
+are `DEFAULT_RATE_LIMITS` in src/index.ts; changing them is a code change and
+a deploy. Counters live in memory and reset on restart.
+
 ## Backups
 
 The host has no backup, by decision. The daily housekeeping at 05:15 Dubai

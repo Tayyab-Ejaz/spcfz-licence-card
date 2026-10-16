@@ -201,6 +201,7 @@ const CREATE_FIELDS: readonly CreateField[] = [
   { key: 'company_name_ar', label: 'Company name (Arabic)', required: false, type: 'text', hint: 'Optional. The English name is used on the Arabic card when empty.' },
   { key: 'licence_type', label: 'Licence type', required: false, type: 'text', hint: 'Optional, up to 60 characters.' },
   { key: 'activity_category', label: 'Activity category', required: false, type: 'text', hint: 'Optional, up to 80 characters.' },
+  { key: 'activity_category_ar', label: 'Activity category (Arabic)', required: false, type: 'text', hint: 'Optional. The English activity is used on the Arabic card when empty.' },
   { key: 'issued_on', label: 'Issued on', required: false, type: 'date', hint: 'Today in Asia/Dubai when empty.' },
 ];
 
@@ -282,7 +283,7 @@ interface ImportFormOptions {
 
 function importForm(c: Context<AppEnv>, o: ImportFormOptions): Response | Promise<Response> {
   const token = csrfToken(c);
-  const body = h`<p class="muted">Header row with canonical column names: <code>licence_number</code> and <code>company_name_en</code> are required; <code>company_name_ar</code>, <code>licence_type</code>, <code>activity_category</code>, <code>issued_on</code> and <code>preferred_language</code> are optional. Headers are matched case-insensitively. Up to ${IMPORT_CAP} rows per run.</p>
+  const body = h`<p class="muted">Header row with canonical column names: <code>licence_number</code> and <code>company_name_en</code> are required; <code>company_name_ar</code>, <code>licence_type</code>, <code>activity_category</code>, <code>activity_category_ar</code>, <code>issued_on</code> and <code>preferred_language</code> are optional. Headers are matched case-insensitively. Up to ${IMPORT_CAP} rows per run.</p>
 <form class="form" method="post" action="/admin/import" enctype="multipart/form-data">${csrfField(token)}
 <label>CSV file<input type="file" name="file" accept=".csv,text/csv"></label>
 <label>…or paste CSV<textarea name="csv" rows="10" dir="auto">${o.csv ?? ''}</textarea></label>
@@ -470,6 +471,7 @@ ${kv([
   ['Licence number', h`<code>${card.licence_number}</code>`],
   ['Licence type', card.licence_type],
   ['Activity', card.activity_category],
+  ['Activity (Arabic)', card.activity_category_ar ? h`<span dir="rtl">${card.activity_category_ar}</span>` : null],
   ['Issued on', card.issued_on],
   ['Preferred language', card.preferred_language],
   ['Status', h`${badge(card.status)} ${card.render_error ? h`<span class="muted">${card.render_error}</span>` : EMPTY}`],

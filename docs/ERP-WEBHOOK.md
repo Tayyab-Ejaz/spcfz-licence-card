@@ -48,6 +48,7 @@ our side. What we need:
 | Company name, Arabic | no | Used when present. |
 | Licence type | no | Free text as you hold it. |
 | Business activity or activity category | no | One value, or a list; we use the first. |
+| Business activity, Arabic | no | Shown on the Arabic card. Send it as its own field, or inside the activity object next to the English name (for example `Description_EN` and `Description_AR`). Without it the Arabic card shows the English activity. |
 | Issue date | no | Any unambiguous format. ISO `YYYY-MM-DD` is best. Defaults to today. |
 | Customer's preferred language | no | `en` or `ar`. Defaults to English. |
 
@@ -64,6 +65,7 @@ Example:
   "company_name_ar": "نيمبوس للنشر م.م.ح",
   "licence_type": "Standard",
   "activity_category": "Publishing",
+  "activity_category_ar": "النشر",
   "issued_on": "2026-10-15",
   "preferred_language": "en"
 }
@@ -99,7 +101,7 @@ same address.
 | 401 | Wrong or missing secret | Check the header and which endpoint you called. |
 | 403 | Your IP address is not on our list | Tell us the address. |
 | 413 | Body too large | Send less. |
-| 429 | Too many requests | Wait a minute and resend. |
+| 429 | Too many requests from an address that is not on our list | Should not happen from your listed addresses; tell us if it does. |
 | 500 to 599 | Our fault | Resend later if you can. If your system cannot retry, nothing is lost: we can recreate the card from the licence number on our side. |
 
 Set your request timeout to at least 10 seconds.

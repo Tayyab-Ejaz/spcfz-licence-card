@@ -16,6 +16,14 @@ function h(strings: TemplateStringsArray, ...values: unknown[]): RawHtml {
 const GTM_ID_RE = /^GTM-[A-Z0-9]{4,12}$/;
 
 /** The company name shown for a language: Arabic falls back to English (ARCHITECTURE D5). */
+/** The activity in the page language: Arabic when present on the Arabic page, else the English one. */
+export function activityFor(card: Pick<CardRow, 'activity_category' | 'activity_category_ar'>, lang: Lang): string | null {
+  const ar = (card.activity_category_ar ?? '').trim();
+  if (lang === 'ar' && ar) return ar;
+  const en = (card.activity_category ?? '').trim();
+  return en || null;
+}
+
 export function displayName(card: Pick<CardRow, 'company_name_en' | 'company_name_ar'>, lang: Lang): string {
   if (lang === 'ar' && card.company_name_ar && card.company_name_ar.trim()) return card.company_name_ar.trim();
   return card.company_name_en;
@@ -192,7 +200,7 @@ ${card.is_test ? h`<p class="test-note">${s.testNote}</p>` : raw('')}
 <dl>
 <dt>${s.licenceNumber}</dt><dd dir="ltr">${card.licence_number}</dd>
 ${card.licence_type ? h`<dt>${s.licenceType}</dt><dd>${card.licence_type}</dd>` : raw('')}
-${card.activity_category ? h`<dt>${s.activity}</dt><dd>${card.activity_category}</dd>` : raw('')}
+${activityFor(card, lang) ? h`<dt>${s.activity}</dt><dd>${activityFor(card, lang)}</dd>` : raw('')}
 <dt>${s.issuedOn}</dt><dd>${formatMonthYear(card.issued_on, lang)}</dd>
 </dl>
 </section>

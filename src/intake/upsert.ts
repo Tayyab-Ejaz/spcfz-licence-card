@@ -18,11 +18,13 @@ export interface UpsertResult {
   page_url: string;
 }
 
-/** Content hash over exactly the seven canonical keys, so a CardRow and a CanonicalFields hash alike. */
+/** Content hash over exactly the eight canonical keys, so a CardRow and a CanonicalFields hash alike. */
 export async function hashFields(fields: CanonicalFields): Promise<string> {
-  const { licence_number, company_name_en, company_name_ar, licence_type, activity_category, issued_on, preferred_language } = fields;
+  const {
+    licence_number, company_name_en, company_name_ar, licence_type, activity_category, activity_category_ar, issued_on, preferred_language,
+  } = fields;
   return contentHash({
-    licence_number, company_name_en, company_name_ar, licence_type, activity_category, issued_on, preferred_language,
+    licence_number, company_name_en, company_name_ar, licence_type, activity_category, activity_category_ar, issued_on, preferred_language,
   });
 }
 

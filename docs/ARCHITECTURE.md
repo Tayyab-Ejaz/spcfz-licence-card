@@ -114,6 +114,7 @@ the ERP sends whatever it natively has. The canonical fields:
 | `company_name_ar` | no | empty, see D5 | up to 120 chars |
 | `licence_type` | no | empty | up to 60 chars |
 | `activity_category` | no | empty | up to 80 chars; first item if a list arrives |
+| `activity_category_ar` | no | empty; the Arabic card then shows `activity_category` | up to 80 chars; an explicit Arabic field, else the Arabic sibling (`name_ar`, `Description_AR`, …) of the activity object the English name came from; never an English value |
 | `issued_on` | no | today in Asia/Dubai | ISO date, or any date the parser accepts |
 | `preferred_language` | no | `en` | `en` or `ar`, case-insensitive |
 
@@ -154,6 +155,7 @@ cards (
   company_name_ar TEXT,
   licence_type TEXT,
   activity_category TEXT,
+  activity_category_ar TEXT,      -- migration 0003
   issued_on TEXT NOT NULL,        -- YYYY-MM-DD
   preferred_language TEXT NOT NULL DEFAULT 'en',
   content_hash TEXT NOT NULL,
@@ -307,7 +309,7 @@ Screens:
 - Constant-time comparison. 64 KB body limit. JSON only.
 - No personal data stored (C6). Logs record the licence number and card id,
   never payload fields.
-- Rate limits: WAF rules on `/c/*` and `/v1/*` sized for the expected traffic.
+- Rate limits in the app, per client address per minute (`DEFAULT_RATE_LIMITS` in src/index.ts): 300 GET/HEAD on `/c/*`, 60 POST on `/c/*`, 20 on `/v1/*` from addresses not on the ERP allowlist (allowlisted addresses are never limited). Answers 429 with Retry-After. Cloudflare rules may add an outer layer.
 - Image download filenames are sanitised to ASCII letters, digits and dashes.
 - Strict CSP, `Referrer-Policy: strict-origin-when-cross-origin`, HSTS from
   Cloudflare.

@@ -11,7 +11,7 @@ dashboard, or requested separately.
 | 2 | Confirm SSL/TLS mode is **Full (strict)** for the zone | SSL/TLS, Overview | the other subdomains on that server already rely on it with origin certificates |
 | 3 | Cloudflare Access application for `licensed.spcfz.ae/admin*`, allow policy for chosen staff emails; copy the team domain and the application audience tag into the env file | Zero Trust, Access, Applications | before staff need the admin |
 | 4 | WAF custom rule: block `/v1/*` unless the source is one of the ERP's addresses | Security, WAF | when the ERP team sends their addresses |
-| 5 | Rate limiting rule on `/c/*`, for example 120 requests per minute per IP | Security, WAF, Rate limiting | before launch |
+| 5 | Optional: a Cloudflare rate-limiting rule on `/c/*`. The app already limits per visitor (300 page requests and 60 counter posts per minute); a Cloudflare rule stops floods before they reach the server | Security, WAF, Rate limiting | if traffic ever warrants it |
 
 The origin itself admits only Cloudflare's ranges, so these rules cannot be
 bypassed by calling the server directly.

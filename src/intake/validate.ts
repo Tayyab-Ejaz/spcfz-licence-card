@@ -12,6 +12,7 @@ export const LIMITS = {
   company_name_ar: { max: 120 },
   licence_type: { max: 60 },
   activity_category: { max: 80 },
+  activity_category_ar: { max: 80 },
 } as const;
 
 /** Strings and finite numbers are text; everything else is not. */
@@ -98,6 +99,7 @@ export function validateCanonical(input: Record<string, unknown>, opts: { today?
   const company_name_ar = optionalText(input, 'company_name_ar', LIMITS.company_name_ar.max, errors);
   const licence_type = optionalText(input, 'licence_type', LIMITS.licence_type.max, errors);
   const activity_category = optionalText(input, 'activity_category', LIMITS.activity_category.max, errors);
+  const activity_category_ar = optionalText(input, 'activity_category_ar', LIMITS.activity_category_ar.max, errors);
 
   // issued_on: optional, any date parseDate accepts, default today in Asia/Dubai.
   let issued_on = opts.today ?? todayInDubai();
@@ -126,6 +128,7 @@ export function validateCanonical(input: Record<string, unknown>, opts: { today?
       company_name_ar,
       licence_type,
       activity_category,
+      activity_category_ar,
       issued_on,
       preferred_language,
     },
