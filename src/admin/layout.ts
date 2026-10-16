@@ -28,7 +28,7 @@ const CSS = `
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
 a{color:var(--blue)}
-header{background:var(--blue2);color:#fff}
+header{background:var(--blue);color:#fff}
 header .in{max-width:1100px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
 header .brand{font-weight:800;color:#fff;text-decoration:none;margin-inline-end:8px}
 header nav a{color:#dbe4ff;text-decoration:none;padding:6px 8px;border-radius:6px;font-weight:600}
