@@ -48,6 +48,18 @@ alphabetically, which is announcements. On 16 October the DNS record went in
 first and licensed.spcfz.ae briefly showed the announcements page until the
 vhost was installed.
 
+## Make a test card to look at
+
+```
+ssh root@13.206.34.102 "docker exec -i -w /app spcfz-licence-card node --input-type=module" < tools/test-card.mjs
+```
+
+Creates one card for "Preview Publishing FZE" with a TEST ribbon, renders it
+inside the container and prints its page link. Running it again updates the
+same card. Test cards are deleted automatically after 30 days. The service's
+own render worker wakes only for jobs it queues itself, which is why the
+script renders the card directly.
+
 ## Logs, restart, status
 
 ```
