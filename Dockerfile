@@ -36,7 +36,6 @@ COPY --from=build /app/dist ./dist
 COPY --from=build /app/public ./public
 COPY package.json ./
 COPY migrations ./migrations
-COPY templates ./templates
 USER app
 EXPOSE 8787
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \

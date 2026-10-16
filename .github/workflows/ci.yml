@@ -20,3 +20,15 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: bash -n tools/deploy.sh && bash -n deploy/run.sh
+  docker:
+    # The development Mac has no Docker; this is where the image is proven to build before a deploy.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t spcfz-licence-card:ci .
+      - name: Container starts and answers /healthz
+        run: |
+          docker run -d --name t -p 127.0.0.1:8787:8787 -e BASE_URL=http://localhost:8787 -e TRUST_PROXY=off spcfz-licence-card:ci
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/healthz && exit 0; sleep 1; done
+          docker logs t; exit 1
+
