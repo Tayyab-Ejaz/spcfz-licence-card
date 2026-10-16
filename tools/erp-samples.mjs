@@ -1,5 +1,5 @@
 // Five fictional licences, shaped the way an ERP might send them, for testing the whole path before the
-// real ERP is connected. Every one becomes a TEST card (watermarked downloads, deleted after 30 days).
+// real ERP is connected. Every one becomes a TEST card (no watermark, deleted after 30 days).
 //
 // Locally, through the real webhook (mapping, validation, events), against a running service:
 //   node tools/erp-samples.mjs --http http://127.0.0.1:18790 <test secret>
