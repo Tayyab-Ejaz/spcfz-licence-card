@@ -37,3 +37,24 @@ export function ipAllowed(ip: string | undefined | null, allowlist: string[]): b
   }
   return false;
 }
+
+/**
+ * The key a rate limiter counts under. IPv4: the address. IPv6: its /64 prefix, because a single
+ * connection is normally handed a whole /64 and could otherwise rotate addresses to dodge per-address
+ * limits. IPv4-mapped IPv6 (::ffff:a.b.c.d) counts as the IPv4 address. Unparseable input is returned as is.
+ */
+export function rateKeyForIp(ip: string): string {
+  const s = ip.trim().toLowerCase().replace(/^\[|\]$/g, '').split('%')[0] ?? '';
+  if (!s.includes(':')) return s;
+  const mapped = s.match(/^(?:0{0,4}:){0,5}(?:0{0,4}:)?ffff:(\d{1,3}(?:\.\d{1,3}){3})$/) ?? s.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/);
+  if (mapped?.[1]) return mapped[1];
+  const halves = s.split('::');
+  if (halves.length > 2) return s;
+  const head = halves[0] ? halves[0].split(':') : [];
+  const tail = halves.length === 2 && halves[1] ? halves[1].split(':') : [];
+  const missing = 8 - head.length - tail.length;
+  if (missing < 0 || (halves.length === 1 && missing !== 0)) return s;
+  const groups = [...head, ...Array<string>(missing).fill('0'), ...tail];
+  if (groups.some((g) => !/^[0-9a-f]{1,4}$/.test(g))) return s;
+  return `${groups.slice(0, 4).map((g) => g.replace(/^0+(?=.)/, '')).join(':')}::/64`;
+}

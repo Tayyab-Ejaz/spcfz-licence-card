@@ -103,7 +103,7 @@ from it, and reinstall that file with an approved change.
 
 ## Rate limits
 
-The app limits each visitor address per minute: 300 page, status and image
+The app limits each visitor per minute, counting an IPv4 address or an IPv6 /64 block as one visitor: 300 page, status and image
 requests, 60 counter posts, and 20 webhook calls from addresses not on the
 ERP allowlist. Visitors over a limit get 429 with Retry-After. The numbers
 are `DEFAULT_RATE_LIMITS` in src/index.ts; changing them is a code change and

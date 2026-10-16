@@ -1,6 +1,7 @@
 // Per-address rate limits in front of the routes (src/index.ts, src/util/rate-limit.ts).
 import { describe, expect, it } from 'vitest';
 import { FixedWindowLimiter } from '../src/util/rate-limit.js';
+import { rateKeyForIp } from '../src/util/ip.js';
 import { createApp } from '../src/index.js';
 import { createTestEnv } from './env.js';
 
@@ -88,5 +89,34 @@ describe('app rate limits', () => {
 
   it('leaves health checks and the admin alone', async () => {
     for (let i = 0; i < 10; i++) expect((await req('/healthz', '192.0.2.50')).status).toBe(200);
+  });
+});
+
+describe('rateKeyForIp', () => {
+  it('keeps IPv4 as is and folds IPv4-mapped IPv6 into it', () => {
+    expect(rateKeyForIp('203.0.113.10')).toBe('203.0.113.10');
+    expect(rateKeyForIp('::ffff:203.0.113.10')).toBe('203.0.113.10');
+  });
+  it('reduces IPv6 to its /64', () => {
+    expect(rateKeyForIp('2a00:f29:2c8:10b5:5852:50ef:e22e:99f0')).toBe('2a00:f29:2c8:10b5::/64');
+    expect(rateKeyForIp('2A00:0F29:02C8:10B5:0000:0000:0000:0001')).toBe('2a00:f29:2c8:10b5::/64');
+    expect(rateKeyForIp('2001:db8::1')).toBe('2001:db8:0:0::/64');
+    expect(rateKeyForIp('::1')).toBe('0:0:0:0::/64');
+  });
+  it('returns unparseable input unchanged', () => {
+    expect(rateKeyForIp('not-an-ip')).toBe('not-an-ip');
+    expect(rateKeyForIp('1::2::3')).toBe('1::2::3');
+  });
+});
+
+describe('app rate limits: IPv6 counts per /64', () => {
+  const env = createTestEnv();
+  const app = createApp({ limits: { page: { limit: 2, windowMs: 60_000 } } });
+  it('addresses rotating inside one /64 share a bucket; another /64 does not', async () => {
+    const get = (ip: string) => app.request('/c/AAAAAAAAAAAAAAAAAAAAAA', { headers: { 'CF-Connecting-IP': ip } }, env);
+    expect((await get('2a00:f29:2c8:10b5::1')).status).toBe(404);
+    expect((await get('2a00:f29:2c8:10b5::2')).status).toBe(404);
+    expect((await get('2a00:f29:2c8:10b5:ffff::3')).status).toBe(429);
+    expect((await get('2a00:f29:2c8:10b6::1')).status).toBe(404);
   });
 });

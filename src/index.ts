@@ -6,7 +6,7 @@ import type { AppEnv } from './types.js';
 import { intakeRoutes } from './intake/routes.js';
 import { pageRoutes } from './page/routes.js';
 import { adminRoutes } from './admin/routes.js';
-import { ipAllowed, parseAllowlist } from './util/ip.js';
+import { ipAllowed, parseAllowlist, rateKeyForIp } from './util/ip.js';
 import { FixedWindowLimiter, rateLimit } from './util/rate-limit.js';
 import type { RateDecision, RateRule } from './util/rate-limit.js';
 
@@ -31,7 +31,11 @@ export interface AppOptions {
   now?: () => number;
 }
 
-const clientKey = (c: Context<AppEnv>): string => c.req.header('CF-Connecting-IP') ?? 'unknown';
+/** IPv4 address, or the /64 of an IPv6 address (see rateKeyForIp). */
+const clientKey = (c: Context<AppEnv>): string => {
+  const ip = c.req.header('CF-Connecting-IP');
+  return ip ? rateKeyForIp(ip) : 'unknown';
+};
 
 function tooManyText(c: Context<AppEnv>, d: RateDecision): Response {
   c.header('Retry-After', String(d.retryAfterSec));

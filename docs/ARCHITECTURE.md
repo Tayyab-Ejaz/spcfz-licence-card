@@ -309,7 +309,7 @@ Screens:
 - Constant-time comparison. 64 KB body limit. JSON only.
 - No personal data stored (C6). Logs record the licence number and card id,
   never payload fields.
-- Rate limits in the app, per client address per minute (`DEFAULT_RATE_LIMITS` in src/index.ts): 300 GET/HEAD on `/c/*`, 60 POST on `/c/*`, 20 on `/v1/*` from addresses not on the ERP allowlist (allowlisted addresses are never limited). Answers 429 with Retry-After. Cloudflare rules may add an outer layer.
+- Rate limits in the app, per client per minute (an IPv4 address, or an IPv6 /64) (`DEFAULT_RATE_LIMITS` in src/index.ts): 300 GET/HEAD on `/c/*`, 60 POST on `/c/*`, 20 on `/v1/*` from addresses not on the ERP allowlist (allowlisted addresses are never limited). Answers 429 with Retry-After. Cloudflare rules may add an outer layer.
 - Image download filenames are sanitised to ASCII letters, digits and dashes.
 - Strict CSP, `Referrer-Policy: strict-origin-when-cross-origin`, HSTS from
   Cloudflare.
