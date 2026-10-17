@@ -77,15 +77,26 @@ DATA_PATCHES.mobile.push(
   [/\s*<div style="display:flex;justify-content:center;gap:4px">[\s\S]*?Open LinkedIn<i [^>]*><\/i><\/span>\s*<\/div>/, ''],
   [/\s*<div style="display:flex;justify-content:center">\s*<span sc-camel-on-click="\{\{ openLinkedIn \}\}"[\s\S]*?<\/span>\s*<\/div>/, ''],
   ['<div style="display:flex;gap:8px;overflow-x:auto;padding:4px 16px 14px;scrollbar-width:none">',
-    '<div class="m-chips" style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;padding:2px 12px 10px">'],
+    '<div class="m-chips m-in" style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;padding:2px 12px 10px">'],
   ['position:relative;flex-shrink:0;display:inline-flex;align-items:center;gap:7px;min-height:44px;padding:0 15px;border-radius:999px;background:#fff;box-shadow:inset 0 0 0 1.5px var(--spc-border);font-size:13.5px;',
     'position:relative;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:56px;padding:6px 2px;border-radius:14px;background:#fff;box-shadow:inset 0 0 0 1.5px var(--spc-border);font-size:11.5px;-webkit-tap-highlight-color:transparent;touch-action:manipulation;'],
   ['<i class="ph-bold {{ c.icon }}" style="font-size:16px;color:var(--spc-blue)"></i>',
     '<i class="ph-bold {{ c.icon }}" style="font-size:20px;color:var(--spc-blue)"></i>'],
   ['<span style="position:absolute;top:8px;right:8px;width:8px;height:8px;border-radius:50%;background:var(--danger-500, #d92d20)"></span>',
     '<span style="position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--danger-500, #d92d20)"></span>'],
+  // Motion hooks (client/card-data.js and MOBILE_CSS): what fades in when the drawer closes, and the card frame.
+  ['<div style="display:flex;flex-direction:column;gap:6px;padding:18px 16px 4px"', '<div class="m-in" style="display:flex;flex-direction:column;gap:6px;padding:18px 16px 4px"'],
+  ['<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px;padding:4px;width:100%;box-sizing:border-box;background:var(--spc-soft)',
+    '<div class="m-in" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px;padding:4px;width:100%;box-sizing:border-box;background:var(--spc-soft)'],
+  ['<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%">',
+    '<div class="m-in" style="display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%">'],
+  ['<div style="width:{{ dispW }}px;height:{{ dispH }}px;max-width:100%;overflow:hidden;position:relative;transition:width .25s var(--ease-standard),height .25s var(--ease-standard)">',
+    '<div class="m-frame" style="width:{{ dispW }}px;height:{{ dispH }}px;max-width:100%;overflow:hidden;position:relative;transition:width .25s var(--ease-standard),height .25s var(--ease-standard)">'],
+  // The card inside the frame rescales with it instead of jumping while the frame eases to its new size.
+  ['transform:scale({{ scale }});transform-origin:0 0;overflow:hidden;font-family:var(--font-sans);-webkit-font-smoothing:antialiased;background:#fff">',
+    'transform:scale({{ scale }});transform-origin:0 0;transition:transform .25s var(--ease-standard);overflow:hidden;font-family:var(--font-sans);-webkit-font-smoothing:antialiased;background:#fff">'],
   ['<div style="position:sticky;bottom:0;margin-top:auto;display:flex;flex-direction:column;gap:6px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--spc-border)">',
-    '<div class="m-bar" style="position:sticky;bottom:0;margin-top:auto;display:flex;flex-direction:column;gap:6px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--spc-border)">'],
+    '<div class="m-bar m-in" style="position:sticky;bottom:0;margin-top:auto;display:flex;flex-direction:column;gap:6px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--spc-border)">'],
 );
 
 // Logic patches: the same exactly-once rule, applied to design/source/<layout>/logic.js before it is wrapped.
@@ -235,11 +246,21 @@ function compileTemplate(layout) {
 // ------------------------------------------------------------------ css
 
 const FULL_PAGE_CSS = 'html,body{height:100%;margin:0}#dc-root,#dc-root>.sc-host{height:100%}';
-// The phone toolbar: tighter type on the narrowest handsets (320–359 px) so "Headline" fits its column, and a
-// pressed state so a tap is felt at once.
-const MOBILE_CSS = '@media (max-width:359px){.m-chips{gap:4px!important;padding-left:8px!important;padding-right:8px!important}' +
-  '.m-chips>span{font-size:10px!important;letter-spacing:-.01em}.m-chips>span>i{font-size:18px!important}}' +
-  '.m-chips>span:active{background:var(--blue-50)!important;transform:scale(.97)}.m-chips>span{transition:transform .12s ease,background .12s ease}';
+// Phone layout CSS: tighter toolbar type on 320–359 px handsets, a pressed state on the toolbar, and the drawer motion.
+const MOBILE_CSS = [
+  '@media (max-width:359px){.m-chips{gap:4px!important;padding-left:8px!important;padding-right:8px!important}',
+  '.m-chips>span{font-size:10px!important;letter-spacing:-.01em}.m-chips>span>i{font-size:18px!important}}',
+  '.m-chips>span{transition:transform .12s ease,background .12s ease}.m-chips>span:active{background:var(--blue-50)!important;transform:scale(.96)}',
+  // The drawer slides up when it opens and down when it closes (card-data.js adds .m-closing and waits for it);
+  // what the drawer hides rises back in when it closes.
+  '@keyframes m-sheet-in{from{transform:translate(-50%,100%)}to{transform:translate(-50%,0)}}',
+  '@keyframes m-sheet-out{from{transform:translate(-50%,0)}to{transform:translate(-50%,100%)}}',
+  '@keyframes m-rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}',
+  '[data-screen-label="Sheet"]{animation:m-sheet-in .34s cubic-bezier(.2,.8,.2,1) both;transition:height .25s var(--ease-standard)}',
+  '[data-screen-label="Sheet"].m-closing{animation:m-sheet-out .22s cubic-bezier(.4,0,1,1) both;pointer-events:none}',
+  '.m-in{animation:m-rise .3s cubic-bezier(.2,.8,.2,1) both}',
+  '@media (prefers-reduced-motion:reduce){[data-screen-label="Sheet"],[data-screen-label="Sheet"].m-closing,.m-in{animation:none!important}.m-frame,.m-frame>*{transition:none!important}}',
+].join('');
 function cleanCss(css) {
   css = css.replace(/,\s*url\(["']?asset:dropped[^)]*\)\s*format\(["'][^"']*["']\)/g, '');
   css = css.replace(/url\(["']?asset:dropped[^)]*\)\s*format\(["'][^"']*["']\)\s*,\s*/g, '');

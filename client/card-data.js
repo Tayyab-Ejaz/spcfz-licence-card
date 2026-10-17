@@ -89,8 +89,112 @@ export function calDaySizes(day) {
   return String(day).length > 1 ? { sq: Math.round(260 * 0.68), ls: Math.round(160 * 0.68) } : { sq: 260, ls: 160 };
 }
 
+const EASE_OUT = 'cubic-bezier(.2,.8,.2,1)';
+const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const frameEl = () => document.querySelector('.m-frame');
+
 export function withCardData(Base) {
   return class CardLogic extends Base {
+    constructor(...args) {
+      super(...args);
+      // Phone layout: let the drawer slide down before it is removed (the design removes it at once).
+      if (typeof this.closeSheet === 'function') {
+        const close = this.closeSheet;
+        this.closeSheet = () => this.closeSheetSmoothly(close);
+      }
+    }
+
+    /**
+     * Opening or closing the drawer moves and resizes the card preview in one render. Note where the frame was,
+     * switch its own size transition off for this change, and let componentDidUpdate glide it from there (FLIP).
+     */
+    setState(update, cb) {
+      if (update && typeof update === 'object' && 'sheet' in update && !!update.sheet !== !!this.state.sheet) {
+        const frame = frameEl();
+        if (frame && !reducedMotion()) {
+          this.flipFrom = frame.getBoundingClientRect();
+          this.flipTransition = this.flipTransition ?? frame.style.transition;
+          frame.style.transition = 'none';
+          const card = frame.querySelector('[data-lang]');
+          if (card) card.style.transition = 'none';
+        }
+      }
+      return super.setState(update, cb);
+    }
+
+    /**
+     * Phone layout: a tap outside the open drawer closes it, the way a bottom sheet should. The tap is absorbed so
+     * it does not also follow a link or press a button underneath. While the photo is being adjusted, touches on
+     * the card frame stay with the card (drag to move, pinch to zoom).
+     */
+    watchOutsideTaps() {
+      const open = !!this.state.sheet;
+      if (open && !this.outsideTap) {
+        this.outsideTap = (ev) => {
+          const t = ev.target instanceof Element ? ev.target : null;
+          if (!t || !this.state.sheet || t.closest('[data-screen-label="Sheet"]')) return;
+          if (t.closest('.m-frame') && typeof this.isAdjusting === 'function' && this.isAdjusting()) return;
+          const swallow = (e) => { e.preventDefault(); e.stopPropagation(); };
+          document.addEventListener('click', swallow, { capture: true, once: true });
+          setTimeout(() => document.removeEventListener('click', swallow, { capture: true }), 600);
+          this.closeSheet();
+        };
+        document.addEventListener('pointerdown', this.outsideTap, true);
+      } else if (!open && this.outsideTap) {
+        document.removeEventListener('pointerdown', this.outsideTap, true);
+        this.outsideTap = null;
+      }
+    }
+
+    componentWillUnmount() {
+      if (this.outsideTap) document.removeEventListener('pointerdown', this.outsideTap, true);
+      this.outsideTap = null;
+      if (super.componentWillUnmount) super.componentWillUnmount();
+    }
+
+    closeSheetSmoothly(close) {
+      if (this.sheetClosing) return;
+      const s = this.state;
+      const e = typeof this.cardIssues === 'function' ? this.cardIssues() : {};
+      const blocked = (s.sheet === 'headline' && e.headline) || (s.sheet === 'details' && (e.name || e.role || e.activity));
+      const sheet = document.querySelector('[data-screen-label="Sheet"]');
+      if (blocked || !sheet || reducedMotion()) { close(); return; }
+      this.sheetClosing = true;
+      sheet.classList.add('m-closing');
+      setTimeout(() => { this.sheetClosing = false; close(); }, 240);
+    }
+
+    /** After a render: glide the frame from where it was (drawer toggled), or soften a style/format/language swap. */
+    animateFrame(prevState) {
+      const frame = frameEl();
+      if (!frame) return;
+      if (this.flipFrom) {
+        const from = this.flipFrom;
+        this.flipFrom = null;
+        const to = frame.getBoundingClientRect();
+        this.flipping = true;
+        const restore = () => {
+          this.flipping = false;
+          frame.style.transition = this.flipTransition ?? '';
+          const card = frame.querySelector('[data-lang]');
+          if (card) card.style.transition = 'transform .25s var(--ease-standard)';
+          this.flipTransition = null;
+        };
+        if (!to.width || !to.height) { restore(); return; }
+        const dx = from.left - to.left, dy = from.top - to.top, sx = from.width / to.width, sy = from.height / to.height;
+        const anim = frame.animate(
+          [{ transformOrigin: '0 0', transform: `translate(${dx}px,${dy}px) scale(${sx},${sy})` }, { transformOrigin: '0 0', transform: 'none' }],
+          { duration: 340, easing: EASE_OUT },
+        );
+        anim.onfinish = anim.oncancel = () => { restore(); this.fitChrome(); };
+        return;
+      }
+      if (!prevState || reducedMotion()) return;
+      if (prevState.tpl !== this.state.tpl || prevState.format !== this.state.format || prevState.lang !== this.state.lang) {
+        frame.animate([{ opacity: 0.35 }, { opacity: 1 }], { duration: 240, easing: 'ease-out' });
+      }
+    }
+
     fresh() {
       const f = super.fresh();
       const c = this.props.card;
@@ -118,6 +222,8 @@ export function withCardData(Base) {
       super.componentDidUpdate(...args);
       this.fitStub();
       this.fitChrome();
+      this.animateFrame(args[1]);
+      this.watchOutsideTaps();
     }
 
     stubKey() {
@@ -138,7 +244,7 @@ export function withCardData(Base) {
      * value does not depend on the card's own size, so setting it settles after one render.
      */
     fitChrome() {
-      if (this.state.sheet) return;
+      if (this.state.sheet || this.flipping) return;   // mid-glide the frame is transformed; measure once it lands
       const tools = document.querySelector('.m-chips');
       const bar = document.querySelector('.m-bar');
       const card = document.querySelector('[data-lang]');

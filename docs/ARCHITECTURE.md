@@ -273,6 +273,12 @@ client/card-data.js):
   Download or LinkedIn links). The card preview is sized from the height the
   page measures around it, so headline, card, controls and Share fit one
   screen on phones 360 px wide and up; a 320 × 568 phone scrolls a little.
+- **Phone motion** (17 October 2026): the editing drawer slides up and down,
+  the card preview glides between its two positions as one piece, and what
+  the drawer hides rises back in when it closes. A tap outside the drawer
+  closes it and is absorbed, so it never follows a link underneath; while the
+  photo is being adjusted, touches on the card stay with the card. All motion
+  is skipped under the system's reduce-motion setting.
 - **Test cards** look exactly like live ones; SPC removed the TEST
   watermark on 16 October 2026. Only the browser tab title says [TEST].
 
