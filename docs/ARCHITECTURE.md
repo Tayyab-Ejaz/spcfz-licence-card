@@ -281,9 +281,9 @@ client/card-data.js):
   is skipped under the system's reduce-motion setting.
 - **No LinkedIn shortcuts** (17 October 2026): the desktop Share step has no
   "Open LinkedIn" button, and neither layout shows the "@SPC Free Zone"
-  tagging tip. The desktop Share step leads with Share, stacks a full-width
-  Download under it, and puts one accurate hint under both, with the PNG size
-  of the chosen format (`shareIntro` and `shareHint` in client/card-data.js). The
+  tagging tip. The desktop Share step leads with Share and stacks a
+  full-width Download under it, with no hint text (`shareIntro` in
+  client/card-data.js). The
   design comparison (`npm run compare-design`) therefore differs from the
   exports on the Share step and the caption drawer, by intent.
 - **Test cards** look exactly like live ones; SPC removed the TEST
