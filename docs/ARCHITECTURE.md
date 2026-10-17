@@ -284,6 +284,12 @@ client/card-data.js):
   tagging tip. The desktop Share step leads with Share and stacks a
   full-width Download under it, with no hint text (`shareIntro` in
   client/card-data.js). The
+- **Desktop Details walk-through** (18 October 2026): in the Details step,
+  Next opens its four parts in order (Photo, Your details, Headline) and only
+  the last leads to Share; Back walks back, and Back from Share lands on the
+  headline. Each opened part is scrolled into view, and a part with rejected
+  wording stops Next with the design's warning (`detailsNav` in
+  client/card-data.js). The phone layout has no steps and is unchanged.
   design comparison (`npm run compare-design`) therefore differs from the
   exports on the Share step and the caption drawer, by intent.
 - **Test cards** look exactly like live ones; SPC removed the TEST
