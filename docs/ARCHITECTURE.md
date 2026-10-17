@@ -279,6 +279,11 @@ client/card-data.js):
   closes it and is absorbed, so it never follows a link underneath; while the
   photo is being adjusted, touches on the card stay with the card. All motion
   is skipped under the system's reduce-motion setting.
+- **No LinkedIn shortcuts** (17 October 2026): the desktop Share step has no
+  "Open LinkedIn" button or hint, its Download button runs full width under
+  Share, and neither layout shows the "@SPC Free Zone" tagging tip. The
+  design comparison (`npm run compare-design`) therefore differs from the
+  exports on the Share step and the caption drawer, by intent.
 - **Test cards** look exactly like live ones; SPC removed the TEST
   watermark on 16 October 2026. Only the browser tab title says [TEST].
 

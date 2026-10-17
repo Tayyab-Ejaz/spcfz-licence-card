@@ -64,6 +64,20 @@ ROBUSTNESS_PATCHES.push(
   ['<span style="font-size:{{ stubNameLs }}px;', '<span data-fit="stub" style="font-size:{{ stubNameLs }}px;'],
 );
 DATA_PATCHES.studio.push(...ROBUSTNESS_PATCHES);
+
+// Desktop Share step (SPC, 17 October 2026): no "Open LinkedIn" button and no LinkedIn hint under it; Download stays.
+DATA_PATCHES.studio.push(
+  [/\s*<x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0\.Button" variant="secondary" size="lg" sc-camel-on-click="\{\{ openLinkedIn \}\}"[^>]*>[\s\S]*?<\/x-import>/, ''],
+  [/\s*<p style="font-size:13px;line-height:1\.5;color:var\(--spc-muted\);text-wrap:pretty">LinkedIn opens with your caption filled in[^<]*<\/p>/, ''],
+  // Download, now alone, runs the full width under Share like the Share button does.
+  [/<div style="display:flex;flex-wrap:wrap;gap:10px">(\s*)<x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0\.Button" variant="\{\{ dlVariant \}\}" size="lg" sc-camel-on-click="\{\{ download \}\}" hint-size="190px,54px">/,
+    '<div style="display:flex;flex-direction:column;gap:10px">$1<x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="{{ dlVariant }}" size="lg" sc-camel-on-click="{{ download }}" style="display:block" hint-size="100%,54px">'],
+);
+
+// Both layouts (SPC, 17 October 2026): no LinkedIn "@SPC Free Zone" tagging tip under the caption.
+for (const layout of ['studio', 'mobile']) {
+  DATA_PATCHES[layout].push([/\s*<div style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:14px;background:var\(--blue-50\)">\s*<i class="ph-bold ph-at"[\s\S]*?<\/div>/, '']);
+}
 DATA_PATCHES.mobile.push(...ROBUSTNESS_PATCHES);
 
 // Phone layout changes SPC asked for on 16 October 2026:
