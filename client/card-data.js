@@ -322,6 +322,13 @@ export function withCardData(Base) {
         hasHdrActivity: !!c.activity_en,
         hdrActivity: c.activity_en || '',
         licenceNo: c.licence_number,
+        // Desktop Share step copy (tools/build-studio.mjs DESKTOP_SHARE_ACTIONS); the phone layout does not use it.
+        shareIntro: v.canShare
+          ? 'Share your card to LinkedIn, WhatsApp or any app, or download it to post later. Your caption is below.'
+          : 'Download your card and post it anywhere, with the caption below.',
+        shareHint: v.canShare
+          ? `Share opens your device's share menu with the card attached and copies your caption. Downloads are PNG, ${v.nativeW * 2} × ${v.cardH * 2}.`
+          : `Your card downloads as a high-resolution PNG, ${v.nativeW * 2} × ${v.cardH * 2}. Copy the caption below to post with it.`,
         portalUrl: PORTAL_URL,
         download: track(v.download, 'download'),
         shareCard: track(v.shareCard, 'share', 'native'),

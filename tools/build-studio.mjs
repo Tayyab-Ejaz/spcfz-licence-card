@@ -65,13 +65,22 @@ ROBUSTNESS_PATCHES.push(
 );
 DATA_PATCHES.studio.push(...ROBUSTNESS_PATCHES);
 
-// Desktop Share step (SPC, 17 October 2026): no "Open LinkedIn" button and no LinkedIn hint under it; Download stays.
+// Desktop Share step (SPC, 17 October 2026). The design's version led with "Download, then post it on LinkedIn",
+// put the phone-worded Share hint between the two buttons and had an Open LinkedIn button. Now: an intro that
+// leads with Share, Share and a full-width Download stacked with one gap, one hint under both (accurate for a
+// computer, with the PNG size of the chosen format), and no LinkedIn shortcut. The phone layout is untouched.
+const DESKTOP_SHARE_ACTIONS = `<p style="font-size:14.5px;line-height:1.5;color:var(--spc-muted);text-wrap:pretty">{{ shareIntro }}</p>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <sc-if value="{{ canShare }}" hint-placeholder-val="{{ false }}">
+              <x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="primary" size="lg" sc-camel-on-click="{{ shareCard }}" style="display:block" hint-size="100%,54px"><i class="ph-bold ph-share-network" style="font-size:18px"></i><span>{{ shareLabel }}</span></x-import>
+            </sc-if>
+            <x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="{{ dlVariant }}" size="lg" sc-camel-on-click="{{ download }}" style="display:block" hint-size="100%,54px"><i class="ph-bold ph-download-simple" style="font-size:18px"></i><span>{{ downloadLabel }}</span></x-import>
+            <div style="display:flex;align-items:flex-start;gap:8px;margin-top:2px;font-size:12.5px;line-height:1.5;color:var(--spc-muted);text-wrap:pretty"><i class="ph-bold ph-info" style="flex-shrink:0;font-size:15px;line-height:19px;color:var(--spc-blue)"></i><span>{{ shareHint }}</span></div>
+          </div>`;
 DATA_PATCHES.studio.push(
-  [/\s*<x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0\.Button" variant="secondary" size="lg" sc-camel-on-click="\{\{ openLinkedIn \}\}"[^>]*>[\s\S]*?<\/x-import>/, ''],
-  [/\s*<p style="font-size:13px;line-height:1\.5;color:var\(--spc-muted\);text-wrap:pretty">LinkedIn opens with your caption filled in[^<]*<\/p>/, ''],
-  // Download, now alone, runs the full width under Share like the Share button does.
-  [/<div style="display:flex;flex-wrap:wrap;gap:10px">(\s*)<x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0\.Button" variant="\{\{ dlVariant \}\}" size="lg" sc-camel-on-click="\{\{ download \}\}" hint-size="190px,54px">/,
-    '<div style="display:flex;flex-direction:column;gap:10px">$1<x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="{{ dlVariant }}" size="lg" sc-camel-on-click="{{ download }}" style="display:block" hint-size="100%,54px">'],
+  [/<p style="font-size:14\.5px;line-height:1\.5;color:var\(--spc-muted\);text-wrap:pretty">Download your card, then post it on LinkedIn with the caption below\.<\/p>[\s\S]*?LinkedIn opens with your caption filled in[^<]*<\/p>\s*<\/div>/,
+    DESKTOP_SHARE_ACTIONS],
 );
 
 // Both layouts (SPC, 17 October 2026): no LinkedIn "@SPC Free Zone" tagging tip under the caption.
