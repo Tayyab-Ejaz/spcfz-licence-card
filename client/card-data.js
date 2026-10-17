@@ -388,6 +388,7 @@ export function withCardData(Base) {
           ? 'Share your card to LinkedIn, WhatsApp or any app, or download it to post later. Your caption is below.'
           : 'Download your card and post it anywhere, with the caption below.',
         portalUrl: PORTAL_URL,
+        goPortal: () => window.location.assign(PORTAL_URL),
         ...this.detailsNav(v),
         download: track(v.download, 'download'),
         shareCard: track(v.shareCard, 'share', 'native'),

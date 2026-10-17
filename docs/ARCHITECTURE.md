@@ -292,6 +292,9 @@ client/card-data.js):
   headline. Each opened part is scrolled into view, and a part with rejected
   wording stops Next with the design's warning (`detailsNav` in
   client/card-data.js). The phone layout has no steps and is unchanged.
+- **Desktop Done** (18 October 2026): the last step's bar ends with a Done
+  button that opens the customer portal in the same tab, in place of the
+  "Step 3 of 3" label.
 - **Test cards** look exactly like live ones; SPC removed the TEST
   watermark on 16 October 2026. Only the browser tab title says [TEST].
 

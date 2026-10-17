@@ -77,6 +77,12 @@ const DESKTOP_SHARE_ACTIONS = `<p style="font-size:14.5px;line-height:1.5;color:
             </sc-if>
             <x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="{{ dlVariant }}" size="lg" sc-camel-on-click="{{ download }}" style="display:block" hint-size="100%,54px"><i class="ph-bold ph-download-simple" style="font-size:18px"></i><span>{{ downloadLabel }}</span></x-import>
           </div>`;
+// Desktop, last step (SPC, 18 October 2026): a Done button that takes the customer back to the portal, in place
+// of the "Step 3 of 3" label. Same tab, like the header's "Back to Customer Portal" link.
+DATA_PATCHES.studio.push([
+  '<sc-if value="{{ isStep2 }}"><span style="font-size:13px;font-weight:600;color:var(--spc-muted)">Step 3 of 3</span></sc-if>',
+  '<sc-if value="{{ isStep2 }}"><x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="primary" size="md" sc-camel-on-click="{{ goPortal }}" hint-size="120px,46px"><span>Done</span><i class="ph-bold ph-check" style="font-size:15px"></i></x-import></sc-if>',
+]);
 DATA_PATCHES.studio.push(
   [/<p style="font-size:14\.5px;line-height:1\.5;color:var\(--spc-muted\);text-wrap:pretty">Download your card, then post it on LinkedIn with the caption below\.<\/p>[\s\S]*?LinkedIn opens with your caption filled in[^<]*<\/p>\s*<\/div>/,
     DESKTOP_SHARE_ACTIONS],
