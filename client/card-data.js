@@ -152,6 +152,66 @@ export function withCardData(Base) {
       if (super.componentWillUnmount) super.componentWillUnmount();
     }
 
+    /**
+     * Desktop only (SPC, 18 October 2026): in the Details step, Next walks through its four parts in order (who it
+     * is about, photo, details, headline) and only the last one leads to Share; Back walks back the same way. A
+     * part with a problem (rejected wording in the details or a custom headline) stops Next with the design's own
+     * toast, as that part's Done does. The phone layout has no steps and keeps the design's behaviour.
+     */
+    detailsNav(v) {
+      if (v.mChips || !v.sq || typeof v.next !== 'function') return {};
+      const s = this.state;
+      if (s.step === 2) {
+        // Back from Share lands on the last part, so Back keeps walking through the parts.
+        return { back: () => { v.back(); clearTimeout(this.subT); this.setState({ sub: 3 }); this.partScroll = 3; this.scrollToPart(); } };
+      }
+      if (s.step === 0) {
+        // Into Details: bring the part that opens on screen (the panel can sit below the card on narrow windows).
+        return { next: () => { v.next(); if (this.state.step === 1) { this.partScroll = typeof this.state.sub === 'number' ? this.state.sub : 0; this.scrollToPart(); } } };
+      }
+      if (s.step !== 1) return {};
+      const LABELS = ['Next: Photo', 'Next: Your details', 'Next: Headline', 'Next: Share'];
+      const i = typeof s.sub === 'number' ? s.sub : null;
+      const blocked = (k) => {
+        const e = this.cardIssues();
+        return (k === 2 && (e.name || e.role || e.activity)) || (k === 3 && e.headline);
+      };
+      const open = (k, doneK) => {
+        clearTimeout(this.subT);
+        this.partScroll = k;
+        this.setState((st) => ({ sub: k, subDone: doneK === undefined ? st.subDone : Array.from(new Set([...st.subDone, doneK])) }));
+      };
+      return {
+        nextLabel: i === null ? 'Next: Share' : LABELS[i],
+        next: () => {
+          if (i === null) { v.next(); return; }
+          if (blocked(i)) { this.showToast('Please fix the highlighted text first.'); return; }
+          if (i < 3) { open(i + 1, i); return; }
+          open(null, 3);
+          v.next();
+        },
+        back: () => {
+          if (i !== null && i > 0) { open(i - 1); return; }
+          v.back();
+        },
+      };
+    }
+
+    /** After Next or Back opens a part: bring it on screen if it is not, e.g. when the panel sits below the card. */
+    scrollToPart() {
+      const k = this.partScroll;
+      this.partScroll = null;
+      if (typeof k !== 'number' || this.state.step !== 1) return;
+      requestAnimationFrame(() => {
+        const input = document.querySelector('input[type=file]');
+        const part = input && input.nextElementSibling && input.nextElementSibling.children[k];
+        if (!part) return;
+        const r = part.getBoundingClientRect();
+        if (r.top >= 0 && r.bottom <= window.innerHeight) return;
+        part.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: r.height > window.innerHeight * 0.8 ? 'start' : 'nearest' });
+      });
+    }
+
     closeSheetSmoothly(close) {
       if (this.sheetClosing) return;
       const s = this.state;
@@ -224,6 +284,7 @@ export function withCardData(Base) {
       this.fitChrome();
       this.animateFrame(args[1]);
       this.watchOutsideTaps();
+      this.scrollToPart();
     }
 
     stubKey() {
@@ -327,6 +388,7 @@ export function withCardData(Base) {
           ? 'Share your card to LinkedIn, WhatsApp or any app, or download it to post later. Your caption is below.'
           : 'Download your card and post it anywhere, with the caption below.',
         portalUrl: PORTAL_URL,
+        ...this.detailsNav(v),
         download: track(v.download, 'download'),
         shareCard: track(v.shareCard, 'share', 'native'),
         copyCaption: track(v.copyCaption, 'caption'),
