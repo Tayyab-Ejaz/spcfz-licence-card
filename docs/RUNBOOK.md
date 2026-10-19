@@ -106,13 +106,20 @@ ssh root@13.206.34.102 grep '^TEST_SECRET_CURRENT=' /opt/spcfz-licence-card/lice
 ```
 
 Rotate: copy the current value to `WEBHOOK_SECRET_PREVIOUS`, put a new
-48-character value in `WEBHOOK_SECRET_CURRENT`, `docker restart`, tell the
+48-character value in `WEBHOOK_SECRET_CURRENT`, apply it (below), tell the
 ERP team, clear `_PREVIOUS` once they confirm. Same for the `TEST_` pair.
+
+**Applying an env-file change.** The container reads
+`/opt/spcfz-licence-card/licence-card.env` only when it is created, so
+`docker restart` keeps the old values. Recreate it with the running image
+from the Mac instead: `tools/deploy.sh start <running sha>` (the sha is the
+image tag `tools/deploy.sh status` shows). It health-checks and rolls back
+like a deploy.
 
 ## ERP IP allowlist
 
-Set `ERP_IP_ALLOWLIST` in the env file, comma separated, then `docker
-restart`. Mirror it in the Cloudflare WAF rule on `/v1/*`. Until it is set,
+Set `ERP_IP_ALLOWLIST` in the env file, comma separated, then apply it
+(below). Mirror it in the Cloudflare WAF rule on `/v1/*`. Until it is set,
 every webhook is rejected with 403, which is visible in Admin, Events.
 
 ## Cloudflare ranges
