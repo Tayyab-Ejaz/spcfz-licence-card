@@ -58,10 +58,13 @@ function useOurFonts(): void {
   fontsReady = true;
 }
 
-/** Names keep their hyphens on one line ("FZ-LLC"), and a spaced dash stays with the word before it. */
+/**
+ * Names keep their hyphens on one line ("FZ-LLC"), and a spaced dash stays with the word before it. Uses
+ * WORD JOINER (U+2060), which renderers never draw, rather than the no-break hyphen U+2011, which Inter lacks.
+ */
 export function unbreakable(name: string): string {
   return name
-    .replace(/(\S)-(?=\S)/g, '$1\u2011')
+    .replace(/(\S)-(?=\S)/g, '$1\u2060-\u2060')
     .replace(/ ([-–—]) /g, '\u00a0$1 ');
 }
 
@@ -87,25 +90,28 @@ async function textImage(o: { text: string; face: Face; size: number; color: str
 }
 
 /**
- * The name as big as it can be: the largest size, from 112 px down, that fits on two lines; if no size of 72 px
- * or more does, the largest that fits on three. Always inside a 1000 x 300 safe area.
+ * The name as big as it can be: the largest size, from 112 px down, at which it fits on at most three lines
+ * inside a 1000 x 320 safe area.
  */
 async function fitName(name: string, face: Face, lang: Lang): Promise<TextImage & { size: number }> {
-  const lineHeight = lang === 'ar' ? 1.25 : 1.02;
+  // Noto Kufi Arabic's natural line is much taller than Inter's, so it is tightened more.
+  const lineHeight = lang === 'ar' ? 0.82 : 1.02;
   const text = unbreakable(name);
-  const render = (size: number): Promise<TextImage> =>
-    textImage({ text, face, size, color: INK, width: 1000, tracking: lang === 'ar' ? 0 : -0.03, lineHeight });
-  const linesOf = (img: TextImage, size: number): number => Math.max(1, Math.round(img.height / (size * lineHeight * 1.18)));
-  let threeLines: (TextImage & { size: number }) | null = null;
-  for (const size of [112, 100, 90, 80, 72, 64, 56, 50, 44]) {
+  const render = (size: number, t = text): Promise<TextImage> =>
+    textImage({ text: t, face, size, color: INK, width: 1000, tracking: lang === 'ar' ? 0 : -0.03, lineHeight });
+  // Lines are counted from the real metrics at this size: the height of one line and the step to the next.
+  const sample = lang === 'ar' ? 'منطقة' : 'Hg';
+  const metrics = async (size: number): Promise<{ first: number; step: number }> => {
+    const one = (await render(size, sample)).height;
+    const two = (await render(size, `${sample}\n${sample}`)).height;
+    return { first: one, step: Math.max(1, two - one) };
+  };
+  for (const size of [112, 100, 90, 82, 74, 66, 58, 50, 44]) {
     const img = await render(size);
-    const lines = linesOf(img, size);
-    if (img.height > 300 || lines > 3) continue;
-    if (lines <= 2) return { ...img, size };
-    threeLines ??= { ...img, size };
-    if (size < 72) return threeLines;
+    const { first, step } = await metrics(size);
+    const lines = Math.max(1, 1 + Math.round((img.height - first) / step));
+    if (lines <= 3 && img.height <= 320) return { ...img, size };
   }
-  if (threeLines) return threeLines;
   const img = await render(40);
   return { ...img, size: 40 };
 }

@@ -170,7 +170,7 @@ describe('GET /c/:token', () => {
   });
 
   it('keeps hyphenated names together and a spaced dash with the word before it', () => {
-    expect(unbreakable('Al Noor Media FZ-LLC')).toBe('Al Noor Media FZ\u2011LLC');
+    expect(unbreakable('Al Noor Media FZ-LLC')).toBe('Al Noor Media FZ\u2060-\u2060LLC');
     expect(unbreakable('النور للإعلام ش.ذ.م.م - منطقة حرة')).toBe('النور للإعلام ش.ذ.م.م\u00a0- منطقة حرة');
   });
 
