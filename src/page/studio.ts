@@ -81,9 +81,19 @@ export interface ShellInput {
   manifest?: StudioManifest;
 }
 
+/** Where a card's preview picture lives: /c/<token>/preview/<first 10 of the content hash>[-ar].jpg */
+export function previewPath(card: Pick<CardRow, 'token' | 'content_hash'>, lang: Lang): string {
+  return `/c/${card.token}/preview/${card.content_hash.slice(0, 10)}${lang === 'ar' ? '-ar' : ''}.jpg`;
+}
+
+/** The generic link-preview picture (design/og/licence-preview.jpg), as built into public/studio. */
+export function genericPreviewFile(): string {
+  return path.join(STUDIO_DIR, path.basename(studioManifest().og));
+}
+
 /**
- * Link preview (WhatsApp, LinkedIn, iMessage, Slack): the company's name in the title, the issue date in the
- * description, and one branded image for every card (design/og/). In the card's language.
+ * Link preview (WhatsApp, LinkedIn, iMessage, Slack): the company's name in the title and, big, in the picture;
+ * the issue date in the description. In the card's language.
  */
 function previewTags(i: ShellInput, m: StudioManifest, lang: Lang): string {
   const c = i.card;
@@ -94,7 +104,9 @@ function previewTags(i: ShellInput, m: StudioManifest, lang: Lang): string {
   const description = ar
     ? `شركة جديدة في المنطقة الحرة لمدينة الشارقة للنشر، تاريخ الإصدار ${formatFullDate(c.issued_on, 'ar')}.`
     : `A new business at SPC Free Zone, Sharjah. Licensed ${formatFullDate(c.issued_on, 'en')}.`;
-  const image = `${base}${m.og}`;
+  // The card's own preview (company name, big): a new address whenever the card's details change, so apps that
+  // cache previews fetch the new one. src/page/routes.ts draws it; the generic image is its fallback.
+  const image = `${base}${previewPath(c, lang)}`;
   const alt = ar ? 'مرخّصة رسمياً في المنطقة الحرة لمدينة الشارقة للنشر' : 'Officially licensed at SPC Free Zone';
   return html`<meta name="description" content="${description}">
 <meta property="og:type" content="website">

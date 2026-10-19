@@ -310,9 +310,13 @@ client/card-data.js):
 - **Link preview** (19 October 2026): the card page carries Open Graph and
   Twitter tags, so a pasted link shows a preview in WhatsApp, LinkedIn,
   iMessage and Slack: "<company> is officially licensed", the issue date, and
-  one branded 1200 x 630 image for every card (design/og/licence-preview.jpg,
-  made from licence-preview.html; the build publishes it as
-  /static/studio/og-<hash>.jpg). Arabic cards get Arabic text.
+  a 1200 x 630 picture with the company's name big and the SPC logo small
+  (src/page/preview-image.ts, drawn by sharp with Inter and Noto Kufi Arabic
+  from assets/fonts, SIL OFL; Arabic is shaped right to left). It is served
+  at /c/<token>/preview/<hash>[-ar].jpg, a new address when the card changes,
+  cached in memory; expired cards and any drawing failure get the generic
+  picture (design/og/licence-preview.jpg). Fontconfig sees only those fonts
+  (a config written to the temp folder at first use).
 - **Desktop Done** (18 October 2026): the last step's bar ends with a Done
   button that opens the customer portal in the same tab, in place of the
   "Step 3 of 3" label.

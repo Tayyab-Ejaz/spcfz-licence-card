@@ -9,7 +9,9 @@ import { background } from '../util/background.js';
 import { TOKEN_RE, bytesToBase64 } from '../util/crypto.js';
 import { isPast, todayInDubai } from '../util/time.js';
 import { renderExpiredPage, renderNotFoundPage } from './view.js';
-import { renderStudioShell, studioCsp } from './studio.js';
+import { genericPreviewFile, renderStudioShell, studioCsp } from './studio.js';
+import { cachedPreview } from './preview-image.js';
+import { readFile } from 'node:fs/promises';
 
 const GTM_ID_RE = /^GTM-[A-Z0-9]{4,12}$/;
 const BEACON_LIMIT = 1024;
@@ -108,6 +110,42 @@ pageRoutes.get('/c/:token', async (c) => {
 });
 
 // ------------------------------------------------------------------ beacon
+
+// ------------------------------------------------------------------ link preview picture
+
+const PREVIEW_FILE_RE = /^([0-9a-f]{10})(-ar)?\.jpg$/;
+
+/**
+ * The picture link previews show (WhatsApp, LinkedIn, iMessage): the company's name, big. The file name carries
+ * the start of the content hash, so a changed card gets a new address; an older address still answers with the
+ * current details. Expired or unknown cards, and any drawing failure, get the generic picture.
+ */
+pageRoutes.get('/c/:token/preview/:file', async (c) => {
+  const token = c.req.param('token');
+  const m = PREVIEW_FILE_RE.exec(c.req.param('file'));
+  if (!TOKEN_RE.test(token) || !m) return c.text('Not found', 404);
+  const lang: Lang = m[2] ? 'ar' : 'en';
+  const headers = { 'Content-Type': 'image/jpeg', 'X-Content-Type-Options': 'nosniff', 'X-Robots-Tag': 'noindex' };
+  const card = await getCardByToken(c.env.DB, token);
+  let img: Buffer | null = null;
+  if (card && card.status !== 'expired' && !isPast(card.expires_at)) {
+    const company = lang === 'ar' ? card.company_name_ar || card.company_name_en : card.company_name_en;
+    try {
+      img = await cachedPreview(`${token}:${card.content_hash}:${lang}`, { company, issuedOn: card.issued_on, lang });
+    } catch (err) {
+      console.error('preview image failed', { token_prefix: token.slice(0, 4), message: err instanceof Error ? err.message : String(err) });
+    }
+  }
+  if (!img) {
+    try {
+      img = await readFile(genericPreviewFile());
+    } catch {
+      return c.text('Not found', 404);
+    }
+    return new Response(new Uint8Array(img), { headers: { ...headers, 'Cache-Control': 'public, max-age=3600' } });
+  }
+  return new Response(new Uint8Array(img), { headers: { ...headers, 'Cache-Control': 'public, max-age=604800' } });
+});
 
 pageRoutes.post('/c/:token/m', async (c) => {
   const token = c.req.param('token');

@@ -8,6 +8,8 @@ import { getCardById, insertCard, metricsForCard, setCardStatus } from '../src/d
 import { randomToken } from '../src/util/crypto.js';
 import { flushBackground } from '../src/util/background.js';
 import { createTestEnv } from './env.js';
+import sharp from 'sharp';
+import { unbreakable } from '../src/page/preview-image.js';
 
 const env = createTestEnv();
 const app = new Hono<AppEnv>().route('/', pageRoutes);
@@ -125,7 +127,7 @@ describe('GET /c/:token', () => {
     const meta = (prop: string) => new RegExp(`<meta (?:property|name)="${prop}" content="([^"]*)">`).exec(body)?.[1];
     expect(meta('og:title')).toBe('Cedar &amp; &quot;Quill&quot; FZE is officially licensed');
     expect(meta('og:description')).toBe('A new business at SPC Free Zone, Sharjah. Licensed 16 October 2026.');
-    expect(meta('og:image')).toMatch(/^https:\/\/licensed\.test\/static\/studio\/og[-.].*jpg$/);
+    expect(meta('og:image')).toBe(`https://licensed.test/c/${card.token}/preview/${card.content_hash.slice(0, 10)}.jpg`);
     expect(meta('og:image:width')).toBe('1200');
     expect(meta('og:image:height')).toBe('630');
     expect(meta('og:url')).toBe(`https://licensed.test/c/${card.token}`);
@@ -137,6 +139,39 @@ describe('GET /c/:token', () => {
     expect(ar).toContain('<meta property="og:title" content="سيدار وكويل مرخّصة رسمياً">');
     expect(ar).toContain('16 أكتوبر 2026');
     expect(ar).toContain(`<meta property="og:url" content="https://licensed.test/c/${card.token}?lang=ar">`);
+    expect(ar).toContain(`<meta property="og:image" content="https://licensed.test/c/${card.token}/preview/${card.content_hash.slice(0, 10)}-ar.jpg">`);
+  });
+
+  it('draws the preview picture: a 1200 x 630 JPEG with the company name, in either language', async () => {
+    const card = await seedCard({ status: 'ready', fields: { company_name_en: 'Al Noor Media FZ-LLC', company_name_ar: 'النور للإعلام' } });
+    const h = 'a1b2c3d4e5'; // real content hashes are hex; the route draws the card's current details either way
+    for (const file of [`${h}.jpg`, `${h}-ar.jpg`]) {
+      const { res } = await call(`/c/${card.token}/preview/${file}`);
+      expect(res.status, file).toBe(200);
+      expect(res.headers.get('Content-Type')).toBe('image/jpeg');
+      expect(res.headers.get('Cache-Control')).toContain('max-age=604800');
+      const meta = await sharp(Buffer.from(await res.arrayBuffer())).metadata();
+      expect([meta.format, meta.width, meta.height]).toEqual(['jpeg', 1200, 630]);
+    }
+    // An older address (the card changed since) still answers, with the current details.
+    expect((await call(`/c/${card.token}/preview/0123456789.jpg`)).res.status).toBe(200);
+  }, 30_000);
+
+  it('refuses malformed preview addresses and unknown cards get no drawn picture', async () => {
+    const card = await seedCard({ status: 'ready' });
+    for (const path of [`/c/${card.token}/preview/x.jpg`, `/c/${card.token}/preview/0123456789.png`, '/c/short/preview/0123456789.jpg']) {
+      expect((await call(path)).res.status, path).toBe(404);
+    }
+    // Expired and unknown cards fall back to the generic picture when the studio is built, else 404.
+    const expired = await seedCard({ status: 'expired' });
+    const res = (await call(`/c/${expired.token}/preview/0123456789.jpg`)).res;
+    expect([200, 404]).toContain(res.status);
+    if (res.status === 200) expect(res.headers.get('Cache-Control')).toContain('max-age=3600');
+  });
+
+  it('keeps hyphenated names together and a spaced dash with the word before it', () => {
+    expect(unbreakable('Al Noor Media FZ-LLC')).toBe('Al Noor Media FZ\u2011LLC');
+    expect(unbreakable('النور للإعلام ش.ذ.م.م - منطقة حرة')).toBe('النور للإعلام ش.ذ.م.م\u00a0- منطقة حرة');
   });
 
   it('opens in the language ?lang= asks for, and ignores anything else', async () => {
