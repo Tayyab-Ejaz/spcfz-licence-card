@@ -294,6 +294,11 @@ client/card-data.js):
   headline. Each opened part is scrolled into view, and a part with rejected
   wording stops Next with the design's warning (`detailsNav` in
   client/card-data.js). The phone layout has no steps and is unchanged.
+- **Share sends the image only** (19 October 2026): with the caption passed
+  alongside, LinkedIn's app kept the text and dropped the image. The caption
+  is copied to the clipboard first, and a message after sharing says to paste
+  it (or, when the clipboard refused, where to copy it from). WhatsApp and
+  other apps therefore also get the image without a caption.
 - **Desktop Done** (18 October 2026): the last step's bar ends with a Done
   button that opens the customer portal in the same tab, in place of the
   "Step 3 of 3" label.

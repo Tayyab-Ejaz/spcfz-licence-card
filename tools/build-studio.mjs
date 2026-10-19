@@ -128,11 +128,20 @@ DATA_PATCHES.mobile.push(
 );
 
 // Logic patches: the same exactly-once rule, applied to design/source/<layout>/logic.js before it is wrapped.
+// Share (SPC, 19 October 2026): hand the share menu the image only. With text alongside, LinkedIn's app keeps the
+// text and drops the image. The caption is still copied to the clipboard first; after sharing, a toast says to paste
+// it (or where to copy it from, when the clipboard refused).
+const SHARE_PATCHES = [
+  ['    this.copyText(caption);\n', '    const copied = this.copyText(caption);\n'],
+  ['await navigator.share({ files: [file], text: caption });',
+    "await navigator.share({ files: [file] }); copied.then((ok) => this.showToast(ok ? 'Caption copied. Paste it into your post.' : 'Copy the caption from Caption, then paste it into your post.'));"],
+];
 const LOGIC_PATCHES = {
-  studio: [],
+  studio: [...SHARE_PATCHES],
   mobile: [
     ['const availH = sheet ? Math.max(90, vh - 56 - sheetH - 28) : Math.max(200, vh - 420);',
       'const availH = sheet ? Math.max(90, vh - 56 - sheetH - 28) : Math.max(180, vh - (s.chromeH || 440) - 8);'],
+    ...SHARE_PATCHES,
   ],
 };
 
