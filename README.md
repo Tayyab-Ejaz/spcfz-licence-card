@@ -8,8 +8,9 @@ and delivered through a personal page at **https://licensed.spcfz.ae/c/{token}**
 container `spcfz-licence-card` on 13.206.34.102, behind Apache and Cloudflare.
 The personal page is the customer studio from SPC's design
 (docs/ARCHITECTURE.md section 7), live since 16 October 2026. Webhooks are
-rejected until the ERP's IP addresses are added (ERP work on hold); the admin
-answers 503 until Cloudflare Access is set up.
+rejected until the ERP's IP addresses are added (ERP work on hold). The admin
+is behind Cloudflare Access since 19 October 2026 (team `sweet-rain-373c`,
+policy "SPC licence admin"); add staff emails to that policy to let them in.
 
 Work now happens on the local copy first: `npm run local` runs the whole
 product at http://localhost:8787, admin included (docs/DEV.md "Local copy").
@@ -49,7 +50,6 @@ write-back, print-ready files, and any change to www.spcfz.ae.
 
 ## Next steps
 
-1. Cloudflare Access for `/admin*`, then put the team domain and audience tag in the env file (docs/CLOUDFLARE-SETUP.md step 3).
-2. ERP team: their outbound IP addresses into `ERP_IP_ALLOWLIST` and the WAF rule; hand them the test secret; first test posts.
-3. Rate-limit rule on `/c/*` before launch.
-4. Review docs/ARABIC-STRINGS.md.
+1. ERP team: their outbound IP addresses into `ERP_IP_ALLOWLIST` and the WAF rule; hand them the test secret; first test posts.
+2. Optional Cloudflare rate-limit rule on `/c/*`; the app already limits per visitor.
+3. Review docs/ARABIC-STRINGS.md.
