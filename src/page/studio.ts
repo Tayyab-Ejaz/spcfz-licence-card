@@ -7,13 +7,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Hono } from 'hono';
 import type { AppEnv, CardRow, Lang } from '../types.js';
+import { formatFullDate } from '../util/time.js';
 import { html, raw } from '../util/html.js';
 
 /** public/studio, resolved from this file so it works from src/ (tests, tsx) and dist/ alike. */
 export const STUDIO_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../public/studio');
 
-export interface StudioManifest { js: string; css: string }
-const FALLBACK: StudioManifest = { js: '/static/studio/app.js', css: '/static/studio/studio.css' };
+export interface StudioManifest { js: string; css: string; og: string }
+const FALLBACK: StudioManifest = { js: '/static/studio/app.js', css: '/static/studio/studio.css', og: '/static/studio/og.jpg' };
 
 let cached: StudioManifest | null = null;
 /** The hashed bundle names. Falls back to fixed names when the studio has not been built (unit tests). */
@@ -22,7 +23,7 @@ export function studioManifest(): StudioManifest {
   const file = path.join(STUDIO_DIR, 'manifest.json');
   if (!existsSync(file)) return FALLBACK;
   const m = JSON.parse(readFileSync(file, 'utf8')) as Partial<StudioManifest>;
-  cached = { js: m.js ?? FALLBACK.js, css: m.css ?? FALLBACK.css };
+  cached = { js: m.js ?? FALLBACK.js, css: m.css ?? FALLBACK.css, og: m.og ?? FALLBACK.og };
   return cached;
 }
 
@@ -75,7 +76,43 @@ export interface ShellInput {
   lang?: Lang;
   nonce: string;
   gtmContainer: string | null;
+  /** The service's public address, for the absolute URLs link previews need. */
+  baseUrl?: string;
   manifest?: StudioManifest;
+}
+
+/**
+ * Link preview (WhatsApp, LinkedIn, iMessage, Slack): the company's name in the title, the issue date in the
+ * description, and one branded image for every card (design/og/). In the card's language.
+ */
+function previewTags(i: ShellInput, m: StudioManifest, lang: Lang): string {
+  const c = i.card;
+  const base = (i.baseUrl ?? '').replace(/\/+$/, '');
+  const ar = lang === 'ar';
+  const company = ar ? c.company_name_ar || c.company_name_en : c.company_name_en;
+  const title = ar ? `${company} مرخّصة رسمياً` : `${company} is officially licensed`;
+  const description = ar
+    ? `شركة جديدة في المنطقة الحرة لمدينة الشارقة للنشر، تاريخ الإصدار ${formatFullDate(c.issued_on, 'ar')}.`
+    : `A new business at SPC Free Zone, Sharjah. Licensed ${formatFullDate(c.issued_on, 'en')}.`;
+  const image = `${base}${m.og}`;
+  const alt = ar ? 'مرخّصة رسمياً في المنطقة الحرة لمدينة الشارقة للنشر' : 'Officially licensed at SPC Free Zone';
+  return html`<meta name="description" content="${description}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SPC Free Zone">
+<meta property="og:locale" content="${ar ? 'ar_AE' : 'en_GB'}">
+<meta property="og:url" content="${base}/c/${c.token}${lang !== c.preferred_language ? `?lang=${lang}` : ''}">
+<meta property="og:title" content="${title}">
+<meta property="og:description" content="${description}">
+<meta property="og:image" content="${image}">
+<meta property="og:image:secure_url" content="${image}">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="${alt}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${title}">
+<meta name="twitter:description" content="${description}">
+<meta name="twitter:image" content="${image}">`;
 }
 
 function gtmSnippet(id: string, nonce: string): string {
@@ -93,8 +130,7 @@ export function renderStudioShell(i: ShellInput): string {
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <title>${i.card.is_test ? '[TEST] ' : ''}${title}</title>
-<meta property="og:title" content="${title}">
-<meta property="og:site_name" content="SPC Free Zone">
+${raw(previewTags(i, m, i.lang ?? i.card.preferred_language))}
 <link rel="stylesheet" href="${m.css}">
 ${i.gtmContainer ? raw(gtmSnippet(i.gtmContainer, i.nonce)) : ''}
 </head>

@@ -347,5 +347,10 @@ const result = await build({
 const js = result.outputFiles[0].contents;
 const jsName = `app-${hash(js)}.js`;
 writeFileSync(path.join(OUT, jsName), js);
-writeFileSync(path.join(OUT, 'manifest.json'), JSON.stringify({ js: `/static/studio/${jsName}`, css: `/static/studio/${cssName}` }, null, 2) + '\n');
+// The link-preview image (WhatsApp, LinkedIn, iMessage): one branded 1200 x 630 picture for every card, made from
+// design/og/licence-preview.html. The page's Open Graph tags point at it (src/page/studio.ts).
+const og = readFileSync(path.join(ROOT, 'design', 'og', 'licence-preview.jpg'));
+const ogName = `og-${hash(og)}.jpg`;
+writeFileSync(path.join(OUT, ogName), og);
+writeFileSync(path.join(OUT, 'manifest.json'), JSON.stringify({ js: `/static/studio/${jsName}`, css: `/static/studio/${cssName}`, og: `/static/studio/${ogName}` }, null, 2) + '\n');
 console.log(`studio built: ${jsName} (${Math.round(js.length / 1024)} KB), ${cssName} (${Math.round(css.length / 1024)} KB), ${used.size} assets, ${pseudoRules.size} hover rules`);

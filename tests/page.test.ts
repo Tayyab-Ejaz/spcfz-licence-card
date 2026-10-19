@@ -119,6 +119,26 @@ describe('GET /c/:token', () => {
     expect(data).toMatchObject({ company_ar: 'نيمبوس للنشر', activity_ar: 'النشر', lang: 'ar' });
   });
 
+  it('carries a link preview for WhatsApp and LinkedIn: title, description and an absolute image URL', async () => {
+    const card = await seedCard({ status: 'ready', fields: { company_name_en: 'Cedar & "Quill" FZE', company_name_ar: 'سيدار وكويل', issued_on: '2026-10-16' } });
+    const body = await (await call(`/c/${card.token}`)).res.text();
+    const meta = (prop: string) => new RegExp(`<meta (?:property|name)="${prop}" content="([^"]*)">`).exec(body)?.[1];
+    expect(meta('og:title')).toBe('Cedar &amp; &quot;Quill&quot; FZE is officially licensed');
+    expect(meta('og:description')).toBe('A new business at SPC Free Zone, Sharjah. Licensed 16 October 2026.');
+    expect(meta('og:image')).toMatch(/^https:\/\/licensed\.test\/static\/studio\/og[-.].*jpg$/);
+    expect(meta('og:image:width')).toBe('1200');
+    expect(meta('og:image:height')).toBe('630');
+    expect(meta('og:url')).toBe(`https://licensed.test/c/${card.token}`);
+    expect(meta('twitter:card')).toBe('summary_large_image');
+    // The tags come before the stylesheet and data, inside the first few kilobytes that preview fetchers read.
+    expect(body.indexOf('og:image')).toBeLessThan(body.indexOf('<link rel="stylesheet"'));
+
+    const ar = await (await call(`/c/${card.token}?lang=ar`)).res.text();
+    expect(ar).toContain('<meta property="og:title" content="سيدار وكويل مرخّصة رسمياً">');
+    expect(ar).toContain('16 أكتوبر 2026');
+    expect(ar).toContain(`<meta property="og:url" content="https://licensed.test/c/${card.token}?lang=ar">`);
+  });
+
   it('opens in the language ?lang= asks for, and ignores anything else', async () => {
     const card = await seedCard({ status: 'ready', fields: { preferred_language: 'en' } });
     expect(embedded(await (await call(`/c/${card.token}?lang=ar`)).res.text())).toMatchObject({ lang: 'ar' });

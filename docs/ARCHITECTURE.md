@@ -307,6 +307,12 @@ client/card-data.js):
   card's text uses, fetched once from the browser cache, and never run twice
   at once; the images are pixel-identical. Share sends a JPEG (about 210 KB),
   Download a PNG.
+- **Link preview** (19 October 2026): the card page carries Open Graph and
+  Twitter tags, so a pasted link shows a preview in WhatsApp, LinkedIn,
+  iMessage and Slack: "<company> is officially licensed", the issue date, and
+  one branded 1200 x 630 image for every card (design/og/licence-preview.jpg,
+  made from licence-preview.html; the build publishes it as
+  /static/studio/og-<hash>.jpg). Arabic cards get Arabic text.
 - **Desktop Done** (18 October 2026): the last step's bar ends with a Done
   button that opens the customer portal in the same tab, in place of the
   "Step 3 of 3" label.
