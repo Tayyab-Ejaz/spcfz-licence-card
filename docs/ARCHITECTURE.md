@@ -313,7 +313,8 @@ client/card-data.js):
   a 1200 x 630 picture with the company's name big and the SPC logo small
   (src/page/preview-image.ts, drawn by sharp with Inter and Noto Kufi Arabic
   from assets/fonts, SIL OFL; Arabic is shaped right to left). It is served
-  at /c/<token>/preview/<hash>[-ar].jpg, a new address when the card changes,
+  at /c/<token>/preview/<hash>-v<design>[-ar].jpg, a new address when the card
+  or the picture's design (PREVIEW_DESIGN in src/page/studio.ts) changes,
   cached in memory; expired cards and any drawing failure get the generic
   picture (design/og/licence-preview.jpg). Fontconfig sees only those fonts
   (a config written to the temp folder at first use).

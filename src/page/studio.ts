@@ -81,9 +81,15 @@ export interface ShellInput {
   manifest?: StudioManifest;
 }
 
-/** Where a card's preview picture lives: /c/<token>/preview/<first 10 of the content hash>[-ar].jpg */
+/**
+ * The version of the preview picture's design. Raise it whenever src/page/preview-image.ts draws differently:
+ * Cloudflare and the apps cache each picture address for days, so a new design needs new addresses.
+ */
+export const PREVIEW_DESIGN = 2;
+
+/** Where a card's preview picture lives: /c/<token>/preview/<first 10 of the content hash>-v<design>[-ar].jpg */
 export function previewPath(card: Pick<CardRow, 'token' | 'content_hash'>, lang: Lang): string {
-  return `/c/${card.token}/preview/${card.content_hash.slice(0, 10)}${lang === 'ar' ? '-ar' : ''}.jpg`;
+  return `/c/${card.token}/preview/${card.content_hash.slice(0, 10)}-v${PREVIEW_DESIGN}${lang === 'ar' ? '-ar' : ''}.jpg`;
 }
 
 /** The generic link-preview picture (design/og/licence-preview.jpg), as built into public/studio. */

@@ -113,7 +113,8 @@ pageRoutes.get('/c/:token', async (c) => {
 
 // ------------------------------------------------------------------ link preview picture
 
-const PREVIEW_FILE_RE = /^([0-9a-f]{10})(-ar)?\.jpg$/;
+// <hash>[-v<design>][-ar].jpg; addresses from before the design number still answer.
+const PREVIEW_FILE_RE = /^([0-9a-f]{10})(?:-v\d{1,3})?(-ar)?\.jpg$/;
 
 /**
  * The picture link previews show (WhatsApp, LinkedIn, iMessage): the company's name, big. The file name carries

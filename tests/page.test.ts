@@ -10,6 +10,7 @@ import { flushBackground } from '../src/util/background.js';
 import { createTestEnv } from './env.js';
 import sharp from 'sharp';
 import { unbreakable } from '../src/page/preview-image.js';
+import { PREVIEW_DESIGN } from '../src/page/studio.js';
 
 const env = createTestEnv();
 const app = new Hono<AppEnv>().route('/', pageRoutes);
@@ -127,7 +128,7 @@ describe('GET /c/:token', () => {
     const meta = (prop: string) => new RegExp(`<meta (?:property|name)="${prop}" content="([^"]*)">`).exec(body)?.[1];
     expect(meta('og:title')).toBe('Cedar &amp; &quot;Quill&quot; FZE is officially licensed');
     expect(meta('og:description')).toBe('A new business at SPC Free Zone, Sharjah. Licensed 16 October 2026.');
-    expect(meta('og:image')).toBe(`https://licensed.test/c/${card.token}/preview/${card.content_hash.slice(0, 10)}.jpg`);
+    expect(meta('og:image')).toBe(`https://licensed.test/c/${card.token}/preview/${card.content_hash.slice(0, 10)}-v${PREVIEW_DESIGN}.jpg`);
     expect(meta('og:image:width')).toBe('1200');
     expect(meta('og:image:height')).toBe('630');
     expect(meta('og:url')).toBe(`https://licensed.test/c/${card.token}`);
@@ -139,13 +140,13 @@ describe('GET /c/:token', () => {
     expect(ar).toContain('<meta property="og:title" content="سيدار وكويل مرخّصة رسمياً">');
     expect(ar).toContain('16 أكتوبر 2026');
     expect(ar).toContain(`<meta property="og:url" content="https://licensed.test/c/${card.token}?lang=ar">`);
-    expect(ar).toContain(`<meta property="og:image" content="https://licensed.test/c/${card.token}/preview/${card.content_hash.slice(0, 10)}-ar.jpg">`);
+    expect(ar).toContain(`<meta property="og:image" content="https://licensed.test/c/${card.token}/preview/${card.content_hash.slice(0, 10)}-v${PREVIEW_DESIGN}-ar.jpg">`);
   });
 
   it('draws the preview picture: a 1200 x 630 JPEG with the company name, in either language', async () => {
     const card = await seedCard({ status: 'ready', fields: { company_name_en: 'Al Noor Media FZ-LLC', company_name_ar: 'النور للإعلام' } });
     const h = 'a1b2c3d4e5'; // real content hashes are hex; the route draws the card's current details either way
-    for (const file of [`${h}.jpg`, `${h}-ar.jpg`]) {
+    for (const file of [`${h}.jpg`, `${h}-ar.jpg`, `${h}-v${PREVIEW_DESIGN}.jpg`, `${h}-v${PREVIEW_DESIGN}-ar.jpg`]) {
       const { res } = await call(`/c/${card.token}/preview/${file}`);
       expect(res.status, file).toBe(200);
       expect(res.headers.get('Content-Type')).toBe('image/jpeg');
