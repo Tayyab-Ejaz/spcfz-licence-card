@@ -4,12 +4,14 @@ import {
   compactOldMetrics, deleteCard, expireCard, getIntSetting, listExpiredCandidates, listTestCardsOlderThan, purgeRawBodies,
 } from './db/cards.js';
 import { addDays, nowIso } from './util/time.js';
+import { purgeExpiredAdminSessions } from './db/admin.js';
 
 export interface HousekeepingSummary {
   rawBodiesPurged: number;
   testCardsDeleted: number;
   cardsExpired: number;
   metricRowsCompacted: number;
+  adminSessionsPurged: number;
 }
 
 const BATCH = 200;
@@ -39,7 +41,7 @@ async function drain(list: () => Promise<CardRow[]>, fn: (card: CardRow) => Prom
 
 export async function runHousekeeping(env: Env, now: Date = new Date()): Promise<HousekeepingSummary> {
   const nowStr = nowIso(now);
-  const summary: HousekeepingSummary = { rawBodiesPurged: 0, testCardsDeleted: 0, cardsExpired: 0, metricRowsCompacted: 0 };
+  const summary: HousekeepingSummary = { rawBodiesPurged: 0, testCardsDeleted: 0, cardsExpired: 0, metricRowsCompacted: 0, adminSessionsPurged: 0 };
 
   // 1. Raw request bodies kept on the test route (C4).
   summary.rawBodiesPurged = await purgeRawBodies(env.DB, nowStr);
@@ -70,6 +72,9 @@ export async function runHousekeeping(env: Env, now: Date = new Date()): Promise
   cutoff.setUTCHours(0, 0, 0, 0);
   cutoff.setUTCMonth(cutoff.getUTCMonth() - 13);
   summary.metricRowsCompacted = await compactOldMetrics(env.DB, cutoff.toISOString().slice(0, 10));
+
+  // 5. Admin sign-in sessions past their expiry (src/admin/auth.ts); expired ones are refused anyway.
+  summary.adminSessionsPurged = await purgeExpiredAdminSessions(env.DB, nowStr);
 
   console.log(JSON.stringify({ housekeeping: summary }));
   return summary;

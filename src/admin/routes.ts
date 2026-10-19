@@ -1,4 +1,4 @@
-// Staff admin behind Cloudflare Access (ARCHITECTURE section 8). Server-rendered screens, plain forms, POST for
+// Staff admin behind its own sign-in (./auth.ts, ARCHITECTURE section 8). Server-rendered screens, plain forms, POST for
 // every mutation, CSRF double-submit (./csrf.ts). Every mutation is written to the events table with the actor.
 import { Hono } from 'hono';
 import type { Context } from 'hono';
@@ -19,9 +19,8 @@ import { addDays, nowIso, todayInDubai } from '../util/time.js';
 import { mapPayload } from '../intake/mapper.js';
 import { validateCanonical } from '../intake/validate.js';
 import { hashFields, upsertFromCanonical } from '../intake/upsert.js';
-import type { AccessVerifier } from './access.js';
-import { isAccessConfigured } from './access.js';
-import { isLocalAdminEnabled, verifyAdmin } from './local.js';
+import type { AdminVerifier, AuthHandlers } from './auth.js';
+import { createAuthHandlers, sessionVerifier } from './auth.js';
 import { csrfFailure, csrfToken, ensureCsrf } from './csrf.js';
 import type { AdminStatus } from './layout.js';
 import {
@@ -302,43 +301,30 @@ function settingsForm(c: Context<AppEnv>, values: Record<string, string>, errors
 
 // ------------------------------------------------------------------ the router
 
-export function createAdminRoutes(verify: AccessVerifier): Hono<AppEnv> {
+export function createAdminRoutes(verify: AdminVerifier, auth: AuthHandlers = createAuthHandlers()): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
 
+  // Sign-in and sign-out sit in front of the session check (./auth.ts). The sign-in page needs ?key=.
   app.use('*', async (c, next) => {
     adminHeaders(c, originOf(c.env.BASE_URL ?? ''));
+    await next();
+  });
+  app.get('/login', (c) => auth.showLogin(c));
+  app.post('/login', (c) => auth.doLogin(c));
+
+  app.use('*', async (c, next) => {
     const identity = await verify(c);
-    if (!identity) {
-      if (isLocalAdminEnabled(c.env)) {
-        const at = `${c.env.BASE_URL}/admin`;
-        return respond(
-          c,
-          {
-            title: 'Local admin only',
-            body: h`<p>This copy runs without Cloudflare Access, so its admin answers only to a browser on this computer at <a href="${at}">${at}</a>.</p>`,
-          },
-          403,
-        );
-      }
-      if (!isAccessConfigured(c.env)) {
-        return respond(
-          c,
-          {
-            title: 'Admin is not configured',
-            body: h`<p>Cloudflare Access is not set up for this deployment: the <code>ACCESS_TEAM_DOMAIN</code> and <code>ACCESS_AUD</code> variables are missing (docs/CLOUDFLARE-SETUP.md).</p>`,
-          },
-          503,
-        );
-      }
-      return respond(
-        c,
-        { title: 'Sign in required', body: h`<p>Your Cloudflare Access session was not accepted. <a href="/admin">Sign in again</a>.</p>` },
-        401,
-      );
-    }
+    // No session: the same plain 404 as any unknown address, so the admin does not announce itself.
+    if (!identity) return c.text('Not found', 404);
     c.set('actor', identity.email);
     ensureCsrf(c);
     await next();
+  });
+
+  app.post('/logout', async (c) => {
+    const bad = csrfFailure(c, await readForm(c));
+    if (bad) return forbidden(c, bad);
+    return auth.doLogout(c);
   });
 
   // ---------------------------------------------------------------- dashboard
@@ -724,4 +710,4 @@ ${dryTable(dry)}
   return app;
 }
 
-export const adminRoutes: Hono<AppEnv> = createAdminRoutes(verifyAdmin);
+export const adminRoutes: Hono<AppEnv> = createAdminRoutes(sessionVerifier);

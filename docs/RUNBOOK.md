@@ -97,6 +97,36 @@ rm -r /opt/spcfz-licence-card        # deletes every card; copy data/ off first 
 
 Then delete the DNS record in Cloudflare.
 
+## Admin sign-in
+
+The admin lives at `https://licensed.spcfz.ae/admin`, but its sign-in page
+opens only with the key from the env file:
+
+```
+ssh root@13.206.34.102 grep '^ADMIN_LOGIN_KEY=' /opt/spcfz-licence-card/licence-card.env
+```
+
+The sign-in link is `https://licensed.spcfz.ae/admin/login?key=<that value>`.
+Bookmark it; share it only with staff. Without the key, every admin address
+answers "Not found".
+
+Staff accounts (type the password when asked; it is never shown):
+
+```
+ssh -t root@13.206.34.102 docker exec -it spcfz-licence-card node dist/cli/admin-user.js add name@spcfz.ae
+ssh -t root@13.206.34.102 docker exec -it spcfz-licence-card node dist/cli/admin-user.js passwd name@spcfz.ae
+ssh -t root@13.206.34.102 docker exec -it spcfz-licence-card node dist/cli/admin-user.js unlock name@spcfz.ae
+ssh -t root@13.206.34.102 docker exec -it spcfz-licence-card node dist/cli/admin-user.js remove name@spcfz.ae
+ssh root@13.206.34.102 docker exec spcfz-licence-card node dist/cli/admin-user.js list
+```
+
+`passwd` signs that person out everywhere. After 5 wrong passwords an
+account locks for 15 minutes; `unlock` clears it at once.
+
+Rotate the key (old links stop working; signed-in sessions continue): put a
+new 48-character value in `ADMIN_LOGIN_KEY` and apply it (see "Applying an
+env-file change" below).
+
 ## Secrets
 
 Read a secret to hand to the ERP team:

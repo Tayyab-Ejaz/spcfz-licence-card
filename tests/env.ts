@@ -18,8 +18,7 @@ export const TEST_VARS = {
   WEBHOOK_SECRET_PREVIOUS: 'test-production-secret-previous',
   TEST_SECRET_CURRENT: 'test-test-secret-current',
   TEST_SECRET_PREVIOUS: '',
-  ACCESS_TEAM_DOMAIN: 'spcfz-test',
-  ACCESS_AUD: 'test-audience',
+  ADMIN_LOGIN_KEY: 'test-login-key-0123456789abcdef',
 } as const;
 
 export interface TestEnv extends Env {

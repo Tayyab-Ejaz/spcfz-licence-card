@@ -9,8 +9,8 @@ container `spcfz-licence-card` on 13.206.34.102, behind Apache and Cloudflare.
 The personal page is the customer studio from SPC's design
 (docs/ARCHITECTURE.md section 7), live since 16 October 2026. Webhooks are
 rejected until the ERP's IP addresses are added (ERP work on hold). The admin
-is behind Cloudflare Access since 19 October 2026 (team `sweet-rain-373c`,
-policy "SPC licence admin"); add staff emails to that policy to let them in.
+has its own sign-in at `/admin/login?key=…` (docs/RUNBOOK.md "Admin
+sign-in"); staff accounts are made with a command on the server.
 
 Work now happens on the local copy first: `npm run local` runs the whole
 product at http://localhost:8787, admin included (docs/DEV.md "Local copy").
@@ -23,7 +23,7 @@ Production changes wait until SPC says the product is ready.
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | whoever builds or changes the service | The contract every piece is built against. Read it before touching anything. |
 | [docs/ERP-WEBHOOK.md](docs/ERP-WEBHOOK.md) | the ERP team | What to send us, how to authenticate, what comes back, and what to do with it. Safe to forward as is. |
 | [docs/DESIGN-HANDOFF.md](docs/DESIGN-HANDOFF.md) | the designer | What the card design must contain so it can be turned into a template. |
-| [docs/CLOUDFLARE-SETUP.md](docs/CLOUDFLARE-SETUP.md) | the account owner | DNS, Access and WAF on the existing zone. |
+| [docs/CLOUDFLARE-SETUP.md](docs/CLOUDFLARE-SETUP.md) | the account owner | DNS and WAF on the existing zone. |
 | [docs/PORT-TO-NODE.md](docs/PORT-TO-NODE.md) | developers | Why and how the service moved from Workers to Docker on SPC's server. |
 | [docs/DEV.md](docs/DEV.md) | developers | Toolchain, layout, conventions, how tests and deploys run. |
 | [docs/RUNBOOK.md](docs/RUNBOOK.md) | SPC staff operating the service | Secret rotation, allowlist changes, test cards, design updates, deletion. |

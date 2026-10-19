@@ -40,14 +40,15 @@ because OneDrive should not sync a live SQLite file:
   secrets. To change the port, change `PORT` and `BASE_URL` together.
 - `data/` holds the database and its daily backups.
 
-**The admin needs no sign-in here.** `LOCAL_ADMIN_EMAIL` stands in for
-Cloudflare Access (`src/admin/local.ts`), and a yellow band on every admin
-screen says it is the local copy. The service refuses to start with that
-setting unless it listens on loopback, `BASE_URL` points at localhost,
-`TRUST_PROXY` is off, `NODE_ENV` is not production and Access is unset. The
-production container fails every one of those, so it would refuse to start.
-Each request is checked again: the peer must be this machine and the host
-name a loopback name on the configured port, which stops DNS rebinding.
+**The admin uses the same sign-in as production.** The first run writes a
+random `ADMIN_LOGIN_KEY` into `local.env` and creates the account
+`admin@local.test`, whose password is in `local-admin.txt` (owner-only). The
+start-up summary prints the sign-in link with the key. A yellow band on
+every admin screen says it is the local copy. More local accounts:
+
+```
+DATA_DIR=~/.spcfz-licence-card/data node dist/cli/admin-user.js add you@example.com
+```
 
 To post your own payload to the local test webhook:
 
@@ -93,12 +94,13 @@ still works for server-only work; it does not rebuild the studio.
 | `src/platform/` | SQLite database, config, migrations, scheduler, backup, client address, Cloudflare ranges |
 | `src/intake` | webhook checks, field mapping, validation, idempotent upsert |
 | `src/page` | personal page (the studio shell and its static files), metric beacon |
-| `src/admin` | Cloudflare Access verification, the local-copy gate, staff screens |
+| `src/admin` | sign-in (key gate, passwords, sessions) and staff screens |
 | `src/db` | every SQL statement |
 | `src/util` | tokens, hashing, HTML escaping, dates, IP allowlist, CSV, background tasks |
 | `migrations/` | SQLite schema, applied at startup |
 | `deploy/` | Dockerfile companions: run script, env example, Apache site, Cloudflare ranges |
 | `tools/local.mjs` | the local copy (`npm run local`) |
+| `src/cli/admin-user.ts` | staff accounts: add, passwd, unlock, remove, list |
 | `tools/deploy.sh` | deployment from this Mac, one subcommand per approval |
 
 ## Conventions

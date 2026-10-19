@@ -57,7 +57,7 @@ describe('readConfig', () => {
       expect(r.config.vars.WEBHOOK_SECRET_CURRENT).toBeUndefined();
       expect(r.config.warnings.some((w) => w.includes('ERP_IP_ALLOWLIST'))).toBe(true);
       expect(r.config.warnings.some((w) => w.includes('WEBHOOK_SECRET_CURRENT'))).toBe(true);
-      expect(r.config.warnings.some((w) => w.includes('ACCESS_TEAM_DOMAIN'))).toBe(true);
+      expect(r.config.warnings.some((w) => w.includes('ADMIN_LOGIN_KEY'))).toBe(true);
     }
   });
 

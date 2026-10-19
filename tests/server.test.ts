@@ -73,7 +73,7 @@ describe('server (TRUST_PROXY=local-proxy, the production mode)', () => {
 
   it('lays out DATA_DIR: the SQLite file and every migration', () => {
     expect(existsSync(path.join(dir, DB_FILE_NAME))).toBe(true);
-    expect(appliedMigrations(server.db)).toEqual(['0001_init.sql', '0002_jobs.sql', '0003_activity_ar.sql', '0004_founder_name.sql']);
+    expect(appliedMigrations(server.db)).toEqual(['0001_init.sql', '0002_jobs.sql', '0003_activity_ar.sql', '0004_founder_name.sql', '0005_admin_auth.sql']);
     expect(server.scheduler).toBeNull();
   });
 

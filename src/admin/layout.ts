@@ -3,7 +3,7 @@ import type { Context } from 'hono';
 import type { AppEnv, CardStatus } from '../types.js';
 import { html, raw } from '../util/html.js';
 import type { RawHtml } from '../util/html.js';
-import { CSRF_FIELD } from './csrf.js';
+import { CSRF_FIELD, csrfToken } from './csrf.js';
 
 /** `html` that returns RawHtml so fragments nest without double escaping. */
 export function h(strings: TemplateStringsArray, ...values: unknown[]): RawHtml {
@@ -34,6 +34,9 @@ header .brand{font-weight:800;color:#fff;text-decoration:none;margin-inline-end:
 header nav a{color:#dbe4ff;text-decoration:none;padding:6px 8px;border-radius:6px;font-weight:600}
 header nav a.on,header nav a:hover{background:rgba(255,255,255,.14);color:#fff}
 header .who{margin-inline-start:auto;color:#dbe4ff;font-size:13px}
+header form.out{margin:0}
+header form.out button{font:inherit;font-size:13px;font-weight:700;color:#fff;background:rgba(255,255,255,.14);border:0;border-radius:6px;padding:6px 10px;cursor:pointer}
+header form.out button:hover{background:rgba(255,255,255,.24)}
 main{max-width:1100px;margin:0 auto;padding:20px 16px 48px}
 h1{font-size:22px;margin:0 0 14px}
 h2{font-size:16px;margin:24px 0 10px}
@@ -92,8 +95,10 @@ code{background:#eef2fa;padding:1px 5px;border-radius:4px;font-size:12px}
 export interface LayoutOptions {
   title: string;
   actor?: string | undefined;
-  /** True on a local copy (LOCAL_ADMIN_EMAIL): a band under the header says the data is on this computer only. */
+  /** True when BASE_URL is localhost: a band under the header says the data is on this computer only. */
   local?: boolean | undefined;
+  /** CSRF value for the Sign out form; the button shows only when set. */
+  signOut?: string | undefined;
   active?: NavKey | undefined;
   flash?: string | null | undefined;
   error?: string | string[] | null | undefined;
@@ -116,6 +121,7 @@ export function adminLayout(o: LayoutOptions): string {
 <a class="brand" href="/admin">SPC licence cards</a>
 <nav>${NAV.map((n) => h`<a href="${n.href}" class="${n.key === o.active ? 'on' : ''}">${n.label}</a>`)}</nav>
 ${o.actor ? h`<span class="who">${o.actor}</span>` : EMPTY}
+${o.signOut ? h`<form class="out" method="post" action="/admin/logout">${csrfField(o.signOut)}<button type="submit">Sign out</button></form>` : EMPTY}
 </div></header>
 ${o.local ? h`<div class="local">Local copy on this computer. Nothing here reaches licensed.spcfz.ae.</div>` : EMPTY}
 <main>
@@ -142,8 +148,17 @@ export function adminHeaders(c: Context<AppEnv>, imgOrigin: string): void {
   );
 }
 
-export function respond(c: Context<AppEnv>, o: Omit<LayoutOptions, 'actor' | 'local'>, status: AdminStatus = 200): Response | Promise<Response> {
-  return c.html(adminLayout({ ...o, actor: c.get('actor'), local: Boolean(c.env.LOCAL_ADMIN_EMAIL) }), status);
+function isLocalBase(base: string | undefined): boolean {
+  try {
+    return ['localhost', '127.0.0.1', '[::1]'].includes(new URL(base ?? '').hostname);
+  } catch {
+    return false;
+  }
+}
+
+export function respond(c: Context<AppEnv>, o: Omit<LayoutOptions, 'actor' | 'local' | 'signOut'>, status: AdminStatus = 200): Response | Promise<Response> {
+  const actor = c.get('actor');
+  return c.html(adminLayout({ ...o, actor, local: isLocalBase(c.env.BASE_URL), signOut: actor ? csrfToken(c) : undefined }), status);
 }
 
 // ------------------------------------------------------------------ fragments

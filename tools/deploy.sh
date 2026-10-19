@@ -54,7 +54,7 @@ case "$CMD" in
   env-init)
     remote "test ! -e ${ROOT}/licence-card.env || { echo 'licence-card.env already exists; not touching it' >&2; exit 1; }"
     S="$(sha)"
-    remote "umask 077 && gen() { openssl rand -base64 64 | tr -dc A-Za-z0-9 | head -c 48; } && sed -e \"s/^WEBHOOK_SECRET_CURRENT=__GENERATED__/WEBHOOK_SECRET_CURRENT=\$(gen)/\" -e \"s/^TEST_SECRET_CURRENT=__GENERATED__/TEST_SECRET_CURRENT=\$(gen)/\" ${ROOT}/releases/${S}/deploy/licence-card.env.example > ${ROOT}/licence-card.env && chmod 600 ${ROOT}/licence-card.env && grep -c '^[A-Z_]*_SECRET_CURRENT=[A-Za-z0-9]\\{48\\}\$' ${ROOT}/licence-card.env"
+    remote "umask 077 && gen() { openssl rand -base64 64 | tr -dc A-Za-z0-9 | head -c 48; } && sed -e \"s/^WEBHOOK_SECRET_CURRENT=__GENERATED__/WEBHOOK_SECRET_CURRENT=\$(gen)/\" -e \"s/^TEST_SECRET_CURRENT=__GENERATED__/TEST_SECRET_CURRENT=\$(gen)/\" -e \"s/^ADMIN_LOGIN_KEY=__GENERATED__/ADMIN_LOGIN_KEY=\$(gen)/\" ${ROOT}/releases/${S}/deploy/licence-card.env.example > ${ROOT}/licence-card.env && chmod 600 ${ROOT}/licence-card.env && grep -c '^[A-Z_]*_SECRET_CURRENT=[A-Za-z0-9]\\{48\\}\$' ${ROOT}/licence-card.env"
     echo; echo "secrets were generated on the server and never printed. To read one:"
     echo "  ssh ${HOST} grep '^TEST_SECRET_CURRENT=' ${ROOT}/licence-card.env"
     ;;

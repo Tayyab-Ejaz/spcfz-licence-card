@@ -1,6 +1,6 @@
 // The product on this computer (docs/DEV.md "Local copy"). One command builds the service and the studio, starts
 // it at http://localhost:8787, loads the five sample licences through the real test webhook on first run, and
-// opens the admin without Cloudflare Access (LOCAL_ADMIN_EMAIL, which the service refuses anywhere but here).
+// creates a local admin account for the sign-in page (/admin/login?key=..., the same sign-in as production).
 //
 //   npm run local                  build, start, load the samples the first time
 //   npm run local -- --watch       rebuild and restart whenever src/, client/ or design/ change
@@ -9,7 +9,7 @@
 //   npm run local -- --no-build    start the last build as it is
 //
 // State lives outside the repo, in ~/.spcfz-licence-card (or $SPCFZ_LOCAL_HOME): local.env with this copy's own
-// random secrets, and data/ with the SQLite database. The repo sits in OneDrive, which should not sync a live
+// random secrets and sign-in key, local-admin.txt with the local admin account, and data/ with the SQLite database. The repo sits in OneDrive, which should not sync a live
 // database. Nothing here talks to the production server.
 import { spawn, spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
@@ -23,6 +23,8 @@ const HOME = path.resolve(process.env.SPCFZ_LOCAL_HOME || path.join(os.homedir()
 const ENV_FILE = path.join(HOME, 'local.env');
 const DATA_DIR = path.join(HOME, 'data');
 const SEEDED = path.join(DATA_DIR, '.samples-loaded');
+const ADMIN_FILE = path.join(HOME, 'local-admin.txt');
+const LOCAL_ADMIN = 'admin@local.test';
 
 const args = new Set(process.argv.slice(2));
 const known = ['--watch', '--seed', '--fresh', '--no-build', '--help'];
@@ -54,9 +56,10 @@ function ensureEnvFile() {
     'HOST=127.0.0.1',
     'PORT=8787',
     `DATA_DIR=${DATA_DIR}`,
-    '# The socket peer is the client; the admin opens only to this machine (src/admin/local.ts).',
+    '# The socket peer is the client.',
     'TRUST_PROXY=off',
-    'LOCAL_ADMIN_EMAIL=local-admin@localhost',
+    '# Opens the admin sign-in page at /admin/login?key=<this>; the account is in local-admin.txt.',
+    `ADMIN_LOGIN_KEY=${secret()}`,
     '# The webhooks accept this machine only. Secrets are random and local to this copy.',
     'ERP_IP_ALLOWLIST=127.0.0.1,::1',
     `WEBHOOK_SECRET_CURRENT=${secret()}`,
@@ -67,6 +70,19 @@ function ensureEnvFile() {
   ];
   writeFileSync(ENV_FILE, lines.join('\n'), { mode: 0o600 });
   return true;
+}
+
+/** Copies made before 19 October 2026 opened the admin with LOCAL_ADMIN_EMAIL; move them to the sign-in key. */
+function upgradeEnvFile() {
+  const text = readFileSync(ENV_FILE, 'utf8');
+  let next = text.split(/\r?\n/).filter((l) => !/^LOCAL_ADMIN_EMAIL=/.test(l) && !/src\/admin\/local\.ts/.test(l)).join('\n');
+  if (!/^ADMIN_LOGIN_KEY=/m.test(next)) {
+    next = next.replace(/\n*$/, '\n') + '# Opens the admin sign-in page at /admin/login?key=<this>; the account is in local-admin.txt.\n' + `ADMIN_LOGIN_KEY=${secret()}\n`;
+  }
+  if (next !== text) {
+    writeFileSync(ENV_FILE, next, { mode: 0o600 });
+    say(`updated ${ENV_FILE}: the admin now uses the sign-in page`);
+  }
 }
 
 function readEnvFile() {
@@ -153,6 +169,31 @@ async function loadSamples(base, testSecret) {
   return code === 0;
 }
 
+/** One local admin account, created the first time; its password is kept in local-admin.txt (owner-only). */
+async function ensureLocalAdmin() {
+  let count = 0;
+  try {
+    const { default: Database } = await import('better-sqlite3');
+    const db = new Database(path.join(DATA_DIR, 'licence-card.sqlite'), { readonly: true, fileMustExist: true });
+    count = db.prepare('SELECT COUNT(*) AS n FROM admin_users').get().n;
+    db.close();
+  } catch {
+    return;
+  }
+  if (count > 0) return;
+  const password = secret().slice(0, 20);
+  const code = await new Promise((resolve) => {
+    const child = spawn(process.execPath, ['dist/cli/admin-user.js', 'add', LOCAL_ADMIN], {
+      cwd: ROOT, env: { ...process.env, DATA_DIR }, stdio: ['pipe', 'ignore', 'inherit'],
+    });
+    child.on('exit', (c) => resolve(c ?? 1));
+    child.stdin.end(`${password}\n`);
+  });
+  if (code !== 0) { say('could not create the local admin account'); return; }
+  writeFileSync(ADMIN_FILE, `Local admin for http://localhost (this computer only)\nemail    ${LOCAL_ADMIN}\npassword ${password}\n`, { mode: 0o600 });
+  say(`created the local admin account; its password is in ${ADMIN_FILE}`);
+}
+
 async function printLinks(base) {
   let rows = [];
   try {
@@ -165,7 +206,8 @@ async function printLinks(base) {
   } catch (err) {
     say(`could not list the cards: ${err instanceof Error ? err.message : String(err)}`);
   }
-  const out = ['', `  Admin       ${base}/admin`];
+  const key = readEnvFile().ADMIN_LOGIN_KEY ?? '';
+  const out = ['', `  Admin       ${base}/admin/login?key=${key}`, `              account ${LOCAL_ADMIN}, password in ${ADMIN_FILE}`];
   if (rows.length) {
     out.push('  Cards       (add ?lang=ar for the Arabic layout)');
     for (const r of rows) out.push(`    ${r.is_test ? 'TEST ' : 'LIVE '}${r.company_name_en}\n      ${base}/c/${r.token}`);
@@ -189,6 +231,7 @@ async function boot(fileVars) {
 
 async function main() {
   if (ensureEnvFile()) say(`first run: wrote ${ENV_FILE}`);
+  upgradeEnvFile();
   const vars = readEnvFile();
   if (!vars.BASE_URL || !vars.TEST_SECRET_CURRENT) {
     console.error(`${ENV_FILE} needs BASE_URL and TEST_SECRET_CURRENT; delete it to have it written again`);
@@ -210,6 +253,7 @@ async function main() {
 
   if (!(await boot(vars))) { await stopServer(); process.exit(1); }
   if (args.has('--seed') || args.has('--fresh') || !existsSync(SEEDED)) await loadSamples(vars.BASE_URL, vars.TEST_SECRET_CURRENT);
+  await ensureLocalAdmin();
   await printLinks(vars.BASE_URL);
 
   if (args.has('--watch')) watchAndReload(vars);

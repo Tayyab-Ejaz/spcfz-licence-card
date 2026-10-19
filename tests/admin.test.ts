@@ -92,17 +92,14 @@ beforeEach(async () => {
   ]);
 });
 
-describe('access gate', () => {
-  it('503 when Access is not configured and the verifier yields nothing', async () => {
-    const res = await anonymous.request('/admin', undefined, { ...env, ACCESS_TEAM_DOMAIN: '', ACCESS_AUD: '' });
-    expect(res.status).toBe(503);
-    expect(await res.text()).toContain('not configured');
-  });
-
-  it('401 when Access is configured but the assertion is rejected', async () => {
-    const res = await anonymous.request('/admin/cards', undefined, env);
-    expect(res.status).toBe(401);
-    expect(await res.text()).toContain('Sign in required');
+describe('session gate', () => {
+  it('answers a plain 404 to anyone without a session, like any unknown address', async () => {
+    for (const path of ['/admin', '/admin/cards', '/admin/settings', '/admin/events']) {
+      const res = await anonymous.request(path, undefined, env);
+      expect(res.status, path).toBe(404);
+      expect(await res.text()).toBe('Not found');
+      expect(res.headers.get('X-Robots-Tag')).toBe('noindex');
+    }
   });
 
   it('serves the dashboard to a verified actor with admin headers and a CSRF cookie', async () => {

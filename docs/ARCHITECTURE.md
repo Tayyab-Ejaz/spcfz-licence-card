@@ -51,7 +51,7 @@ files, any change to www.spcfz.ae, customer accounts, customer-editable text.
 | C4 | The test endpoint keeps the raw request body for 7 days. The production endpoint never stores a raw body. | The user cannot get a sample ERP record any other way. |
 | C5 | Only the licence number and the English company name are required. Everything else is optional with a fallback. ERP field names are mapped in config, not fixed. | The user has little control over what the ERP sends. |
 | C6 | Personal data is limited to the founder's name (since 16 Oct 2026, the user's decision: the ERP sends it so the studio can pre-fill it). The mapper drops everything else, including emails and phone numbers. The name is cleared when a card expires and deleted with the card. | The design pre-fills the founder; nothing else needs personal data. |
-| C7 | Admin sits behind Cloudflare Access with an SPC email allowlist. No passwords in our code. | Free at this size, gives SSO and audit for nothing. |
+| C7 | Admin has its own sign-in (19 October 2026, replacing Cloudflare Access): a key-gated login page, staff accounts with scrypt passwords, server-side sessions. | SPC chose not to depend on Cloudflare's login; the key keeps the page unfindable, the accounts give per-person audit. |
 | C8 | Images and records are kept two years, then the images are deleted and the page says the card has expired. | A retention rule has to exist; two years covers a licence term and a renewal. |
 | C9 | Google Tag Manager is not loaded on the page by default. A config switch can add the site container GTM-PZ8R4DN. | Marketing decision; counters cover v1 needs. |
 | C10 | ~~Deployment runs from GitHub Actions.~~ Since 15 Oct 2026: deployment runs from the Mac with `tools/deploy.sh`, one approved step at a time; CI on GitHub runs the checks. | The server is SPC's own and every write on it needs the user's approval. |
@@ -69,7 +69,7 @@ Cloudflare Workers design; the behaviour in this document is unchanged.
 | Card images | built in the customer's browser by the studio (section 7); the server stores none |
 | Records and counters | SQLite file `DATA_DIR/licence-card.sqlite`, WAL mode |
 | Daily housekeeping | in-process scheduler at 05:15 Asia/Dubai, plus a SQLite backup |
-| Admin login | Cloudflare Access |
+| Admin login | Own sign-in page, key in the link (src/admin/auth.ts) |
 | Edge, TLS, rate limits, IP allowlist | Cloudflare proxy and WAF on the spcfz.ae Pro zone; Apache admits Cloudflare only; the app checks the ERP allowlist itself |
 
 Flow:
@@ -177,7 +177,7 @@ events (
   card_id TEXT,
   raw_body TEXT,                  -- test route only, purged after 7 days (C4)
   raw_body_expires_at TEXT,
-  actor TEXT                      -- Access email for route = 'admin' rows
+  actor TEXT                      -- signed-in staff email for route = 'admin' rows
 );
 
 metrics (
@@ -324,14 +324,26 @@ base while inlining fonts), `frame-ancestors 'none'`.
 
 ## 8. Admin
 
-Path prefix `/admin`, protected by Cloudflare Access (C7). The app also
-verifies the `Cf-Access-Jwt-Assertion` header against the team's keys, so the
-routes are useless if the Access policy is ever removed by mistake.
+Path prefix `/admin`, behind the service's own sign-in (C7, `src/admin/auth.ts`):
 
-On a local copy only, `LOCAL_ADMIN_EMAIL` replaces Access (`src/admin/local.ts`,
-docs/DEV.md "Local copy"). Configuration refuses it unless the service is
-reachable from the machine alone, and each request must come from loopback
-with a loopback host name.
+- **Hidden entrance.** The sign-in page exists only at
+  `/admin/login?key=<ADMIN_LOGIN_KEY>`. Without the key, it and every other
+  admin address answer the same plain 404 as an unknown path. No
+  `ADMIN_LOGIN_KEY`, no sign-in at all.
+- **Accounts.** Email and password, created on the server with
+  `node dist/cli/admin-user.js` (add, passwd, unlock, remove, list); there is
+  no sign-up. Passwords are scrypt hashes with a salt each, at least 12
+  characters, and are typed into the command, never passed as arguments.
+- **Sessions.** A random 48-character cookie, HttpOnly and SameSite=Strict,
+  `__Host-` and Secure over https. Only its SHA-256 is stored. A session ends
+  after 2 hours idle, 12 hours in total, or on Sign out; changing a password
+  ends all of that account's sessions.
+- **Brute force.** 10 attempts per client address per 15 minutes; an account
+  locks for 15 minutes after 5 wrong passwords. One message for every
+  failure, and unknown emails take as long as known ones.
+- **Forms.** The sign-in and every admin form carry the CSRF double-submit
+  token; the admin's CSP, no-store, noindex and frame headers apply to the
+  sign-in page too.
 
 Screens:
 
@@ -361,7 +373,7 @@ Screens:
 - Rate limits in the app, per client per minute (an IPv4 address, or an IPv6 /64) (`DEFAULT_RATE_LIMITS` in src/index.ts): 300 GET/HEAD on `/c/*`, 60 POST on `/c/*`, 20 on `/v1/*` from addresses not on the ERP allowlist (allowlisted addresses are never limited). Answers 429 with Retry-After. Cloudflare rules may add an outer layer.
 - Strict CSP, `Referrer-Policy: strict-origin-when-cross-origin`, HSTS from
   Cloudflare.
-- Admin actions are written to the events table with the Access identity.
+- Admin actions are written to the events table with the signed-in staff email.
 
 ## 10. Retention (C8)
 
@@ -387,7 +399,7 @@ Layout and deployment are in docs/DEV.md and docs/RUNBOOK.md.
 ## 12. Testing
 
 - **Unit**: mapper, validation, idempotency decisions, caption rendering,
-  filename sanitising, Access JWT verification, auto-fit maths.
+  filename sanitising, admin sign-in (key gate, passwords, sessions, lockout), auto-fit maths.
 - **Integration in CI**: intake to queue to a mocked render to page, against
   a temp SQLite file and a temp image folder; plus the real server on an
   ephemeral port.

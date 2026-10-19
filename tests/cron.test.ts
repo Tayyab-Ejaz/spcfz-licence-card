@@ -99,7 +99,7 @@ describe('runHousekeeping', () => {
     const noExpiry = await seedCard({ expires_at: null });
 
     const summary = await runHousekeeping(env);
-    expect(summary).toEqual({ rawBodiesPurged: 0, testCardsDeleted: 0, cardsExpired: 0, metricRowsCompacted: 0 });
+    expect(summary).toEqual({ rawBodiesPurged: 0, testCardsDeleted: 0, cardsExpired: 0, metricRowsCompacted: 0, adminSessionsPurged: 0 });
     expect((await getCardById(env.DB, live.id))?.status).toBe('ready');
     expect(await getCardById(env.DB, test.id)).not.toBeNull();
     expect((await getCardById(env.DB, noExpiry.id))?.status).toBe('ready');
