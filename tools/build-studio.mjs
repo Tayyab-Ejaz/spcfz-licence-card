@@ -132,6 +132,11 @@ DATA_PATCHES.mobile.push(
 // text and drops the image. The caption is still copied to the clipboard first; after sharing, a toast says to paste
 // it (or where to copy it from, when the clipboard refused).
 const SHARE_PATCHES = [
+  // The shared file takes the type and name of what renderCard returns (a JPEG since client/card-render.js).
+  ["if (blob) this.cached = { key, file: new File([blob], this.fileName(), { type: 'image/png' }) }",
+    "if (blob) this.cached = { key, file: new File([blob], this.fileName(blob.type), { type: blob.type || 'image/png' }) }"],
+  ["        file = new File([blob], this.fileName(), { type: 'image/png' });",
+    "        file = new File([blob], this.fileName(blob.type), { type: blob.type || 'image/png' });"],
   ['    this.copyText(caption);\n', '    const copied = this.copyText(caption);\n'],
   ['await navigator.share({ files: [file], text: caption });',
     "await navigator.share({ files: [file] }); copied.then((ok) => this.showToast(ok ? 'Caption copied. Paste it into your post.' : 'Copy the caption from Caption, then paste it into your post.'));"],

@@ -299,6 +299,14 @@ client/card-data.js):
   is copied to the clipboard first, and a message after sharing says to paste
   it (or, when the clipboard refused, where to copy it from). WhatsApp and
   other apps therefore also get the image without a caption.
+- **Light card rendering** (19 October 2026, client/card-render.js): the
+  design's export embedded all 142 font faces (6.6 MB) and re-downloaded
+  them with cache-busting on every render, including the background render
+  after the page opens. On a OnePlus with Chrome the tab ran out of memory
+  and reloaded in a loop (a white page). Renders now embed only the faces the
+  card's text uses, fetched once from the browser cache, and never run twice
+  at once; the images are pixel-identical. Share sends a JPEG (about 210 KB),
+  Download a PNG.
 - **Desktop Done** (18 October 2026): the last step's bar ends with a Done
   button that opens the customer portal in the same tab, in place of the
   "Step 3 of 3" label.

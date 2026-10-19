@@ -2,6 +2,8 @@
 // 8 October 2026, licence 4425153.01). The design's logic files stay verbatim; this subclass overrides
 // fresh() for the starting state and adjusts the values renderVals() returns.
 
+import { renderCardImage } from './card-render.js';
+
 export const PORTAL_URL = 'https://portal.spcfz.ae/frontend/login/';
 
 const EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -150,6 +152,33 @@ export function withCardData(Base) {
       if (this.outsideTap) document.removeEventListener('pointerdown', this.outsideTap, true);
       this.outsideTap = null;
       if (super.componentWillUnmount) super.componentWillUnmount();
+    }
+
+    /**
+     * The card as an image, through ./card-render.js: only the fonts the card uses, no cache-busting re-downloads,
+     * a JPEG Blob for Share and a PNG data URL for Download. A render already running for the same card is
+     * shared rather than started twice (the background pre-render and a Share tap can overlap).
+     */
+    async renderCard(asBlob) {
+      const node = this.cardRef.current;
+      const lib = window.htmlToImage;
+      if (!node || !lib) throw new Error('unavailable');
+      const st = this.state;
+      const isLs = st.format === 'landscape';
+      const size = { width: isLs ? 1200 : 1080, height: isLs ? 627 : st.format === 'portrait' ? 1350 : 1080 };
+      const key = `${this.stateKey()}|${asBlob ? 'blob' : 'png'}`;
+      if (this.rendering && this.rendering.key === key) return this.rendering.promise;
+      const promise = renderCardImage(node, lib, { ...size, asBlob }).finally(() => {
+        if (this.rendering && this.rendering.promise === promise) this.rendering = null;
+      });
+      this.rendering = { key, promise };
+      return promise;
+    }
+
+    /** The shared file is a JPEG: same name, .jpg. Downloads stay PNG. */
+    fileName(type) {
+      const name = super.fileName();
+      return type === 'image/jpeg' ? name.replace(/\.png$/, '.jpg') : name;
     }
 
     /**
