@@ -62,8 +62,10 @@ numbers use Latin digits in both languages.
 | preparingBody | يتم الآن إنشاء بطاقة رخصتك. تتحدّث هذه الصفحة تلقائياً، وعادةً لا يستغرق ذلك أكثر من دقيقة. | Your licence card is being created. This page refreshes itself; it usually takes under a minute. |
 | takingLonger | هل يستغرق الأمر وقتاً أطول من المعتاد؟ | Taking longer than usual? |
 | whatsappUs | تواصل معنا عبر واتساب | WhatsApp us |
-| expiredTitle | هذه البطاقة لم تعد متاحة | This card is no longer available |
-| expiredBody | نحتفظ ببطاقات الرخص لمدة عامين من تاريخ الإصدار. إذا كنت بحاجة إلى بطاقة جديدة، يرجى التواصل مع المنطقة الحرة لمدينة الشارقة للنشر. | Licence cards are kept for two years after issue. If you need a new one, please contact SPC Free Zone. |
+| expiredTitle | انتهت صلاحية هذه الرخصة | This licence has expired |
+| expiredBody | لم يعد بالإمكان مشاركة بطاقتها. جدّد الرخصة عبر بوابة العملاء وستعود البطاقة على الرابط نفسه. | Its card can no longer be shared. Renew the licence in the customer portal and the card comes back at this same link. |
+| expiredOn | انتهت صلاحية الرخصة {licence} في {date}. | Licence {licence} expired on {date}. |
+| renewCta | التجديد عبر بوابة العملاء | Renew in the customer portal |
 | notFoundTitle | هذا الرابط غير صالح | This link is not valid |
 | notFoundBody | تحقّق من الرابط في رسالة الرخصة، أو تواصل مع المنطقة الحرة لمدينة الشارقة للنشر. | Check the link in your licence email, or contact SPC Free Zone. |
 | contactUs | تواصل معنا | Contact us |

@@ -52,6 +52,7 @@ our side. What we need:
 | Founder's name, English | no | Pre-filled on the card; the customer can change it. A plain field, or the name inside an owner or founder object. |
 | Founder's name, Arabic | no | Used on the Arabic card. Without it the Arabic card shows the English name. |
 | Issue date | no | Any unambiguous format. ISO `YYYY-MM-DD` is best. Defaults to today. |
+| Licence expiry date | strongly recommended | The licence's last valid day, any unambiguous format (for example `expiry_date`). After this day the card's page says the licence has expired. Send the licence again with the new date when it is renewed, and the same link works again. Without it the card never expires. |
 | Customer's preferred language | no | `en` or `ar`. Defaults to English. |
 
 The founder's name is the only personal detail we keep. Please do not send
@@ -71,6 +72,7 @@ Example:
   "founder_name": "Mariam Fawzy",
   "founder_name_ar": "مريم فوزي",
   "issued_on": "2026-10-15",
+  "expiry_date": "2027-10-14",
   "preferred_language": "en"
 }
 ```
@@ -94,6 +96,8 @@ Put `page_url` into the customer's licence-issued email. The page is ready as
 soon as we answer: the customer builds and downloads the card in the browser.
 
 Sending the same licence twice is safe. You get the same `page_url` back.
+A renewal is the same licence number with a later expiry date: send it the
+same way, and the existing card comes back with the same `page_url`.
 Sending the same licence with corrected details updates the card behind the
 same address.
 

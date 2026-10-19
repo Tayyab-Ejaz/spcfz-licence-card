@@ -37,6 +37,7 @@ async function seedCard(o: SeedOptions = {}): Promise<CardRow> {
       founder_name_ar: null,
       issued_on: '2026-10-01',
       preferred_language: 'en',
+      licence_expires_on: null,
       ...o.fields,
     },
     content_hash: `hash-${seq}`,
@@ -170,13 +171,28 @@ describe('GET /c/:token', () => {
     await env.DB.prepare("UPDATE settings SET value = '0' WHERE key = 'gtm_enabled'").run();
   });
 
-  it('answers 410 for an expired card', async () => {
+  it('answers 410 for an expired card, naming the company and pointing to renewal', async () => {
     const card = await seedCard({ status: 'expired' });
     const { res } = await call(`/c/${card.token}`);
     expect(res.status).toBe(410);
     const body = await res.text();
-    expect(body).toContain('This card is no longer available');
+    expect(body).toContain('This licence has expired');
+    expect(body).toContain(card.company_name_en);
+    expect(body).toContain('https://portal.spcfz.ae/frontend/login/');
     expect(body).toContain('https://www.spcfz.ae/contact-us/');
+  });
+
+  it('shows expired as soon as the licence date has passed, before the nightly run, in both languages', async () => {
+    const card = await seedCard({ status: 'ready' });
+    env.db.raw.prepare("UPDATE cards SET licence_expires_on = '2026-10-02', expires_at = '2026-10-02T20:00:00.000Z', company_name_ar = 'نيمبوس' WHERE id = ?").run(card.id);
+    const en = await call(`/c/${card.token}`);
+    expect(en.res.status).toBe(410);
+    const enBody = await en.res.text();
+    expect(enBody).toContain(`Licence ${card.licence_number} expired on 2 October 2026.`);
+    const ar = await (await call(`/c/${card.token}?lang=ar`)).res.text();
+    expect(ar).toContain('انتهت صلاحية هذه الرخصة');
+    expect(ar).toContain('نيمبوس');
+    expect(ar).toContain('2 أكتوبر 2026');
   });
 
   it('marks a test card in the title and does not count its views', async () => {

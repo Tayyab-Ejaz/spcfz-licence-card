@@ -1,5 +1,5 @@
 // Creates (or refreshes) ONE test card on a running service and prints its page URL. Test cards are
-// marked TEST, they look exactly like live cards, and they are deleted automatically after 30 days.
+// marked TEST, they look exactly like live cards, and they are kept (nothing is deleted automatically).
 //
 // It runs inside the container, fed on stdin, so nothing is installed on the host:
 //   ssh root@13.206.34.102 "docker exec -i -w /app spcfz-licence-card node --input-type=module" < tools/test-card.mjs

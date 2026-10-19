@@ -54,3 +54,23 @@ export function formatMonthYear(ymd: string, lang: Lang): string {
   const locale = lang === 'ar' ? 'ar-AE-u-nu-latn' : 'en-GB';
   return new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(d);
 }
+
+/** "18 October 2027" / "18 أكتوبر 2027" (Latin digits in both languages). */
+export function formatFullDate(ymd: string, lang: Lang): string {
+  const d = new Date(`${ymd}T00:00:00Z`);
+  const locale = lang === 'ar' ? 'ar-AE-u-nu-latn' : 'en-GB';
+  return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(d);
+}
+
+/**
+ * The instant a licence stops being valid: the end of its last valid day in Dubai (UTC+4, no daylight saving),
+ * i.e. 20:00 UTC on that date. `ymd` is YYYY-MM-DD.
+ */
+export function endOfDubaiDay(ymd: string): string {
+  return `${ymd}T20:00:00.000Z`;
+}
+
+/** Whether a card's expires_at has passed. */
+export function isPast(iso: string | null | undefined, now: number = Date.now()): boolean {
+  return !!iso && Date.parse(iso) <= now;
+}

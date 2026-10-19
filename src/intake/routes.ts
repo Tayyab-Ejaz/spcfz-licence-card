@@ -5,8 +5,8 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import type { AppEnv, CardSource, Env, EventOutcome, IntakeRoute } from '../types.js';
-import { getIntSetting, insertEvent } from '../db/cards.js';
-import { addDays, nowIso } from '../util/time.js';
+import { insertEvent } from '../db/cards.js';
+
 import { checkIp, checkSecret, extractSecret } from './auth.js';
 import { isPlainObject } from './common.js';
 import { mapPayload } from './mapper.js';
@@ -110,11 +110,10 @@ function makeHandler(cfg: RouteConfig) {
       http_status: number, outcome: EventOutcome, errors: string[] | null, card_id: string | null,
     ): Promise<void> => {
       let raw_body: string | null = null;
-      let raw_body_expires_at: string | null = null;
+      const raw_body_expires_at: string | null = null;
       if (cfg.keepRawBody && rawBody !== null) {
+        // Kept for good since 19 October 2026 (no data is deleted); raw_body_expires_at stays NULL.
         raw_body = rawBody.slice(0, MAX_BODY_BYTES);
-        const days = await getIntSetting(db, 'raw_body_days', 7);
-        raw_body_expires_at = addDays(nowIso(), days);
       }
       await insertEvent(db, {
         route: cfg.route, source_ip: sourceIp, http_status, outcome, errors, card_id, raw_body, raw_body_expires_at,

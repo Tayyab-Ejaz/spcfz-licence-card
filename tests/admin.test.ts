@@ -41,6 +41,7 @@ async function seedCard(o: SeedOptions = {}): Promise<CardRow> {
       founder_name_ar: null,
       issued_on: '2026-10-01',
       preferred_language: 'en',
+      licence_expires_on: null,
       ...o.fields,
     },
     content_hash: `hash-${seq}`,
@@ -175,26 +176,50 @@ describe('cards', () => {
 });
 
 describe('card mutations', () => {
-  it("expire marks the card expired, clears the founder's name and audits with the actor", async () => {
+  it('expire marks the card expired, keeps every field and audits with the actor', async () => {
     const card = await seedCard({ status: 'ready', fields: { founder_name_en: 'Mariam Fawzy' } });
     const { res } = await post(`/admin/cards/${card.id}/expire`);
     expect(res.status).toBe(303);
     const after = await getCardById(env.DB, card.id);
     expect(after?.status).toBe('expired');
-    expect(after?.founder_name_en).toBeNull();
+    expect(after?.founder_name_en).toBe('Mariam Fawzy');
     const events = await adminEvents();
     expect(events[0]).toMatchObject({ route: 'admin', outcome: 'expired', card_id: card.id, actor: ACTOR, http_status: 200 });
   });
 
-  it('un-expire sets a fresh expiry and makes the card ready again', async () => {
+  it('restore undoes a manual expiry and leaves the expiry date alone', async () => {
     const card = await seedCard({ status: 'expired' });
     const { res } = await post(`/admin/cards/${card.id}/unexpire`);
     expect(res.status).toBe(303);
     const after = await getCardById(env.DB, card.id);
     expect(after?.status).toBe('ready');
+    expect(after?.expires_at).toBe(card.expires_at);
     expect((await adminEvents())[0]?.outcome).toBe('unexpired');
-    expect(after?.expires_at).not.toBeNull();
-    expect(new Date(after?.expires_at ?? 0).getTime()).toBeGreaterThan(Date.now() + 365 * 24 * 3600 * 1000);
+  });
+
+  it('restore does nothing once the licence itself has expired', async () => {
+    const card = await seedCard({ status: 'expired' });
+    env.db.raw.prepare("UPDATE cards SET licence_expires_on = '2026-10-02', expires_at = '2026-10-02T20:00:00.000Z' WHERE id = ?").run(card.id);
+    await post(`/admin/cards/${card.id}/unexpire`);
+    expect((await getCardById(env.DB, card.id))?.status).toBe('expired');
+    const page = await (await get(`/admin/cards/${card.id}`)).res.text();
+    expect(page).toContain('The licence expired on 2026-10-02');
+    expect(page).not.toContain(`/admin/cards/${card.id}/unexpire`);
+  });
+
+  it('a licence expiry date set by staff drives the card: past expires it, later brings it back, empty means never', async () => {
+    const card = await seedCard({ status: 'ready' });
+    await post(`/admin/cards/${card.id}/licence-expiry`, { licence_expires_on: '2026-10-05' });
+    let after = await getCardById(env.DB, card.id);
+    expect(after).toMatchObject({ licence_expires_on: '2026-10-05', expires_at: '2026-10-05T20:00:00.000Z', status: 'expired' });
+    await post(`/admin/cards/${card.id}/licence-expiry`, { licence_expires_on: '2099-10-05' });
+    after = await getCardById(env.DB, card.id);
+    expect(after).toMatchObject({ licence_expires_on: '2099-10-05', expires_at: '2099-10-05T20:00:00.000Z', status: 'ready' });
+    await post(`/admin/cards/${card.id}/licence-expiry`, { licence_expires_on: '' });
+    after = await getCardById(env.DB, card.id);
+    expect(after).toMatchObject({ licence_expires_on: null, expires_at: null, status: 'ready' });
+    expect((await post(`/admin/cards/${card.id}/licence-expiry`, { licence_expires_on: '2020-01-01' })).res.status).toBe(403);
+    expect((await post(`/admin/cards/${card.id}/licence-expiry`, { licence_expires_on: 'soon' })).res.status).toBe(403);
   });
 
   it('delete shows a confirm page, then removes the row and counters', async () => {
@@ -244,34 +269,24 @@ describe('CSRF', () => {
 });
 
 describe('settings', () => {
-  it('renders the current values, without the old caption settings', async () => {
+  it('has only the GTM switch now, and says nothing is deleted', async () => {
     const body = await (await get('/admin/settings')).res.text();
-    expect(body).toContain('name="retention_days" value="730"');
-    expect(body).not.toContain('caption_en');
+    expect(body).toContain('name="gtm_enabled"');
+    for (const gone of ['retention_days', 'test_retention_days', 'raw_body_days', 'caption_en']) expect(body).not.toContain(`name="${gone}"`);
+    expect(body).toContain('Nothing is deleted automatically');
+    expect(body).toContain('recreate the container');
   });
 
-  it('updates the GTM switch and retention days, and audits it', async () => {
-    const { res } = await post('/admin/settings', { gtm_enabled: '1', retention_days: '365', test_retention_days: '14', raw_body_days: '3' });
+  it('updates the GTM switch and audits it, ignoring retired fields', async () => {
+    const before = await getSetting(env.DB, 'retention_days');
+    const { res } = await post('/admin/settings', { gtm_enabled: '1', retention_days: '1' });
     expect(res.status).toBe(303);
     expect(await getSetting(env.DB, 'gtm_enabled')).toBe('1');
-    expect(await getSetting(env.DB, 'retention_days')).toBe('365');
-    expect(await getSetting(env.DB, 'test_retention_days')).toBe('14');
-    expect(await getSetting(env.DB, 'raw_body_days')).toBe('3');
-    expect((await adminEvents())[0]).toMatchObject({ outcome: 'settings', actor: ACTOR });
-
-    // An unchecked checkbox is simply absent from the form body.
-    await post('/admin/settings', { retention_days: '365' });
-    expect(await getSetting(env.DB, 'gtm_enabled')).toBe('0');
-    expect(await getSetting(env.DB, 'retention_days')).toBe('365');
-  });
-
-  it('rejects negative or non-numeric days without saving anything', async () => {
-    const before = await getSetting(env.DB, 'retention_days');
-    const { res } = await post('/admin/settings', { retention_days: '-5' });
-    expect(res.status).toBe(400);
-    expect(await res.text()).toContain('retention_days');
     expect(await getSetting(env.DB, 'retention_days')).toBe(before);
-    expect((await post('/admin/settings', { raw_body_days: 'abc' })).res.status).toBe(400);
+    expect((await adminEvents())[0]).toMatchObject({ outcome: 'settings', actor: ACTOR });
+    // An unchecked checkbox is simply absent from the form body.
+    await post('/admin/settings', {});
+    expect(await getSetting(env.DB, 'gtm_enabled')).toBe('0');
   });
 });
 

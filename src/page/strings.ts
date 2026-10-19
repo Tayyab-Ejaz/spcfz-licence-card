@@ -34,6 +34,9 @@ export interface PageStrings {
   whatsappUs: string;
   expiredTitle: string;
   expiredBody: string;
+  /** "{licence}" and "{date}" are filled in. */
+  expiredOn: string;
+  renewCta: string;
   notFoundTitle: string;
   notFoundBody: string;
   contactUs: string;
@@ -71,8 +74,10 @@ export const STRINGS: Record<Lang, PageStrings> = {
     preparingBody: 'Your licence card is being created. This page refreshes itself; it usually takes under a minute.',
     takingLonger: 'Taking longer than usual?',
     whatsappUs: 'WhatsApp us',
-    expiredTitle: 'This card is no longer available',
-    expiredBody: 'Licence cards are kept for two years after issue. If you need a new one, please contact SPC Free Zone.',
+    expiredTitle: 'This licence has expired',
+    expiredBody: 'Its card can no longer be shared. Renew the licence in the customer portal and the card comes back at this same link.',
+    expiredOn: 'Licence {licence} expired on {date}.',
+    renewCta: 'Renew in the customer portal',
     notFoundTitle: 'This link is not valid',
     notFoundBody: 'Check the link in your licence email, or contact SPC Free Zone.',
     contactUs: 'Contact us',
@@ -108,8 +113,10 @@ export const STRINGS: Record<Lang, PageStrings> = {
     preparingBody: 'يتم الآن إنشاء بطاقة رخصتك. تتحدّث هذه الصفحة تلقائياً، وعادةً لا يستغرق ذلك أكثر من دقيقة.',
     takingLonger: 'هل يستغرق الأمر وقتاً أطول من المعتاد؟',
     whatsappUs: 'تواصل معنا عبر واتساب',
-    expiredTitle: 'هذه البطاقة لم تعد متاحة',
-    expiredBody: 'نحتفظ ببطاقات الرخص لمدة عامين من تاريخ الإصدار. إذا كنت بحاجة إلى بطاقة جديدة، يرجى التواصل مع المنطقة الحرة لمدينة الشارقة للنشر.',
+    expiredTitle: 'انتهت صلاحية هذه الرخصة',
+    expiredBody: 'لم يعد بالإمكان مشاركة بطاقتها. جدّد الرخصة عبر بوابة العملاء وستعود البطاقة على الرابط نفسه.',
+    expiredOn: 'انتهت صلاحية الرخصة {licence} في {date}.',
+    renewCta: 'التجديد عبر بوابة العملاء',
     notFoundTitle: 'هذا الرابط غير صالح',
     notFoundBody: 'تحقّق من الرابط في رسالة الرخصة، أو تواصل مع المنطقة الحرة لمدينة الشارقة للنشر.',
     contactUs: 'تواصل معنا',
@@ -125,4 +132,5 @@ export function fill(template: string, vars: Record<string, string>): string {
 }
 
 export const CONTACT_URL = 'https://www.spcfz.ae/contact-us/';
+export const PORTAL_URL = 'https://portal.spcfz.ae/frontend/login/';
 export const WHATSAPP_URL = 'https://wa.me/971502387267';

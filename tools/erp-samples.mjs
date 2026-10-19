@@ -1,5 +1,6 @@
-// Five fictional licences, shaped the way an ERP might send them, for testing the whole path before the
-// real ERP is connected. Every one becomes a TEST card (no watermark, deleted after 30 days).
+// Six fictional licences, shaped the way an ERP might send them, for testing the whole path before the
+// real ERP is connected. Every one becomes a TEST card ([TEST] in the page title only; kept, never deleted).
+// The first carries a licence expiry a year from today; the last expired in 2025, so its page shows "expired".
 //
 // Locally, through the real webhook (mapping, validation, events), against a running service:
 //   node tools/erp-samples.mjs --http http://127.0.0.1:18790 <test secret>
@@ -7,10 +8,11 @@
 // this runs the same mapping, validation and upsert directly):
 //   ssh root@13.206.34.102 "docker exec -i -w /app spcfz-licence-card node --input-type=module" < tools/erp-samples.mjs
 //
-// The names are invented. Re-running updates the same five cards (same licence numbers) instead of adding more.
+// The names are invented. Re-running updates the same cards (same licence numbers) instead of adding more.
 
 const today = new Date().toISOString().slice(0, 10);
 const [y, m, d] = today.split('-');
+const nextYear = `${Number(y) + 1}-${m}-${d}`;
 
 export const SAMPLES = [
   {
@@ -25,6 +27,7 @@ export const SAMPLES = [
       founder_name_en: 'Layla Haddad',
       founder_name_ar: 'ليلى حداد',
       issued_on: today,
+      licence_expiry_date: nextYear,
       preferred_language: 'en',
     },
   },
@@ -73,6 +76,19 @@ export const SAMPLES = [
       founder_name_en: 'Mohammed Abdullah Rashid Saeed Al Example',
       founder_name_ar: 'محمد عبدالله راشد سعيد المثال',
       issued_on: today,
+      preferred_language: 'en',
+    },
+  },
+  {
+    label: 'Licence that has already expired: the page says so',
+    payload: {
+      licence_number: 'TEST-2024-0006',
+      company_name_en: 'Old Harbour Print FZE',
+      company_name_ar: 'أولد هاربر للطباعة م.م.ح',
+      activity_category: 'Printing',
+      founder_name_en: 'Sara Khan',
+      issued_on: '2024-10-01',
+      expiry_date: '30/09/2025',
       preferred_language: 'en',
     },
   },

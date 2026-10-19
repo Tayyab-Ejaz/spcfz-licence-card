@@ -116,10 +116,11 @@ export interface CanonicalFields {
   licence_type: string | null;
   activity_category: string | null;
   activity_category_ar: string | null;  // Arabic card uses it; falls back to activity_category
-  founder_name_en: string | null;       // pre-filled on the card; personal data, deleted with the card
+  founder_name_en: string | null;       // pre-filled on the card; personal data
   founder_name_ar: string | null;       // Arabic card uses it; falls back to founder_name_en
   issued_on: string;             // YYYY-MM-DD
   preferred_language: Lang;
+  licence_expires_on: string | null;  // YYYY-MM-DD, the licence's last valid day; the card expires after it
 }
 
 export type CardStatus = 'pending' | 'ready' | 'failed' | 'expired';

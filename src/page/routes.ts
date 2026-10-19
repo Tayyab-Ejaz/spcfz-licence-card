@@ -7,7 +7,7 @@ import { bumpMetric, getCardByToken, getSettings } from '../db/cards.js';
 import type { MetricKey } from '../db/cards.js';
 import { background } from '../util/background.js';
 import { TOKEN_RE, bytesToBase64 } from '../util/crypto.js';
-import { todayInDubai } from '../util/time.js';
+import { isPast, todayInDubai } from '../util/time.js';
 import { renderExpiredPage, renderNotFoundPage } from './view.js';
 import { renderStudioShell, studioCsp } from './studio.js';
 
@@ -90,9 +90,11 @@ pageRoutes.get('/c/:token', async (c) => {
 
   const lang: Lang = isLang(langQ) ? langQ : card.preferred_language;
 
-  if (card.status === 'expired') {
+  // Expired when its licence has (from the moment the date passes, before the nightly run marks it), or by hand.
+  if (card.status === 'expired' || isPast(card.expires_at)) {
     pageHeaders(c, nonce, false);
-    return c.html(renderExpiredPage(lang, nonce), 410);
+    const company = lang === 'ar' ? card.company_name_ar || card.company_name_en : card.company_name_en;
+    return c.html(renderExpiredPage(lang, nonce, { company, licence: card.licence_number, expiredOn: card.licence_expires_on }), 410);
   }
 
   const settings = await getSettings(c.env.DB);

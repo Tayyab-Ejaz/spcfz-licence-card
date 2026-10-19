@@ -47,12 +47,12 @@ files, any change to www.spcfz.ae, customer accounts, customer-editable text.
 |---|---|---|
 | C1 | One URL per licence, stable for life. A second event for the same licence number with changed data regenerates the images in place. | ERP corrections flow through without a second link in the wild. |
 | C2 | Tokens are 128 bits of randomness, base62, 22 characters. Never derived from the licence number. | The licence number is on the image; the URL must not be guessable from it. |
-| C3 | A separate test endpoint with its own secret, instead of a flag in the payload. Test cards carry a TEST ribbon, are excluded from counters, and are purged after 30 days. | D8, and the ERP team can test without being able to mark payloads. |
-| C4 | The test endpoint keeps the raw request body for 7 days. The production endpoint never stores a raw body. | The user cannot get a sample ERP record any other way. |
+| C3 | A separate test endpoint with its own secret, instead of a flag in the payload. Test cards say [TEST] in the page title and are excluded from counters. Since 19 October 2026 they are kept, like everything else. | The ERP team cannot be relied on to set a flag correctly. |
+| C4 | The test endpoint keeps the raw request body (kept for good since 19 October 2026). The production endpoint never stores a raw body. | The user cannot get a sample ERP record any other way. |
 | C5 | Only the licence number and the English company name are required. Everything else is optional with a fallback. ERP field names are mapped in config, not fixed. | The user has little control over what the ERP sends. |
 | C6 | Personal data is limited to the founder's name (since 16 Oct 2026, the user's decision: the ERP sends it so the studio can pre-fill it). The mapper drops everything else, including emails and phone numbers. The name is cleared when a card expires and deleted with the card. | The design pre-fills the founder; nothing else needs personal data. |
 | C7 | Admin has its own sign-in (19 October 2026, replacing Cloudflare Access): a key-gated login page, staff accounts with scrypt passwords, server-side sessions. | SPC chose not to depend on Cloudflare's login; the key keeps the page unfindable, the accounts give per-person audit. |
-| C8 | Images and records are kept two years, then the images are deleted and the page says the card has expired. | A retention rule has to exist; two years covers a licence term and a renewal. |
+| C8 | Nothing is deleted automatically (19 October 2026). A card expires when its licence does: from the licence expiry date the ERP (or staff) give, the page says the licence has expired, with nothing removed; a renewal brings it back at the same link. No expiry date, no expiry. | SPC's decision: keep all data; a card should follow the licence, not a fixed period. |
 | C9 | Google Tag Manager is not loaded on the page by default. A config switch can add the site container GTM-PZ8R4DN. | Marketing decision; counters cover v1 needs. |
 | C10 | ~~Deployment runs from GitHub Actions.~~ Since 15 Oct 2026: deployment runs from the Mac with `tools/deploy.sh`, one approved step at a time; CI on GitHub runs the checks. | The server is SPC's own and every write on it needs the user's approval. |
 
@@ -162,7 +162,9 @@ cards (
   render_error TEXT,              -- legacy, null
   source TEXT NOT NULL,           -- webhook | test | manual | csv | replay
   template_version TEXT,
-  created_at TEXT NOT NULL, updated_at TEXT NOT NULL, rendered_at TEXT, expires_at TEXT,
+  created_at TEXT NOT NULL, updated_at TEXT NOT NULL, rendered_at TEXT,
+  expires_at TEXT,                -- end of licence_expires_on in Dubai; NULL = never
+  licence_expires_on TEXT,        -- YYYY-MM-DD, the licence's last valid day (migration 0006)
   UNIQUE (licence_number, is_test)
 );
 
@@ -175,8 +177,8 @@ events (
   outcome TEXT NOT NULL,          -- created | unchanged | updated | rejected, or an admin action
   errors TEXT,                    -- JSON list, rejected only
   card_id TEXT,
-  raw_body TEXT,                  -- test route only, purged after 7 days (C4)
-  raw_body_expires_at TEXT,
+  raw_body TEXT,                  -- test route only, kept (C4)
+  raw_body_expires_at TEXT,       -- unused since 19 October 2026 (NULL)
   actor TEXT                      -- signed-in staff email for route = 'admin' rows
 );
 
@@ -189,7 +191,7 @@ metrics (
   PRIMARY KEY (day, card_id, kind, lang, size, network)
 );
 
-settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);   -- caption_en, caption_ar, gtm_enabled, retention_days, test_retention_days, raw_body_days
+settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);   -- gtm_enabled (the retention_* and caption rows are no longer read)
 ```
 
 ## 6. Rendering
@@ -348,7 +350,8 @@ Path prefix `/admin`, behind the service's own sign-in (C7, `src/admin/auth.ts`)
 Screens:
 
 - **Cards.** Search by company or licence number; filter by status, test,
-  source; open the page; mark expired or restore; delete. The card itself
+  source; open the page; set the licence expiry date; mark expired or
+  restore (restore only undoes a manual expiry); delete. The card itself
   is seen by opening the page.
 - **Events.** The webhook log: time, route, IP, status, outcome, errors, the
   card. Replay re-runs an event from its raw body (test route only).
@@ -356,7 +359,7 @@ Screens:
   licences the ERP never sent.
 - **Import CSV.** Upload a CSV with canonical column names, see a dry-run
   table of what would be created, updated or rejected, then confirm.
-- **Settings.** GTM switch, retention days, mapping
+- **Settings.** GTM switch; a note that nothing is deleted; the mapping
   preview. Secrets and the IP allowlist are not editable here; they live in
   the server's env file and the WAF rule.
 
@@ -375,14 +378,23 @@ Screens:
   Cloudflare.
 - Admin actions are written to the events table with the signed-in staff email.
 
-## 10. Retention (C8)
+## 10. Expiry and retention (C8)
 
-A daily cron:
+Nothing is deleted automatically: cards (live and test), founder names, the
+test route's raw bodies and daily metric rows all stay. Staff can still
+delete a card by hand in the admin.
 
-- deletes raw bodies past `raw_body_expires_at`;
-- deletes test cards older than 30 days;
-- marks cards past `expires_at` as `expired` and clears the founder's name;
-- compacts metrics older than 13 months to monthly rows (day becomes `YYYY-MM`).
+A card expires with its licence. `licence_expires_on` comes from the ERP
+(`expiry_date`, `licence_expiry`, `valid_until` and similar) or from staff in
+the admin; `expires_at` is the end of that day in Dubai. The page answers 410
+with "This licence has expired" from that moment, naming the company,
+licence number and date, with a link to renew in the customer portal. A
+later date (a renewal from the ERP, or staff) brings the card back at the
+same link. A card with no expiry date never expires.
+
+The daily run marks cards past `expires_at` as `expired` (so the admin's
+status is current; the page does not wait for it) and drops ended admin
+sessions. The SQLite backups keep the newest seven daily copies.
 
 ## 11. Environments, repository, deployment
 
@@ -390,8 +402,8 @@ A daily cron:
   licensed.spcfz.ae. The production and test intake routes both live here;
   there is only one ERP.
 - **local**: `npm run dev` with a `.env` copied from `.env.example`.
-- There is no separate preview environment. Test cards on the test route are
-  marked TEST and purged after 30 days.
+- There is no separate preview environment. Test cards on the test route
+  say [TEST] in the page title and are kept.
 
 Repository: private GitHub repository `Tayyab-Ejaz/spcfz-licence-card`.
 Layout and deployment are in docs/DEV.md and docs/RUNBOOK.md.

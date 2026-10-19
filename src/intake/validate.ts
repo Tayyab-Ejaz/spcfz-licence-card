@@ -115,6 +115,16 @@ export function validateCanonical(input: Record<string, unknown>, opts: { today?
     else issued_on = parsed;
   }
 
+  // licence_expires_on: optional; the card expires after this day. Never before the issue date.
+  let licence_expires_on: string | null = null;
+  const rawExpiry = input['licence_expires_on'];
+  if (!isBlank(rawExpiry)) {
+    const parsed = parseDate(rawExpiry);
+    if (parsed === null) errors.push('licence_expires_on: unrecognised date');
+    else if (parsed < issued_on) errors.push('licence_expires_on: before issued_on');
+    else licence_expires_on = parsed;
+  }
+
   // preferred_language: optional, en or ar in any common spelling, default en.
   let preferred_language: Lang = 'en';
   const rawLang = input['preferred_language'];
@@ -138,6 +148,7 @@ export function validateCanonical(input: Record<string, unknown>, opts: { today?
       founder_name_ar,
       issued_on,
       preferred_language,
+      licence_expires_on,
     },
   };
 }

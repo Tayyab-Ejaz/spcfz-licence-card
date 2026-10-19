@@ -1,10 +1,10 @@
 // Idempotent create-or-update of a card from validated fields (ARCHITECTURE C1, section 4 "Idempotency and updates").
-import type { CanonicalFields, CardRow, CardSource, D1Database, Env, UpsertOutcome } from '../types.js';
+import type { CanonicalFields, CardRow, CardSource, Env, UpsertOutcome } from '../types.js';
 import {
-  findCardByLicence, getCardById, getIntSetting, insertCard, setCardExpiry, updateCardFields,
+  expireCard, findCardByLicence, getCardById, insertCard, setCardExpiry, updateCardFields,
 } from '../db/cards.js';
 import { contentHash, randomToken } from '../util/crypto.js';
-import { addDays, nowIso } from '../util/time.js';
+import { endOfDubaiDay, isPast } from '../util/time.js';
 import { pageUrl } from '../storage.js';
 
 export interface UpsertOptions {
@@ -18,22 +18,25 @@ export interface UpsertResult {
   page_url: string;
 }
 
-/** Content hash over exactly the ten canonical keys, so a CardRow and a CanonicalFields hash alike. */
+/**
+ * Content hash over the canonical keys, so a CardRow and a CanonicalFields hash alike. The licence expiry date
+ * joins the hash only when present, so cards stored before it existed keep their hash.
+ */
 export async function hashFields(fields: CanonicalFields): Promise<string> {
   const {
     licence_number, company_name_en, company_name_ar, licence_type, activity_category, activity_category_ar,
-    founder_name_en, founder_name_ar, issued_on, preferred_language,
+    founder_name_en, founder_name_ar, issued_on, preferred_language, licence_expires_on,
   } = fields;
   return contentHash({
     licence_number, company_name_en, company_name_ar, licence_type, activity_category, activity_category_ar,
     founder_name_en, founder_name_ar, issued_on, preferred_language,
+    ...(licence_expires_on ? { licence_expires_on } : {}),
   });
 }
 
-/** Live cards expire `retention_days` (setting, default 730) from now; test cards are purged by age instead (C3). */
-async function liveExpiry(db: D1Database): Promise<string> {
-  const days = await getIntSetting(db, 'retention_days', 730);
-  return addDays(nowIso(), days);
+/** A card expires when its licence does (the end of the expiry day in Dubai); no expiry date, no expiry. */
+export function cardExpiry(fields: Pick<CanonicalFields, 'licence_expires_on'>): string | null {
+  return fields.licence_expires_on ? endOfDubaiDay(fields.licence_expires_on) : null;
 }
 
 /**
@@ -49,7 +52,7 @@ export async function upsertFromCanonical(env: Env, fields: CanonicalFields, opt
   const existing = await findCardByLicence(db, fields.licence_number, opts.is_test);
   if (existing) return reconcile(env, existing, fields, hash, opts);
 
-  const expires_at = opts.is_test ? null : await liveExpiry(db);
+  const expires_at = cardExpiry(fields);
   let created: CardRow | null = null;
   let insertError: unknown = null;
   try {
@@ -71,6 +74,10 @@ export async function upsertFromCanonical(env: Env, fields: CanonicalFields, opt
     return reconcile(env, raced, fields, hash, opts);
   }
 
+  if (isPast(expires_at)) {
+    await expireCard(db, created.id);
+    created = (await getCardById(db, created.id)) ?? created;
+  }
   console.log('card created', { licence_number: created.licence_number, card_id: created.id, is_test: opts.is_test });
   return { card: created, outcome: 'created', page_url: pageUrl(env, created.token) };
 }
@@ -82,9 +89,11 @@ async function reconcile(
     return { card: existing, outcome: 'unchanged', page_url: pageUrl(env, existing.token) };
   }
 
+  // updateCardFields makes the card ready again; a renewal (a later expiry date) brings an expired card back.
   await updateCardFields(env.DB, existing.id, fields, hash, opts.source);
-  // A correction or renewal restarts the retention clock, so a card that had expired comes back for two years.
-  if (!opts.is_test) await setCardExpiry(env.DB, existing.id, await liveExpiry(env.DB));
+  const expires_at = cardExpiry(fields);
+  await setCardExpiry(env.DB, existing.id, expires_at);
+  if (isPast(expires_at)) await expireCard(env.DB, existing.id);
 
   const card = await getCardById(env.DB, existing.id);
   if (!card) throw new Error('upsertFromCanonical: card row missing after update');

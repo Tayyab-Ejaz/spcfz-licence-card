@@ -4,7 +4,8 @@
 import type { Lang } from '../types.js';
 import { html, raw } from '../util/html.js';
 import type { RawHtml } from '../util/html.js';
-import { CONTACT_URL, STRINGS } from './strings.js';
+import { CONTACT_URL, PORTAL_URL, STRINGS } from './strings.js';
+import { formatFullDate } from '../util/time.js';
 
 /** `html` that returns RawHtml so fragments nest without double escaping. */
 function h(strings: TemplateStringsArray, ...values: unknown[]): RawHtml {
@@ -111,12 +112,25 @@ ${o.script ?? raw('')}
 </html>`;
 }
 
-export function renderExpiredPage(lang: Lang, nonce: string): string {
+export interface ExpiredDetails {
+  company: string;
+  licence: string;
+  /** YYYY-MM-DD, the licence's last valid day; null when the card was expired by hand. */
+  expiredOn: string | null;
+}
+
+export function renderExpiredPage(lang: Lang, nonce: string, card?: ExpiredDetails): string {
   const s = STRINGS[lang];
+  const when = card?.expiredOn
+    ? s.expiredOn.replace('{licence}', card.licence).replace('{date}', formatFullDate(card.expiredOn, lang))
+    : null;
   const body = h`
 <div class="state">
 <h1>${s.expiredTitle}</h1>
+${card ? h`<p><strong>${card.company}</strong></p>` : raw('')}
+${when ? h`<p>${when}</p>` : raw('')}
 <p>${s.expiredBody}</p>
+<p><a class="btn btn-primary" href="${PORTAL_URL}">${s.renewCta}</a></p>
 <p><a class="btn btn-ghost" href="${CONTACT_URL}">${s.contactUs}</a></p>
 </div>`;
   return shell({

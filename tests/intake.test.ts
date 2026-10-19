@@ -233,7 +233,8 @@ describe('intake routes: happy path and idempotency', () => {
     expect(card?.issued_on).toBe('2026-10-15');
     expect(card?.preferred_language).toBe('en');
     expect(card?.template_version).toBeNull();
-    expect(card?.expires_at).not.toBeNull();
+    expect(card?.licence_expires_on).toBeNull();
+    expect(card?.expires_at).toBeNull(); // no licence expiry date: the card never expires
     expect(card?.content_hash).toMatch(/^[0-9a-f]{64}$/);
 
     const { rows, total } = await listEvents(env.DB, { route: 'production' });
@@ -291,10 +292,43 @@ describe('intake routes: happy path and idempotency', () => {
     const testCard = await findCardByLicence(env.DB, 'SPC-2026-00001', true);
     expect(liveCard?.is_test).toBe(false);
     expect(liveCard?.source).toBe('webhook');
-    expect(liveCard?.expires_at).not.toBeNull();
     expect(testCard?.is_test).toBe(true);
     expect(testCard?.source).toBe('test');
-    expect(testCard?.expires_at).toBeNull();
+  });
+
+  it('expires the card with the licence: the end of its expiry day in Dubai, renewals bring it back', async () => {
+    const first = await accepted(await post(PROD, { ...SAMPLE, expiry_date: '15/10/2027' }));
+    let card = await findCardByLicence(env.DB, 'SPC-2026-00001', false);
+    expect(card).toMatchObject({ licence_expires_on: '2027-10-15', expires_at: '2027-10-15T20:00:00.000Z', status: 'ready' });
+
+    // The ERP sends the licence again with an expiry already in the past: the card is expired at once.
+    await accepted(await post(PROD, { ...SAMPLE, licence_expiry: '2026-10-16' }));
+    card = await findCardByLicence(env.DB, 'SPC-2026-00001', false);
+    expect(card?.status).toBe('expired');
+
+    // Renewal: a later expiry date, same card, same link, ready again.
+    const renewed = await accepted(await post(PROD, { ...SAMPLE, valid_until: '2028-10-15' }));
+    expect(renewed.page_url).toBe(first.page_url);
+    card = await findCardByLicence(env.DB, 'SPC-2026-00001', false);
+    expect(card).toMatchObject({ licence_expires_on: '2028-10-15', status: 'ready' });
+  });
+
+  it('refuses a licence expiry date before the issue date or that is not a date', async () => {
+    await rejected(await post(PROD, { ...SAMPLE, expiry_date: '2026-10-01' }), 400);
+    await rejected(await post(PROD, { ...SAMPLE, expiry_date: 'next year' }), 400);
+  });
+
+  it('keeps the hash of a licence sent without an expiry date the same as before the field existed', async () => {
+    const a = await accepted(await post(PROD, SAMPLE));
+    const before = await findCardByLicence(env.DB, 'SPC-2026-00001', false);
+    const b = await accepted(await post(PROD, SAMPLE));
+    expect(b.card_id).toBe(a.card_id);
+    expect((await findCardByLicence(env.DB, 'SPC-2026-00001', false))?.content_hash).toBe(before?.content_hash);
+    const { rows } = await listEvents(env.DB, { route: 'production' });
+    expect(rows[0]?.outcome).toBe('unchanged');
+    // The hash a card stored before the field existed is reproduced exactly.
+    const { hashFields } = await import('../src/intake/upsert.js');
+    expect(await hashFields({ ...before!, licence_expires_on: null })).toBe(before?.content_hash);
   });
 
   it('stores the raw body on the test route only', async () => {
@@ -305,8 +339,7 @@ describe('intake routes: happy path and idempotency', () => {
     const test = await listEvents(env.DB, { route: 'test' });
     expect(test.total).toBe(1);
     expect(test.rows[0]?.raw_body).toBe(text);
-    expect(test.rows[0]?.raw_body_expires_at).not.toBeNull();
-    expect(new Date(test.rows[0]?.raw_body_expires_at ?? '').getTime()).toBeGreaterThan(Date.now());
+    expect(test.rows[0]?.raw_body_expires_at).toBeNull(); // kept for good
 
     const prod = await listEvents(env.DB, { route: 'production' });
     expect(prod.total).toBe(1);

@@ -1,16 +1,13 @@
-// Daily housekeeping (ARCHITECTURE section 10, C3, C4, C8). Wired to the cron trigger in src/index.ts.
+// Daily housekeeping (ARCHITECTURE section 10). Wired to the scheduler in src/server.ts.
+// Since 19 October 2026 nothing is deleted: test cards, stored request bodies, founder names and daily metrics all
+// stay. The run only marks cards expired once their licence has, and drops sign-in sessions that have ended.
 import type { CardRow, Env } from './types.js';
-import {
-  compactOldMetrics, deleteCard, expireCard, getIntSetting, listExpiredCandidates, listTestCardsOlderThan, purgeRawBodies,
-} from './db/cards.js';
-import { addDays, nowIso } from './util/time.js';
+import { expireCard, listExpiredCandidates } from './db/cards.js';
+import { nowIso } from './util/time.js';
 import { purgeExpiredAdminSessions } from './db/admin.js';
 
 export interface HousekeepingSummary {
-  rawBodiesPurged: number;
-  testCardsDeleted: number;
   cardsExpired: number;
-  metricRowsCompacted: number;
   adminSessionsPurged: number;
 }
 
@@ -41,23 +38,10 @@ async function drain(list: () => Promise<CardRow[]>, fn: (card: CardRow) => Prom
 
 export async function runHousekeeping(env: Env, now: Date = new Date()): Promise<HousekeepingSummary> {
   const nowStr = nowIso(now);
-  const summary: HousekeepingSummary = { rawBodiesPurged: 0, testCardsDeleted: 0, cardsExpired: 0, metricRowsCompacted: 0, adminSessionsPurged: 0 };
+  const summary: HousekeepingSummary = { cardsExpired: 0, adminSessionsPurged: 0 };
 
-  // 1. Raw request bodies kept on the test route (C4).
-  summary.rawBodiesPurged = await purgeRawBodies(env.DB, nowStr);
-
-  // 2. Test cards older than the test retention period (C3).
-  const testDays = await getIntSetting(env.DB, 'test_retention_days', 30);
-  const testCutoff = addDays(nowStr, -testDays);
-  summary.testCardsDeleted = await drain(
-    () => listTestCardsOlderThan(env.DB, testCutoff, BATCH),
-    async (card) => {
-      await deleteCard(env.DB, card.id);
-    },
-    'test card delete',
-  );
-
-  // 3. Live cards past expires_at: the founder's name is cleared, the row stays so the page can say "expired" (C8).
+  // 1. Cards whose licence has expired are marked expired. Nothing on them is cleared; the page says the licence
+  //    has expired (it already does from the moment the date passes; this keeps the status in the admin current).
   summary.cardsExpired = await drain(
     () => listExpiredCandidates(env.DB, nowStr, BATCH),
     async (card) => {
@@ -66,14 +50,7 @@ export async function runHousekeeping(env: Env, now: Date = new Date()): Promise
     'expire',
   );
 
-  // 4. Daily metric rows older than 13 months fold into monthly rows.
-  const cutoff = new Date(now.getTime());
-  cutoff.setUTCDate(1);
-  cutoff.setUTCHours(0, 0, 0, 0);
-  cutoff.setUTCMonth(cutoff.getUTCMonth() - 13);
-  summary.metricRowsCompacted = await compactOldMetrics(env.DB, cutoff.toISOString().slice(0, 10));
-
-  // 5. Admin sign-in sessions past their expiry (src/admin/auth.ts); expired ones are refused anyway.
+  // 2. Admin sign-in sessions that have ended (src/admin/auth.ts); they are refused anyway, and hold no data.
   summary.adminSessionsPurged = await purgeExpiredAdminSessions(env.DB, nowStr);
 
   console.log(JSON.stringify({ housekeeping: summary }));

@@ -56,8 +56,8 @@ ssh root@13.206.34.102 "docker exec -i -w /app spcfz-licence-card node --input-t
 
 Creates one test card for "Preview Publishing FZE" (founder Mariam Fawzy) and
 prints its page link. Running it again updates the same card. Test cards
-look exactly like live ones (no watermark) and are deleted automatically
-after 30 days. `TEST_LANG=ar` makes the page open with the Arabic card.
+look exactly like live ones (no watermark) and are kept; nothing is deleted
+automatically. `TEST_LANG=ar` makes the page open with the Arabic card.
 
 ## Load the sample ERP licences
 

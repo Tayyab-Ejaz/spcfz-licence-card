@@ -1,4 +1,4 @@
-// Field mapping: turns whatever the ERP sends into the ten canonical keys and nothing else
+// Field mapping: turns whatever the ERP sends into the eleven canonical keys and nothing else
 // (ARCHITECTURE section 4 "Field mapping", C5, C6). Pure; no I/O.
 import type { CanonicalFields } from '../types.js';
 import { isBlank, isPlainObject, normaliseKey } from './common.js';
@@ -17,6 +17,7 @@ export const CANONICAL_KEYS: readonly CanonicalKey[] = [
   'founder_name_ar',
   'issued_on',
   'preferred_language',
+  'licence_expires_on',
 ];
 
 /**
@@ -43,6 +44,10 @@ const ALIASES: Readonly<Record<CanonicalKey, readonly string[]>> = {
   founder_name_ar: ['founder_name_ar', 'founder_name_arabic', 'owner_name_ar', 'founder_ar', 'owner_ar', 'FounderNameAr', 'OwnerNameAr'],
   issued_on: ['issued_on', 'issue_date', 'issued_at', 'licence_issue_date', 'license_issue_date', 'date_of_issue'],
   preferred_language: ['preferred_language', 'language', 'lang', 'locale', 'customer_language'],
+  licence_expires_on: [
+    'licence_expires_on', 'license_expires_on', 'licence_expiry_date', 'license_expiry_date', 'licence_expiry', 'license_expiry',
+    'expiry_date', 'expiration_date', 'expires_on', 'expiry', 'valid_until', 'valid_to', 'LicenseExpiryDate', 'ExpiryDate',
+  ],
 };
 
 /** Sub-fields read from an activity object, in order of preference. Compared after `normaliseKey`. */

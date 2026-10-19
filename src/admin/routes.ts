@@ -9,13 +9,13 @@ import { LANGS } from '../types.js';
 import type { CardFilter } from '../db/cards.js';
 import {
   countByStatus, deleteCard, findCardByLicence, getCardById, getEvent, getIntSetting, getSettings,
-  expireCard, insertEvent, listCards, listEvents, metricsForCard, metricsTotals, setCardExpiry, setCardStatus, setSetting,
+  expireCard, insertEvent, listCards, listEvents, metricsForCard, metricsTotals, setCardStatus, setLicenceExpiry, setSetting,
 } from '../db/cards.js';
 import { pageUrl } from '../storage.js';
 import { csvToObjects } from '../util/csv.js';
 import { raw } from '../util/html.js';
 import type { RawHtml } from '../util/html.js';
-import { addDays, nowIso, todayInDubai } from '../util/time.js';
+import { addDays, endOfDubaiDay, isPast, nowIso, parseDate, todayInDubai } from '../util/time.js';
 import { mapPayload } from '../intake/mapper.js';
 import { validateCanonical } from '../intake/validate.js';
 import { hashFields, upsertFromCanonical } from '../intake/upsert.js';
@@ -38,8 +38,9 @@ const EVENT_OUTCOMES: readonly EventOutcome[] = [
 ];
 
 const FLASH: Record<string, string> = {
-  expired: "Card marked expired; the page now says it is no longer available and the founder's name was cleared.",
-  unexpired: "Card restored with a fresh expiry. The founder's name comes back the next time the ERP sends this licence.",
+  expired: 'Card marked expired; the page now says the licence has expired. Nothing was removed.',
+  unexpired: 'Card restored; the page works again.',
+  expiry: 'Licence expiry date saved; the card follows it.',
   deleted: 'Card deleted.',
   created: 'Card created; the page is ready now.',
   updated: 'Card updated; the page shows the new details now.',
@@ -187,6 +188,7 @@ const CREATE_FIELDS: readonly CreateField[] = [
   { key: 'founder_name_en', label: 'Founder name', required: false, type: 'text', hint: 'Optional. Pre-filled on the card; the customer can change it.' },
   { key: 'founder_name_ar', label: 'Founder name (Arabic)', required: false, type: 'text', hint: 'Optional. The English name is used on the Arabic card when empty.' },
   { key: 'issued_on', label: 'Issued on', required: false, type: 'date', hint: 'Today in Asia/Dubai when empty.' },
+  { key: 'licence_expires_on', label: 'Licence expires on', required: false, type: 'date', hint: "Optional. The card shows \"expired\" after this day; it never expires when empty." },
 ];
 
 function createForm(
@@ -201,7 +203,7 @@ ${CREATE_FIELDS.map(
 <label>Preferred language<select name="preferred_language">${LANGS.map(
   (l) => h`<option value="${l}"${l === lang ? raw(' selected') : EMPTY}>${l === 'en' ? 'English' : 'Arabic'}</option>`,
 )}</select><small>The language the page opens in; the visitor can switch.</small></label>
-<label class="check"><input type="checkbox" name="is_test" value="1"${isTest ? raw(' checked') : EMPTY}> Test card <small>(TEST ribbon, excluded from counters, purged after the test retention period)</small></label>
+<label class="check"><input type="checkbox" name="is_test" value="1"${isTest ? raw(' checked') : EMPTY}> Test card <small>([TEST] in the page title, excluded from counters)</small></label>
 <div><button class="btn" type="submit">Create card</button></div>
 </form>`;
   return respond(c, { title: 'Create card', active: 'create', error: errors.length ? errors : null, flash: flashOf(c), body }, status);
@@ -267,7 +269,7 @@ interface ImportFormOptions {
 
 function importForm(c: Context<AppEnv>, o: ImportFormOptions): Response | Promise<Response> {
   const token = csrfToken(c);
-  const body = h`<p class="muted">Header row with canonical column names: <code>licence_number</code> and <code>company_name_en</code> are required; <code>company_name_ar</code>, <code>licence_type</code>, <code>activity_category</code>, <code>activity_category_ar</code>, <code>founder_name_en</code>, <code>founder_name_ar</code>, <code>issued_on</code> and <code>preferred_language</code> are optional. Headers are matched case-insensitively. Up to ${IMPORT_CAP} rows per run.</p>
+  const body = h`<p class="muted">Header row with canonical column names: <code>licence_number</code> and <code>company_name_en</code> are required; <code>company_name_ar</code>, <code>licence_type</code>, <code>activity_category</code>, <code>activity_category_ar</code>, <code>founder_name_en</code>, <code>founder_name_ar</code>, <code>issued_on</code>, <code>licence_expires_on</code> and <code>preferred_language</code> are optional. Headers are matched case-insensitively. Up to ${IMPORT_CAP} rows per run.</p>
 <form class="form" method="post" action="/admin/import" enctype="multipart/form-data">${csrfField(token)}
 <label>CSV file<input type="file" name="file" accept=".csv,text/csv"></label>
 <label>…or paste CSV<textarea name="csv" rows="10" dir="auto">${o.csv ?? ''}</textarea></label>
@@ -279,22 +281,17 @@ function importForm(c: Context<AppEnv>, o: ImportFormOptions): Response | Promis
 
 // ------------------------------------------------------------------ settings
 
-const NUMERIC_SETTINGS = ['retention_days', 'test_retention_days', 'raw_body_days'] as const;
-
 function settingsForm(c: Context<AppEnv>, values: Record<string, string>, errors: string[] | null, status: AdminStatus = 200): Response | Promise<Response> {
   const token = csrfToken(c);
   const v = (k: string): string => values[k] ?? '';
   const body = h`<form class="form" method="post" action="/admin/settings">${csrfField(token)}
 <label class="check"><input type="checkbox" name="gtm_enabled" value="1"${v('gtm_enabled') === '1' ? raw(' checked') : EMPTY}> Load Google Tag Manager on the personal page <small>(container <code>${c.env.GTM_CONTAINER || 'not set'}</code>)</small></label>
-<div class="row">
-<label>Live card retention (days)<input type="number" min="0" step="1" name="retention_days" value="${v('retention_days')}"></label>
-<label>Test card retention (days)<input type="number" min="0" step="1" name="test_retention_days" value="${v('test_retention_days')}"></label>
-<label>Raw body retention (days)<input type="number" min="0" step="1" name="raw_body_days" value="${v('raw_body_days')}"></label>
-</div>
 <div><button class="btn" type="submit">Save settings</button></div>
 </form>
+<h2>Keeping data</h2>
+<p class="muted">Nothing is deleted automatically: cards, test cards, the request bodies the test webhook received, founder names and daily counters all stay. A card shows "expired" once its licence expiry date has passed, and comes back when the ERP sends a renewal.</p>
 <h2>Field mapping (read-only)</h2>
-<p class="muted">From the <code>FIELD_MAP</code> environment variable; change it in the service's env file and restart the container. Secrets and the ERP IP allowlist are not editable here.</p>
+<p class="muted">From the <code>FIELD_MAP</code> environment variable; change it in the service's env file and recreate the container (docs/RUNBOOK.md). Secrets and the ERP IP allowlist are not editable here.</p>
 <pre>${prettyJson(c.env.FIELD_MAP || '{}')}</pre>`;
   return respond(c, { title: 'Settings', active: 'settings', error: errors, flash: flashOf(c), body }, status);
 }
@@ -407,6 +404,7 @@ ${pager('/admin/cards', query, page, total, PER_PAGE)}`;
     ]);
     const token = csrfToken(c);
     const url = pageUrl(c.env, card.token);
+    const licencePast = isPast(card.expires_at);
     const body = h`
 ${kv([
   ['Company (English)', card.company_name_en],
@@ -418,6 +416,7 @@ ${kv([
   ['Founder', card.founder_name_en],
   ['Founder (Arabic)', card.founder_name_ar ? h`<span dir="rtl">${card.founder_name_ar}</span>` : null],
   ['Issued on', card.issued_on],
+  ['Licence expires on', card.licence_expires_on ?? h`<span class="muted">not known: the card does not expire</span>`],
   ['Preferred language', card.preferred_language],
   ['Status', badge(card.status)],
   ['Test card', card.is_test ? 'yes' : 'no'],
@@ -426,15 +425,21 @@ ${kv([
   ['Page', h`<a href="${url}" target="_blank" rel="noopener">${url}</a>`],
   ['Created', fmtDateTime(card.created_at)],
   ['Updated', fmtDateTime(card.updated_at)],
-  ['Expires', fmtDateTime(card.expires_at)],
+  ['Card expires', card.expires_at ? fmtDateTime(card.expires_at) : 'never'],
   ['Card id', h`<code>${card.id}</code>`],
 ])}
 <div class="actions">
-${card.status === 'expired'
-  ? actionForm(`/admin/cards/${card.id}/unexpire`, 'Un-expire', token, 'btn small secondary')
-  : actionForm(`/admin/cards/${card.id}/expire`, 'Mark expired', token, 'btn small secondary')}
+${licencePast
+  ? h`<span class="muted">The licence expired on ${card.licence_expires_on}. Set a later expiry date below to bring the card back.</span>`
+  : card.status === 'expired'
+    ? actionForm(`/admin/cards/${card.id}/unexpire`, 'Restore', token, 'btn small secondary')
+    : actionForm(`/admin/cards/${card.id}/expire`, 'Mark expired', token, 'btn small secondary')}
 <a class="btn small danger" href="/admin/cards/${card.id}/delete">Delete…</a>
 </div>
+<form class="form inline" method="post" action="/admin/cards/${card.id}/licence-expiry">${csrfField(token)}
+<label>Licence expires on<input type="date" name="licence_expires_on" value="${card.licence_expires_on ?? ''}"><small>The card shows "expired" after this day. Leave empty if it is not known. The ERP's next update for this licence replaces it.</small></label>
+<div><button class="btn small" type="submit">Save expiry date</button></div>
+</form>
 <p class="muted">The card is built in the customer's browser: open the page to see it.</p>
 <h2>Metrics (all time)</h2>
 ${table(
@@ -464,11 +469,29 @@ ${eventsTable(events.rows)}`;
     if (bad) return forbidden(c, bad);
     const card = await getCardById(c.env.DB, c.req.param('id'));
     if (!card) return notFoundPage(c, 'card');
-    const days = await getIntSetting(c.env.DB, 'retention_days', 730);
-    await setCardExpiry(c.env.DB, card.id, addDays(nowIso(), days));
+    // Restore undoes "Mark expired". A licence that has itself expired needs a later expiry date instead.
+    if (isPast(card.expires_at)) return c.redirect(`/admin/cards/${card.id}`, 303);
     await setCardStatus(c.env.DB, card.id, 'ready');
     await audit(c, 'unexpired', card.id);
     return c.redirect(`/admin/cards/${card.id}?m=unexpired`, 303);
+  });
+
+  app.post('/cards/:id/licence-expiry', async (c) => {
+    const body = await readForm(c);
+    const bad = csrfFailure(c, body);
+    if (bad) return forbidden(c, bad);
+    const card = await getCardById(c.env.DB, c.req.param('id'));
+    if (!card) return notFoundPage(c, 'card');
+    const raw = field(body, 'licence_expires_on');
+    const date = raw ? parseDate(raw) : null;
+    if (raw && !date) return forbidden(c, 'that is not a date');
+    if (date && date < card.issued_on) return forbidden(c, `the expiry date is before the issue date (${card.issued_on})`);
+    const expires_at = date ? endOfDubaiDay(date) : null;
+    // A future (or no) expiry brings an expired card back; a past one expires it.
+    const status = isPast(expires_at) ? 'expired' : card.status === 'expired' && !isPast(card.expires_at) ? 'expired' : 'ready';
+    await setLicenceExpiry(c.env.DB, card.id, date, expires_at, status);
+    await audit(c, 'updated', card.id);
+    return c.redirect(`/admin/cards/${card.id}?m=expiry`, 303);
   });
 
   app.get('/cards/:id/delete', async (c) => {
@@ -537,8 +560,8 @@ ${kv([
   ['Event id', h`<code>${ev.id}</code>`],
 ])}
 ${ev.raw_body
-  ? h`<h2>Raw body <span class="muted">(kept until ${fmtDateTime(ev.raw_body_expires_at)})</span></h2><pre>${prettyJson(ev.raw_body)}</pre>`
-  : h`<p class="muted">No raw body stored for this event${ev.route === 'test' ? ' (purged after the raw body retention period)' : ' (only the test route keeps raw bodies)'}.</p>`}
+  ? h`<h2>Raw body</h2><pre>${prettyJson(ev.raw_body)}</pre>`
+  : h`<p class="muted">No raw body stored for this event${ev.route === 'test' ? '' : ' (only the test route keeps raw bodies)'}.</p>`}
 <div class="actions">
 ${ev.raw_body
   ? actionForm(`/admin/events/${ev.id}/replay`, 'Replay from raw body', token)
@@ -692,14 +715,6 @@ ${dryTable(dry)}
     const gtm = checked(body, 'gtm_enabled') ? '1' : '0';
     submitted['gtm_enabled'] = gtm;
     updates.push(['gtm_enabled', gtm]);
-
-    for (const key of NUMERIC_SETTINGS) {
-      if (!(key in body)) continue;
-      const v = field(body, key);
-      submitted[key] = v;
-      if (!/^\d{1,5}$/.test(v)) errors.push(`${key}: must be a whole number of days, 0 or more`);
-      else updates.push([key, String(Number(v))]);
-    }
 
     if (errors.length) return settingsForm(c, submitted, errors, 400);
     for (const [k, v] of updates) await setSetting(c.env.DB, k, v);

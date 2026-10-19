@@ -26,7 +26,7 @@ function rowToEvent(r: RawEvent): EventRow {
 
 const CARD_COLS =
   'id, token, licence_number, is_test, company_name_en, company_name_ar, licence_type, activity_category, activity_category_ar, founder_name_en, founder_name_ar, issued_on, ' +
-  'preferred_language, content_hash, status, render_error, source, template_version, created_at, updated_at, rendered_at, expires_at';
+  'preferred_language, content_hash, status, render_error, source, template_version, created_at, updated_at, rendered_at, expires_at, licence_expires_on';
 
 // ------------------------------------------------------------------ cards
 
@@ -65,13 +65,13 @@ export async function insertCard(db: D1Database, c: NewCard): Promise<CardRow> {
     .prepare(
       `INSERT INTO cards (id, token, licence_number, is_test, company_name_en, company_name_ar, licence_type, activity_category,
          issued_on, preferred_language, content_hash, status, render_error, source, template_version, created_at, updated_at, rendered_at, expires_at,
-         activity_category_ar, founder_name_en, founder_name_ar)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 'ready', NULL, ?12, NULL, ?13, ?13, NULL, ?14, ?15, ?16, ?17)`,
+         activity_category_ar, founder_name_en, founder_name_ar, licence_expires_on)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 'ready', NULL, ?12, NULL, ?13, ?13, NULL, ?14, ?15, ?16, ?17, ?18)`,
     )
     .bind(
       id, c.token, f.licence_number, c.is_test ? 1 : 0, f.company_name_en, f.company_name_ar, f.licence_type,
       f.activity_category, f.issued_on, f.preferred_language, c.content_hash, c.source, ts, c.expires_at,
-      f.activity_category_ar, f.founder_name_en, f.founder_name_ar,
+      f.activity_category_ar, f.founder_name_en, f.founder_name_ar, f.licence_expires_on ?? null,
     )
     .run();
   const row = await getCardById(db, id);
@@ -87,13 +87,13 @@ export async function updateCardFields(
     .prepare(
       `UPDATE cards SET licence_number = ?2, company_name_en = ?3, company_name_ar = ?4, licence_type = ?5, activity_category = ?6,
          issued_on = ?7, preferred_language = ?8, content_hash = ?9, source = ?10, status = 'ready', render_error = NULL, updated_at = ?11,
-         activity_category_ar = ?12, founder_name_en = ?13, founder_name_ar = ?14
+         activity_category_ar = ?12, founder_name_en = ?13, founder_name_ar = ?14, licence_expires_on = ?15
        WHERE id = ?1`,
     )
     .bind(
       id, fields.licence_number, fields.company_name_en, fields.company_name_ar, fields.licence_type, fields.activity_category,
       fields.issued_on, fields.preferred_language, content_hash, source, nowIso(), fields.activity_category_ar,
-      fields.founder_name_en, fields.founder_name_ar,
+      fields.founder_name_en, fields.founder_name_ar, fields.licence_expires_on ?? null,
     )
     .run();
 }
@@ -123,15 +123,24 @@ export async function setCardStatus(db: D1Database, id: string, status: CardStat
 }
 
 /** Expiry: the page then says the card is no longer available, and the founder's name is no longer kept. */
+/** Marks the card expired. Nothing is cleared: the page says the licence has expired, the data stays. */
 export async function expireCard(db: D1Database, id: string): Promise<void> {
   await db
-    .prepare("UPDATE cards SET status = 'expired', founder_name_en = NULL, founder_name_ar = NULL, updated_at = ?2 WHERE id = ?1")
+    .prepare("UPDATE cards SET status = 'expired', updated_at = ?2 WHERE id = ?1")
     .bind(id, nowIso())
     .run();
 }
 
 export async function setCardExpiry(db: D1Database, id: string, expires_at: string | null): Promise<void> {
   await db.prepare('UPDATE cards SET expires_at = ?2, updated_at = ?3 WHERE id = ?1').bind(id, expires_at, nowIso()).run();
+}
+
+/** Staff set the licence's expiry date; expires_at and the status follow it. */
+export async function setLicenceExpiry(
+  db: D1Database, id: string, licence_expires_on: string | null, expires_at: string | null, status: CardStatus,
+): Promise<void> {
+  await db.prepare('UPDATE cards SET licence_expires_on = ?2, expires_at = ?3, status = ?4, updated_at = ?5 WHERE id = ?1')
+    .bind(id, licence_expires_on, expires_at, status, nowIso()).run();
 }
 
 export async function deleteCard(db: D1Database, id: string): Promise<void> {
@@ -199,7 +208,7 @@ export async function countCards(db: D1Database, f: CardFilter = {}): Promise<nu
 /** Live cards whose expires_at has passed. */
 export async function listExpiredCandidates(db: D1Database, now: string, limit = 200): Promise<CardRow[]> {
   const r = await db
-    .prepare(`SELECT ${CARD_COLS} FROM cards WHERE is_test = 0 AND status != 'expired' AND expires_at IS NOT NULL AND expires_at <= ?1 ORDER BY expires_at LIMIT ${limit}`)
+    .prepare(`SELECT ${CARD_COLS} FROM cards WHERE status != 'expired' AND expires_at IS NOT NULL AND expires_at <= ?1 ORDER BY expires_at LIMIT ${limit}`)
     .bind(now)
     .all<RawCard>();
   return (r.results ?? []).map(rowToCard);
