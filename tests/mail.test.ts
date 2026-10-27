@@ -4,7 +4,9 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { Hono } from 'hono';
 import type { AppEnv, CanonicalFields, CardRow } from '../src/types.js';
 import { pageRoutes } from '../src/page/routes.js';
-import { EMAIL_HEADER, emailAssetRoutes } from '../src/mail/assets.js';
+import { EMAIL_HEADER, SOCIAL, emailAssetRoutes } from '../src/mail/assets.js';
+import { renderDaylight } from '../src/page/card-image.js';
+import sharp from 'sharp';
 import { getCardById, insertCard, setCardStatus } from '../src/db/cards.js';
 import { emailsForCard, suppression } from '../src/db/emails.js';
 import { randomToken } from '../src/util/crypto.js';
@@ -99,6 +101,27 @@ describe('the welcome email', () => {
     expect(res.headers.get('Cache-Control')).toContain('immutable');
     expect((await app.request('/static/email/..%2Fsecret.jpg')).status).toBe(404);
   });
+
+  it('ends with the help line, the SPC phone, WhatsApp and social links, every icon served', async () => {
+    const card = await seedCard();
+    const m = renderWelcome({ card, lang: 'en', baseUrl: 'https://licensed.test', linkedin: false });
+    expect(m.html).toContain("Questions about your license or your card? We're here to help.".replace("'", '&#39;'));
+    expect(m.html).toContain('href="tel:80077239"');
+    expect(m.html).toContain('href="https://wa.me/971502387267"');
+    const app = new Hono<AppEnv>().route('/', emailAssetRoutes);
+    for (const n of SOCIAL) {
+      expect(m.html).toContain(`href="${n.href}"`);
+      expect((await app.request(`/static/email/${n.icon}`)).status).toBe(200);
+    }
+    const ar = renderWelcome({ card, lang: 'ar', baseUrl: 'https://licensed.test', linkedin: false });
+    expect(ar.html).toContain('\u200e800 SPCFZ (77239)\u200e'); // the number stays in order inside Arabic
+  });
+
+  it('pictures the card in the Daylight style, square', async () => {
+    const img = await renderDaylight({ company: 'Nimbus Publishing FZE', activity: 'Publishing', founder: 'Layla Haddad', issuedOn: '2026-10-01', lang: 'en' });
+    const meta = await sharp(img).metadata();
+    expect([meta.format, meta.width, meta.height]).toEqual(['jpeg', 1080, 1080]);
+  }, 30_000);
 
   it('has no LinkedIn button until LinkedIn is set up', async () => {
     const card = await seedCard();

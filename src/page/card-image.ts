@@ -1,7 +1,9 @@
-// The customer's card as a picture, for the welcome email: the studio's "Day One" style, square, with the issue
-// date on the calendar, the company, the activity and the founder. Drawn by sharp from the design's measurements
-// (design/source/studio/template.html, isDayone); the customer then makes their own version in the studio.
-// Arabic is mirrored, in Noto Kufi Arabic. 1080 x 1080 JPEG.
+// The customer's card as a picture, for the welcome email and the email's "Post on LinkedIn": the studio's
+// "Daylight" style (SPC's choice, 27 October 2026), square: the kicker, the founder and their role, the photo tile
+// waiting for their photo, "Officially in business.", the company and activity, "Licensed with" and the logo.
+// Drawn by sharp from the design's measurements (design/source/studio/template.html, isDaylight); the customer then
+// makes their own version in the studio. The "Day One" drawing is kept below. Arabic in Noto Kufi Arabic.
+// 1080 x 1080 JPEG.
 import { readFileSync } from 'node:fs';
 import sharp from 'sharp';
 import type { CardRow, Lang } from '../types.js';
@@ -27,9 +29,10 @@ const NUMBERS: Face = INTER('Ultra-Bold', 'Inter-ExtraBold.ttf');
 
 const MONTHS_EN = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 const MONTHS_AR = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+const MONTHS_EN_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const T = {
-  en: { headline: 'Officially in business.', dayOne: 'Day one', licensedWith: 'LICENSED WITH', founder: 'Founder', licensed: 'Licensed' },
-  ar: { headline: 'بدأنا العمل رسمياً.', dayOne: 'اليوم الأول', licensedWith: 'بترخيص من', founder: 'المؤسس', licensed: 'تاريخ الترخيص' },
+  en: { headline: 'Officially in business.', dayOne: 'Day one', licensedWith: 'LICENSED WITH', founder: 'Founder', licensed: 'Licensed', newBusiness: 'New business' },
+  ar: { headline: 'بدأنا العمل رسمياً.', dayOne: 'اليوم الأول', licensedWith: 'بترخيص من', founder: 'المؤسس', licensed: 'تاريخ الترخيص', newBusiness: 'مشروع جديد' },
 };
 
 export interface CardImageInput {
@@ -106,8 +109,8 @@ async function fitText(o: { text: string; face: Face; sizes: number[]; color: st
   return last as TextImage;
 }
 
-/** The card picture as a JPEG. */
-export async function renderCardImage(p: CardImageInput): Promise<Buffer> {
+/** The "Day One" picture as a JPEG (the email's picture until 27 October 2026). */
+export async function renderDayOne(p: CardImageInput): Promise<Buffer> {
   useOurFonts();
   const ar = p.lang === 'ar';
   const f = FACE[p.lang];
@@ -171,6 +174,123 @@ export async function renderCardImage(p: CardImageInput): Promise<Buffer> {
   ];
   return sharp(base).composite(composites).flatten({ background: C.bg }).jpeg({ quality: 88, mozjpeg: true }).toBuffer();
 }
+
+// ------------------------------------------------------------------ Daylight (the email's picture)
+
+const DL = { blue50: '#eef3ff', blue100: '#d6e1ff', blue300: '#7f9fff', border: '#dfe7f4' };
+// Phosphor "user" (fill), the design's empty-photo icon (ph-fill ph-user), on its 256 grid.
+const USER_FILL = 'M230.93,220a8,8,0,0,1-6.93,4H32a8,8,0,0,1-6.92-12c15.23-26.33,38.7-45.21,66.09-54.16a72,72,0,1,1,73.66,0c27.39,8.95,50.86,27.83,66.09,54.16A8,8,0,0,1,230.93,220Z';
+
+/** Text wrapped like CSS text-wrap: balance: the narrowest width that keeps the line count of the full width. */
+async function balanced(o: { text: string; face: Face; size: number; color: string; width: number; align: 'left' | 'right'; lineHeight: number; tracking: number }): Promise<TextImage> {
+  const render = (width: number): Promise<TextImage> =>
+    textImage({ text: unbreakable(o.text), face: o.face, size: o.size, color: o.color, width, align: o.align, lineHeight: o.lineHeight, tracking: o.tracking });
+  const full = await render(o.width);
+  const one = await render(10_000);
+  if (one.width <= o.width) return one;
+  for (let w = Math.ceil(one.width / Math.max(2, Math.round(full.height / one.height))); w < o.width; w += 16) {
+    const img = await render(w);
+    if (img.height <= full.height && img.width <= o.width) return img;
+  }
+  return full;
+}
+
+/** The design's Daylight square for this card, as a JPEG. */
+export async function renderDaylight(p: CardImageInput): Promise<Buffer> {
+  useOurFonts();
+  const ar = p.lang === 'ar';
+  const f = FACE[p.lang];
+  const align = ar ? 'right' : 'left';
+  const PAD = 88;
+  const INNER = S - 2 * PAD;
+  const fz = (n: number): number => (ar ? Math.round(n * 0.8) : n);
+  const founder = cardName(p.founder);
+  const [y, m] = p.issuedOn.split('-');
+  const month = (ar ? MONTHS_AR : MONTHS_EN_FULL)[Math.min(11, Math.max(0, Number(m) - 1))];
+  const kicker = `${T[p.lang].newBusiness} · ${month} ${y}`;
+
+  // Top row: the kicker chip and who it is about on the start side; the 280 x 336 photo tile on the end side.
+  const TILE_W = 280;
+  const TILE_H = 336;
+  const tileX = ar ? PAD : S - PAD - TILE_W;
+  const COL_W = INNER - TILE_W - 40;
+  const colX = ar ? S - PAD - COL_W : PAD;
+  const xIn = (w: number): number => (ar ? colX + COL_W - w : colX);
+  const chipText = await textImage({ text: kicker, face: f.bold, size: 24, color: C.blue, width: 2000, align });
+  const chipW = chipText.width + 52;
+  const chipH = chipText.height + 28;
+  const chipX = ar ? colX + COL_W - chipW : colX;
+  const chipY = PAD + 4;
+  // With a founder: their name and role here, the company in the middle (the design's "both"). Without: the company
+  // and activity here, nothing in the middle (the design's "company").
+  const topName = founder ?? p.company;
+  const topSub = founder ? T[p.lang].founder : p.activity;
+  // Pango puts a line's extra height above it, so a wrapped name gets a gap between its lines and none below:
+  // names are set solid (line height 1) and the gap to the role is added by hand.
+  const nameImg = await textImage({ text: unbreakable(topName), face: f.heavy, size: 42, color: C.ink, width: COL_W, align, lineHeight: 1, tracking: ar ? 0 : -0.02 });
+  const subImg = topSub ? await textImage({ text: topSub, face: f.medium, size: 28, color: C.muted, width: COL_W, align }) : null;
+  const NAME_GAP = 10;
+  const nameY = chipY + chipH + 40;
+  const leftBottom = nameY + nameImg.height + (subImg ? NAME_GAP + subImg.height : 0);
+  const topRowBottom = Math.max(PAD + TILE_H, leftBottom);
+
+  // Footer: 2 px rule, 34 px, then "Licensed with" and the 76 px logo.
+  const logo = await sharp(readFileSync(LOGO_FILE)).resize({ height: 76 }).png().toBuffer({ resolveWithObject: true });
+  const withLabel = await textImage({ text: T[p.lang].licensedWith, face: f.bold, size: 19, color: C.muted, width: 600, tracking: ar ? 0 : 0.14 });
+  const footTop = S - PAD - (2 + 34 + 76);
+  const footMid = footTop + 2 + 34 + 38;
+  const labelX = ar ? S - PAD - withLabel.width : PAD;
+  const logoX = ar ? labelX - 24 - logo.info.width : PAD + withLabel.width + 24;
+
+  // Middle, centred between the top row and the footer: the headline, then the company and activity.
+  const headline = await balanced({ text: T[p.lang].headline, face: f.heavy, size: fz(T[p.lang].headline.length <= 10 ? 124 : T[p.lang].headline.length <= 16 ? 108 : T[p.lang].headline.length <= 24 ? 94 : 80), color: C.ink, width: INNER, align, lineHeight: ar ? 0.95 : 1, tracking: ar ? 0 : -0.045 });
+  const coSize = p.company.length <= 22 ? 60 : p.company.length <= 32 ? 52 : 44;
+  const company = founder ? await textImage({ text: unbreakable(p.company), face: f.heavy, size: ar ? coSize - 8 : coSize, color: C.blue, width: INNER, align, lineHeight: 1, tracking: ar ? 0 : -0.02 }) : null;
+  const activity = founder && p.activity ? await textImage({ text: p.activity, face: f.medium, size: 30, color: C.muted, width: INNER, align }) : null;
+  const midH = headline.height + (company ? 26 + company.height + (activity ? 10 + activity.height : 0) : 0);
+  const midTop = topRowBottom + Math.max(36, Math.round((footTop - topRowBottom - midH) / 2));
+  const mx = (w: number): number => (ar ? S - PAD - w : PAD);
+
+  const tile = `
+    <defs><clipPath id="tile"><rect x="${tileX}" y="${PAD}" width="${TILE_W}" height="${TILE_H}" rx="26"/></clipPath></defs>
+    <g clip-path="url(#tile)">
+      <rect x="${tileX}" y="${PAD}" width="${TILE_W}" height="${TILE_H}" fill="${DL.blue100}"/>
+      <path d="${USER_FILL}" fill="${DL.blue300}" transform="translate(${tileX - 10} ${PAD + 63}) scale(${300 / 256})"/>
+      ${diamond(tileX + TILE_W - TILE_W * 0.14 - 12, PAD + TILE_H * 0.14 + 12, 24, 2, C.gold)}
+    </g>
+    ${diamond(tileX - 30 + 31, PAD + TILE_H - 44 - 31, 82, 20, C.white)}
+    ${diamond(tileX - 30 + 31, PAD + TILE_H - 44 - 31, 62, 10, C.gold)}
+    ${diamond(tileX + TILE_W + 14 - 15, PAD - 14 + 15, 46, 14, C.white)}
+    ${diamond(tileX + TILE_W + 14 - 15, PAD - 14 + 15, 30, 6, C.cyan)}`;
+  const base = svg(S, S, `
+    <rect width="${S}" height="${S}" fill="${C.white}"/>
+    <rect x="${chipX}" y="${chipY}" width="${chipW}" height="${chipH}" rx="${chipH / 2}" fill="${DL.blue50}"/>
+    ${tile}
+    <rect x="${PAD}" y="${footTop}" width="${INNER}" height="2" fill="${DL.border}"/>`);
+
+  let yMid = midTop;
+  const composites = [
+    { input: chipText.input, left: chipX + 26, top: chipY + 14 },
+    { input: nameImg.input, left: xIn(nameImg.width), top: nameY },
+    ...(subImg ? [{ input: subImg.input, left: xIn(subImg.width), top: nameY + nameImg.height + NAME_GAP }] : []),
+    { input: headline.input, left: mx(headline.width), top: yMid },
+  ];
+  yMid += headline.height;
+  if (company) {
+    yMid += 26;
+    composites.push({ input: company.input, left: mx(company.width), top: yMid });
+    yMid += company.height;
+    if (activity) composites.push({ input: activity.input, left: mx(activity.width), top: yMid + 10 });
+  }
+  composites.push(
+    { input: withLabel.input, left: labelX, top: Math.round(footMid - withLabel.height / 2) },
+    { input: logo.data, left: logoX, top: footMid - 38 },
+  );
+  return sharp(base).composite(composites).flatten({ background: C.white }).jpeg({ quality: 88, mozjpeg: true }).toBuffer();
+}
+
+/** The email's picture. */
+export const renderCardImage = renderDaylight;
 
 const cache = new Map<string, Buffer>();
 export async function cachedCardImage(key: string, p: CardImageInput): Promise<Buffer> {

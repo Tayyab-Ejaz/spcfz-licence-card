@@ -12,6 +12,18 @@ export const EMAIL_ASSET_DIR = path.resolve(HERE, '../../assets/email');
 /** The header banner (SPC, 27 October 2026): white SPC Free Zone logo on brand blue, 1200 x 400 for 600 px. */
 export const EMAIL_HEADER = 'spc-header-7c72da56e9.jpg';
 
+/** The footer's social links (as on www.spcfz.ae, 27 October 2026), with icons from tools/email-icons.mjs. */
+export const SOCIAL: ReadonlyArray<{ name: string; href: string; icon: string }> = [
+  { name: 'LinkedIn', href: 'https://www.linkedin.com/company/spcfreezone/', icon: 'icon-linkedin-2cd82cb42e.png' },
+  { name: 'Instagram', href: 'https://www.instagram.com/spcfreezone', icon: 'icon-instagram-794b6bcaa3.png' },
+  { name: 'Facebook', href: 'https://www.facebook.com/SPCFZ.WhereMoreIsPossible', icon: 'icon-facebook-46e4bc2edf.png' },
+  { name: 'YouTube', href: 'https://www.youtube.com/@spcfreezone', icon: 'icon-youtube-dd753659e0.png' },
+];
+
+/** SPC's phone and WhatsApp, as on www.spcfz.ae. */
+export const PHONE = { href: 'tel:80077239', label: '800 SPCFZ (77239)' };
+export const WHATSAPP = 'https://wa.me/971502387267';
+
 const FILE_RE = /^[a-z0-9-]{1,80}\.(jpg|png)$/;
 
 export const emailAssetRoutes = new Hono<AppEnv>();

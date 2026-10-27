@@ -6,7 +6,7 @@ import type { CardRow, Lang } from '../types.js';
 import { html, raw } from '../util/html.js';
 import { CONTACT_URL } from '../page/strings.js';
 import { cardImagePath } from '../page/studio.js';
-import { EMAIL_HEADER } from './assets.js';
+import { EMAIL_HEADER, PHONE, SOCIAL, WHATSAPP } from './assets.js';
 
 export interface WelcomeEmail {
   subject: string;
@@ -50,7 +50,10 @@ export const COPY = {
     team: 'Team SPC Free Zone',
     address: 'SPC Free Zone · Sharjah, UAE',
     why: (co: string) => `You're receiving this email because SPC Free Zone issued a business license to ${co}.`,
-    help: 'Questions? Contact us',
+    helpTitle: "Questions about your license or your card? We're here to help.",
+    call: 'Call 800 SPCFZ (77239)',
+    whatsapp: 'WhatsApp us',
+    contact: 'Contact us',
     unsubscribe: 'Unsubscribe',
   },
   ar: {
@@ -75,7 +78,10 @@ export const COPY = {
     team: 'فريق المنطقة الحرة لمدينة الشارقة للنشر',
     address: 'المنطقة الحرة لمدينة الشارقة للنشر · الشارقة، الإمارات العربية المتحدة',
     why: (co: string) => `وصلتك هذه الرسالة لأن المنطقة الحرة لمدينة الشارقة للنشر أصدرت رخصة تجارية لشركة ${co}.`,
-    help: 'لديك سؤال؟ تواصل معنا',
+    helpTitle: 'لديك سؤال عن رخصتك أو بطاقتك؟ نحن هنا لمساعدتك.',
+    call: 'اتصل على \u200e800 SPCFZ (77239)\u200e',
+    whatsapp: 'راسلنا عبر واتساب',
+    contact: 'تواصل معنا',
     unsubscribe: 'إلغاء الاشتراك',
   },
 } as const;
@@ -107,6 +113,8 @@ export function renderWelcome(i: WelcomeInput): WelcomeEmail {
   const unsubscribeUrl = `${base}/c/${c.token}/unsubscribe?lang=${langQ}`;
   const cardImg = `${base}${cardImagePath(c, i.lang)}`;
   const header = `${base}/static/email/${EMAIL_HEADER}`;
+  const logo = `${base}/static/studio/a/a18673349b740aa2.png`;
+  const social = SOCIAL.map((n, k) => html`<a href="${n.href}" target="_blank" style="display:inline-block;${k ? (ar ? 'margin-right:8px;' : 'margin-left:8px;') : ''}"><img src="${base}/static/email/${n.icon}" width="36" height="36" alt="${n.name}" style="display:inline-block;width:36px;height:36px;"></a>`).join('');
   const out = html`<!doctype html>
 <html lang="${langQ}" dir="${dir}" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
@@ -130,6 +138,8 @@ a{text-decoration:none}
   .btn-table{width:100%!important}
   .btn-cell{display:block!important;width:100%!important;padding:0 0 10px!important}
   .btn-cell a{display:block!important;text-align:center!important}
+  .stack-m{display:block!important;width:100%!important;text-align:${align}!important}
+  .social{padding-top:18px!important}
 }
 @media (prefers-color-scheme:dark){
   .page,.outer,.wrap{background:#0b1220!important}
@@ -140,6 +150,9 @@ a{text-decoration:none}
   .shot{border-color:#22304d!important}
   .unsub{color:#9aa7c0!important;border-color:#3a4863!important}
   .btn-secondary{background:#0b1220!important;color:#8fb0ff!important;border-color:#3b5bb0!important}
+  .foot{background:#111a2c!important}
+  .lnk{color:#8fb0ff!important}
+  .logo{background:#ffffff!important;padding:6px 10px!important;border-radius:8px!important}
 }
 [data-ogsc] .text,[data-ogsc] .h1{color:#e8edf7!important}
 [data-ogsc] .muted{color:#9aa7c0!important}
@@ -186,13 +199,20 @@ ${i.linkedin ? raw(html`<td class="btn-cell" style="padding:0;">${raw(button({ h
 <p class="text" style="margin:28px 0 0;color:#1f2a44;font-size:16px;line-height:26px;">${t.regards}<br><strong class="text" style="color:#071329;">${t.team}</strong></p>
 </td></tr>
 
-<tr><td class="pad" style="padding:36px 32px 40px;">
+<tr><td style="height:40px;line-height:40px;font-size:0;">&nbsp;</td></tr>
+
+<tr><td class="pad foot" style="padding:30px 32px 34px;background:#f5f7fc;text-align:${align};">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-<td class="rule" style="border-top:1px solid #e6ebf5;padding-top:22px;text-align:${align};">
+<td class="stack-m" valign="middle" style="text-align:${align};"><a href="https://www.spcfz.ae/" target="_blank"><img class="logo" src="${logo}" width="112" alt="SPC Free Zone" style="width:112px;height:auto;${ar ? 'margin-left:auto;' : ''}"></a></td>
+<td class="stack-m social" valign="middle" style="text-align:${ar ? 'left' : 'right'};white-space:nowrap;">${raw(social)}</td>
+</tr></table>
+<p class="text" style="margin:24px 0 8px;color:#071329;font-size:15px;line-height:22px;font-weight:600;">${t.helpTitle}</p>
+<p style="margin:0 0 26px;font-size:14px;line-height:24px;"><a class="lnk" href="${PHONE.href}" style="color:#004dff;font-weight:600;white-space:nowrap;">${t.call}</a> <span class="muted" style="color:#9aa7c0;">&nbsp;·&nbsp;</span> <a class="lnk" href="${WHATSAPP}" target="_blank" style="color:#004dff;font-weight:600;white-space:nowrap;">${t.whatsapp}</a> <span class="muted" style="color:#9aa7c0;">&nbsp;·&nbsp;</span> <a class="lnk" href="${CONTACT_URL}" target="_blank" style="color:#004dff;font-weight:600;white-space:nowrap;">${t.contact}</a></p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+<td class="rule" style="border-top:1px solid #e1e7f2;padding-top:20px;text-align:${align};">
 <p class="muted" style="margin:0 0 6px;color:#7c879d;font-size:12px;line-height:18px;">${t.why(company)}</p>
-<p class="muted" style="margin:0 0 12px;color:#7c879d;font-size:12px;line-height:18px;">${t.address}</p>
-<p style="margin:0 0 14px;font-size:12px;line-height:18px;"><a href="${CONTACT_URL}" target="_blank" style="color:#004dff;font-weight:600;">${t.help}</a></p>
-<p style="margin:0;font-size:12px;line-height:18px;"><a class="unsub" href="${unsubscribeUrl}" target="_blank" style="display:inline-block;border:1px solid #d3dbea;border-radius:6px;padding:6px 14px;color:#53617c;font-size:12px;line-height:16px;font-weight:600;text-decoration:none;">${t.unsubscribe}</a></p>
+<p class="muted" style="margin:0 0 16px;color:#7c879d;font-size:12px;line-height:18px;">${t.address}</p>
+<a class="unsub" href="${unsubscribeUrl}" target="_blank" style="display:inline-block;border:1px solid #d3dbea;border-radius:6px;padding:6px 14px;background:#ffffff;color:#53617c;font-size:12px;line-height:16px;font-weight:600;text-decoration:none;">${t.unsubscribe}</a>
 </td></tr></table>
 </td></tr>
 
@@ -231,7 +251,12 @@ ${i.linkedin ? raw(html`<td class="btn-cell" style="padding:0;">${raw(button({ h
     '',
     t.why(company),
     t.address,
-    `${t.help}: ${CONTACT_URL}`,
+    t.helpTitle,
+    `${t.call}: ${PHONE.href.replace('tel:', '')}`,
+    `${t.whatsapp}: ${WHATSAPP}`,
+    `${t.contact}: ${CONTACT_URL}`,
+    SOCIAL.map((n) => `${n.name}: ${n.href}`).join('\n'),
+    '',
     `${t.unsubscribe}: ${unsubscribeUrl}`,
   ];
   return { subject: t.subject, html: out, text: lines.join('\n'), unsubscribeUrl };

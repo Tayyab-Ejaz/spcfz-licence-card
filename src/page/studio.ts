@@ -98,7 +98,7 @@ export function previewPath(card: Pick<CardRow, 'token' | 'content_hash'>, lang:
 }
 
 /** The version of the card picture's design (src/page/card-image.ts, used in the welcome email). Raise it on change. */
-export const CARD_DESIGN = 1;
+export const CARD_DESIGN = 2;
 
 /** Where a card's own Day One picture lives: /c/<token>/card/<hash10>-v<design>[-ar].jpg */
 export function cardImagePath(card: Pick<CardRow, 'token' | 'content_hash'>, lang: Lang): string {

@@ -496,12 +496,16 @@ What the customer gets, in their preferred language (English or Arabic, right to
   served at `/static/email/` and cached for good; a new banner gets a new file name).
 - SPC's copy (27 October 2026), English verbatim: subject and headline "Your Business Is Official. Let the World
   Know!", "A milestone worth celebrating. A story worth sharing.", "Hi <first name>," and the congratulations.
-- Their own card as a picture (the Day One style, 1080x1080, drawn by the server: `/c/<token>/card/<hash>-v<n>[-ar].jpg`),
-  linked to their studio.
+- Their own card as a picture (the Daylight style since 27 October 2026, SPC's choice: kicker, founder and role,
+  the empty photo tile, "Officially in business.", company and activity, "Licensed with"; 1080x1080, drawn by the
+  server: `/c/<token>/card/<hash>-v<n>[-ar].jpg`), linked to their studio. Without a founder, the company and
+  activity take the top (the design's company-only layout).
 - "Share Your Milestone" (the studio, `?via=email`, counted as a view from email) and, when LinkedIn is set up,
   "Post on LinkedIn" (section 17, with the server's card and the default caption).
-- The closing lines, "Best regards, Team SPC Free Zone", and a footer: why they got it, "SPC Free Zone · Sharjah, UAE",
-  a contact link and an **Unsubscribe** button. No link to the other language (removed at SPC's request, 27 October
+- The closing lines, "Best regards, Team SPC Free Zone", and a footer band: the SPC logo and social icons (LinkedIn,
+  Instagram, Facebook, YouTube, as on www.spcfz.ae; PNGs from tools/email-icons.mjs), "Questions about your license
+  or your card? We're here to help." with Call 800 SPCFZ (77239), WhatsApp and Contact us; then why they got it,
+  "SPC Free Zone · Sharjah, UAE" and an **Unsubscribe** button. No link to the other language (removed at SPC's request, 27 October
   2026); the card page has its own switch.
 - Unsubscribe: the button opens `/c/<token>/unsubscribe`, which asks first (mailbox link checkers open links, so
   opening it changes nothing) and unsubscribes on its button. Every email also carries `List-Unsubscribe` and
