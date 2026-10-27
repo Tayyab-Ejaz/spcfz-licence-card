@@ -508,11 +508,11 @@ What the customer gets, in their preferred language (English or Arabic, right to
   "Post on LinkedIn" (section 17, with the server's card and the default caption).
 - The closing lines, "Best regards, Team SPC Free Zone", and a black footer band (SPC, 27 October 2026): the SPC logo
   in white and social icons on dark circles (LinkedIn, Instagram, Facebook, YouTube, as on www.spcfz.ae; PNGs from
-  tools/email-icons.mjs); two contact tiles (an SPC-blue phone
-  or envelope icon, a small label and the value: Toll Free Number 800 77239, Email marketing@spcfz.ae; each tile a
-  call or mail link); a hairline; then, centred, "© <year> Sharjah Publishing City (SPC) Free Zone / Sharjah, United
-  Arab Emirates." and a small **Unsubscribe** button. The tiles stack on phones. (SPC removed the "CONTACT US" label
-  and the "You're receiving this email because..." line, 27 October 2026.) No link to the other language (removed at SPC's request, 27 October
+  tools/email-icons.mjs); one line,
+  Toll Free Number 800 77239 | Email marketing@spcfz.ae; a hairline; "© <year> Sharjah Publishing City (SPC) Free
+  Zone / Sharjah, United Arab Emirates." with **Unsubscribe** opposite. Compact (about 230 px; SPC removed the
+  "CONTACT US" label and the "You're receiving this email because..." line, 27 October 2026); the contact pairs and the
+  bottom row stack on phones. No link to the other language (removed at SPC's request, 27 October
   2026); the card page has its own switch.
 - Unsubscribe: the button opens `/c/<token>/unsubscribe`, which asks first (mailbox link checkers open links, so
   opening it changes nothing) and unsubscribes on its button. Every email also carries `List-Unsubscribe` and
