@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { Hono } from 'hono';
 import type { AppEnv, CanonicalFields, CardRow } from '../src/types.js';
 import { pageRoutes } from '../src/page/routes.js';
-import { EMAIL_HEADER, SOCIAL, emailAssetRoutes } from '../src/mail/assets.js';
+import { CONTACT_ICONS, EMAIL_HEADER, SOCIAL, emailAssetRoutes } from '../src/mail/assets.js';
 import { renderDaylight } from '../src/page/card-image.js';
 import sharp from 'sharp';
 import { getCardById, insertCard, setCardStatus } from '../src/db/cards.js';
@@ -102,12 +102,13 @@ describe('the welcome email', () => {
     expect((await app.request('/static/email/..%2Fsecret.jpg')).status).toBe(404);
   });
 
-  it('ends with Contact Us, the copyright and the social links, every icon served', async () => {
+  it('ends with the contact tiles, the copyright and the social links, every icon served', async () => {
     const card = await seedCard();
     const m = renderWelcome({ card, lang: 'en', baseUrl: 'https://licensed.test', linkedin: false });
     expect(m.html).not.toContain('CONTACT US');
     expect(m.html).toContain('>Toll Free Number</span>');
-    expect(m.html).toMatch(/<a href="tel:80077239" dir="ltr"[^>]*>800 77239<\/a>/);
+    expect(m.html).toContain('<a href="tel:80077239"');
+    expect(m.html).toContain(' dir="ltr">800 77239</span>');
     expect(m.html).toContain('href="mailto:marketing@spcfz.ae"');
     expect(m.html).toContain(`© ${new Date().getFullYear()} Sharjah Publishing City (SPC) Free Zone<br>Sharjah, United Arab Emirates.`);
     expect(m.text).toContain('Toll Free Number: 800 77239\nEmail: marketing@spcfz.ae');
@@ -116,9 +117,10 @@ describe('the welcome email', () => {
       expect(m.html).toContain(`href="${n.href}"`);
       expect((await app.request(`/static/email/${n.icon}`)).status).toBe(200);
     }
+    for (const icon of Object.values(CONTACT_ICONS)) expect((await app.request(`/static/email/${icon}`)).status).toBe(200);
     const ar = renderWelcome({ card, lang: 'ar', baseUrl: 'https://licensed.test', linkedin: false });
     expect(ar.html).toContain('>الرقم المجاني</span>');
-    expect(ar.html).toMatch(/<a href="tel:80077239" dir="ltr"/); // the number keeps its order inside Arabic
+    expect(ar.html).toContain(' dir="ltr">800 77239</span>'); // the number keeps its order inside Arabic
   });
 
   it('pictures the card in the Daylight style, square', async () => {

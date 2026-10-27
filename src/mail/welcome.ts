@@ -6,7 +6,7 @@ import type { CardRow, Lang } from '../types.js';
 import { html, raw } from '../util/html.js';
 import { todayInDubai } from '../util/time.js';
 import { cardImagePath } from '../page/studio.js';
-import { CONTACT_EMAIL, EMAIL_HEADER, FOOTER_LOGO, PHONE, SOCIAL } from './assets.js';
+import { CONTACT_EMAIL, CONTACT_ICONS, EMAIL_HEADER, FOOTER_LOGO, PHONE, SOCIAL } from './assets.js';
 
 export interface WelcomeEmail {
   subject: string;
@@ -102,6 +102,21 @@ function button(o: { href: string; label: string; bg: string; fg: string; border
   return html`<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${o.href}" style="height:48px;v-text-anchor:middle;width:${o.width}px;" arcsize="17%" strokecolor="${o.border}" fillcolor="${o.bg}"><w:anchorlock/><center style="color:${o.fg};font-family:Arial,sans-serif;font-size:15px;font-weight:bold;">${o.label}</center></v:roundrect><![endif]--><!--[if !mso]><!--><a class="${o.cls}" href="${o.href}" target="_blank" style="display:inline-block;background:${o.bg};color:${o.fg};border:1.5px solid ${o.border};border-radius:8px;padding:13px 24px;font-size:15px;line-height:20px;font-weight:700;text-decoration:none;mso-hide:all;">${o.label}</a><!--<![endif]-->`;
 }
 
+/** A contact tile on the footer's black band: an icon, a small label and the value, the whole tile a link. */
+function contactTile(base: string, align: string, href: string, icon: string, label: string, value: string, ltr: boolean): string {
+  return html`<td class="tile" width="48%" valign="top" style="width:48%;background:#101215;border:1px solid #22252b;border-radius:12px;">
+<a href="${href}" style="display:block;padding:14px 16px;text-decoration:none;">
+<table role="presentation" cellpadding="0" cellspacing="0"><tr>
+<td valign="middle" style="padding:0;width:34px;"><img src="${base}/static/email/${icon}" width="34" height="34" alt="" style="display:block;width:34px;height:34px;"></td>
+<td valign="middle" style="padding:0 12px;text-align:${align};">
+<span style="display:block;color:#8b919c;font-size:11.5px;line-height:16px;">${label}</span>
+<span style="display:block;color:#ffffff;font-size:15px;line-height:21px;font-weight:700;white-space:nowrap;"${ltr ? raw(' dir="ltr"') : ''}>${value}</span>
+</td>
+</tr></table>
+</a>
+</td>`;
+}
+
 export function renderWelcome(i: WelcomeInput): WelcomeEmail {
   const c = i.card;
   const ar = i.lang === 'ar';
@@ -120,6 +135,7 @@ export function renderWelcome(i: WelcomeInput): WelcomeEmail {
   const cardImg = `${base}${cardImagePath(c, i.lang)}`;
   const header = `${base}/static/email/${EMAIL_HEADER}`;
   const year = todayInDubai().slice(0, 4);
+  const tile = (href: string, icon: string, label: string, value: string, ltr: boolean): string => contactTile(base, align, href, icon, label, value, ltr);
   const logo = `${base}/static/email/${FOOTER_LOGO}`;
   const social = SOCIAL.map((n, k) => html`<a href="${n.href}" target="_blank" style="display:inline-block;${k ? (ar ? 'margin-right:8px;' : 'margin-left:8px;') : ''}"><img class="ft-icon" src="${base}/static/email/${n.icon}" width="38" height="38" alt="${n.name}" style="display:inline-block;width:38px;height:38px;"></a>`).join('');
   // The card sits in a small editor window (a bar with "Draft" and "Customise", then chips under it), so it reads as
@@ -149,8 +165,8 @@ a{text-decoration:none}
   .btn-cell a{display:block!important;text-align:center!important}
   .stack-m{display:block!important;width:100%!important;text-align:${align}!important;padding-left:0!important;padding-right:0!important}
   .ft-gap{padding-top:12px!important}
-  .ft-sep{display:none!important}
-  .ft-pair{display:block!important}
+  .tile{display:block!important;width:auto!important}
+  .tile-gap{display:block!important;width:auto!important;height:10px!important}
   .bar-title{display:none!important}
   .ft-logo{width:128px!important}
   .ft-icon{width:32px!important;height:32px!important}
@@ -236,18 +252,16 @@ ${i.linkedin ? raw(html`<td class="btn-cell" style="padding:0;">${raw(button({ h
 <td valign="middle" style="text-align:${ar ? 'left' : 'right'};white-space:nowrap;">${raw(social)}</td>
 </tr></table>
 
-<p style="margin:22px 0 0;color:#ffffff;font-size:14px;line-height:22px;"><span class="ft-pair" style="white-space:nowrap;"><span style="color:#8b919c;">${t.tollFree}</span>&nbsp; <a href="${PHONE.href}" dir="ltr" style="color:#ffffff;font-weight:600;text-decoration:none;">${PHONE.label}</a></span><span class="ft-sep" style="color:#3f434b;">&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;</span><span class="ft-pair" style="white-space:nowrap;"><span style="color:#8b919c;">${t.emailLabel}</span>&nbsp; <a href="mailto:${CONTACT_EMAIL}" style="color:#ffffff;font-weight:600;text-decoration:none;">${CONTACT_EMAIL}</a></span></p>
-
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding:20px 0 16px;"><div style="height:1px;line-height:1px;font-size:0;background:#202329;">&nbsp;</div></td></tr></table>
-
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-<td class="stack-m" valign="middle" style="text-align:${align};">
-<p style="margin:0;color:#aab0ba;font-size:12px;line-height:18px;">${t.copyright(year)}<br>${t.location}</p>
-</td>
-<td class="stack-m ft-gap" valign="middle" style="text-align:${ar ? 'left' : 'right'};white-space:nowrap;${ar ? 'padding-right:16px;' : 'padding-left:16px;'}">
-<a href="${unsubscribeUrl}" target="_blank" style="display:inline-block;border:1px solid #33373e;border-radius:6px;padding:5px 12px;background:#000000;color:#c9ced6;font-size:12px;line-height:16px;font-weight:600;text-decoration:none;">${t.unsubscribe}</a>
-</td>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:24px;border-collapse:separate;"><tr>
+${raw(tile(PHONE.href, CONTACT_ICONS.phone, t.tollFree, PHONE.label, true))}
+<td class="tile-gap" width="4%" style="width:4%;font-size:0;line-height:0;">&nbsp;</td>
+${raw(tile(`mailto:${CONTACT_EMAIL}`, CONTACT_ICONS.mail, t.emailLabel, CONTACT_EMAIL, false))}
 </tr></table>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding:24px 0 20px;"><div style="height:1px;line-height:1px;font-size:0;background:#1e2126;">&nbsp;</div></td></tr></table>
+
+<p style="margin:0;color:#9aa0aa;font-size:12px;line-height:19px;text-align:center;">${t.copyright(year)}<br>${t.location}</p>
+<p style="margin:14px 0 0;text-align:center;"><a href="${unsubscribeUrl}" target="_blank" style="display:inline-block;border:1px solid #2f333a;border-radius:6px;padding:5px 12px;background:#000000;color:#aab0ba;font-size:11.5px;line-height:16px;font-weight:600;text-decoration:none;">${t.unsubscribe}</a></p>
 </td></tr>
 
 </table>

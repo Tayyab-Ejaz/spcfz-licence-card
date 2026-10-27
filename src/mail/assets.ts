@@ -26,6 +26,8 @@ export const FOOTER_LOGO = 'spc-logo-white-adf4090152.png';
 /** The footer's Contact Us details (SPC, 27 October 2026). */
 export const PHONE = { href: 'tel:80077239', label: '800 77239' };
 export const CONTACT_EMAIL = 'marketing@spcfz.ae';
+/** The contact tiles' icons (tools/email-icons.mjs): white phone and envelope on SPC blue. */
+export const CONTACT_ICONS = { phone: 'contact-phone-a33b33aee4.png', mail: 'contact-mail-faf42ca44d.png' };
 
 const FILE_RE = /^[a-z0-9-]{1,80}\.(jpg|png)$/;
 
