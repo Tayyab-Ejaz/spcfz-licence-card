@@ -6,7 +6,7 @@ import type { CardRow, Lang } from '../types.js';
 import { html, raw } from '../util/html.js';
 import { CONTACT_URL } from '../page/strings.js';
 import { cardImagePath } from '../page/studio.js';
-import { EMAIL_HEADER, PHONE, SOCIAL, WHATSAPP } from './assets.js';
+import { EMAIL_HEADER, FOOTER_LOGO, PHONE, SOCIAL, WHATSAPP } from './assets.js';
 
 export interface WelcomeEmail {
   subject: string;
@@ -113,7 +113,7 @@ export function renderWelcome(i: WelcomeInput): WelcomeEmail {
   const unsubscribeUrl = `${base}/c/${c.token}/unsubscribe?lang=${langQ}`;
   const cardImg = `${base}${cardImagePath(c, i.lang)}`;
   const header = `${base}/static/email/${EMAIL_HEADER}`;
-  const logo = `${base}/static/studio/a/a18673349b740aa2.png`;
+  const logo = `${base}/static/email/${FOOTER_LOGO}`;
   const social = SOCIAL.map((n, k) => html`<a href="${n.href}" target="_blank" style="display:inline-block;${k ? (ar ? 'margin-right:8px;' : 'margin-left:8px;') : ''}"><img src="${base}/static/email/${n.icon}" width="36" height="36" alt="${n.name}" style="display:inline-block;width:36px;height:36px;"></a>`).join('');
   const out = html`<!doctype html>
 <html lang="${langQ}" dir="${dir}" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
@@ -148,11 +148,8 @@ a{text-decoration:none}
   .accent{color:#8fb0ff!important}
   .rule{border-color:#22304d!important}
   .shot{border-color:#22304d!important}
-  .unsub{color:#9aa7c0!important;border-color:#3a4863!important}
   .btn-secondary{background:#0b1220!important;color:#8fb0ff!important;border-color:#3b5bb0!important}
-  .foot{background:#111a2c!important}
-  .lnk{color:#8fb0ff!important}
-  .logo{background:#ffffff!important;padding:6px 10px!important;border-radius:8px!important}
+  .foot{background:#000000!important}
 }
 [data-ogsc] .text,[data-ogsc] .h1{color:#e8edf7!important}
 [data-ogsc] .muted{color:#9aa7c0!important}
@@ -201,18 +198,18 @@ ${i.linkedin ? raw(html`<td class="btn-cell" style="padding:0;">${raw(button({ h
 
 <tr><td style="height:40px;line-height:40px;font-size:0;">&nbsp;</td></tr>
 
-<tr><td class="pad foot" style="padding:30px 32px 34px;background:#f5f7fc;text-align:${align};">
+<tr><td class="pad foot" style="padding:32px 32px 36px;background:#000000;text-align:${align};">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-<td class="stack-m" valign="middle" style="text-align:${align};"><a href="https://www.spcfz.ae/" target="_blank"><img class="logo" src="${logo}" width="112" alt="SPC Free Zone" style="width:112px;height:auto;${ar ? 'margin-left:auto;' : ''}"></a></td>
+<td class="stack-m" valign="middle" style="text-align:${align};"><a href="https://www.spcfz.ae/" target="_blank"><img src="${logo}" width="112" alt="SPC Free Zone" style="width:112px;height:auto;${ar ? 'margin-left:auto;' : ''}"></a></td>
 <td class="stack-m social" valign="middle" style="text-align:${ar ? 'left' : 'right'};white-space:nowrap;">${raw(social)}</td>
 </tr></table>
-<p class="text" style="margin:24px 0 8px;color:#071329;font-size:15px;line-height:22px;font-weight:600;">${t.helpTitle}</p>
-<p style="margin:0 0 26px;font-size:14px;line-height:24px;"><a class="lnk" href="${PHONE.href}" style="color:#004dff;font-weight:600;white-space:nowrap;">${t.call}</a> <span class="muted" style="color:#9aa7c0;">&nbsp;·&nbsp;</span> <a class="lnk" href="${WHATSAPP}" target="_blank" style="color:#004dff;font-weight:600;white-space:nowrap;">${t.whatsapp}</a> <span class="muted" style="color:#9aa7c0;">&nbsp;·&nbsp;</span> <a class="lnk" href="${CONTACT_URL}" target="_blank" style="color:#004dff;font-weight:600;white-space:nowrap;">${t.contact}</a></p>
+<p class="ft-head" style="margin:26px 0 8px;color:#ffffff;font-size:15px;line-height:22px;font-weight:600;">${t.helpTitle}</p>
+<p style="margin:0 0 26px;font-size:14px;line-height:24px;"><a class="ft-link" href="${PHONE.href}" style="color:#7fa6ff;font-weight:600;white-space:nowrap;">${t.call}</a> <span style="color:#5d636e;">&nbsp;·&nbsp;</span> <a class="ft-link" href="${WHATSAPP}" target="_blank" style="color:#7fa6ff;font-weight:600;white-space:nowrap;">${t.whatsapp}</a> <span style="color:#5d636e;">&nbsp;·&nbsp;</span> <a class="ft-link" href="${CONTACT_URL}" target="_blank" style="color:#7fa6ff;font-weight:600;white-space:nowrap;">${t.contact}</a></p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-<td class="rule" style="border-top:1px solid #e1e7f2;padding-top:20px;text-align:${align};">
-<p class="muted" style="margin:0 0 6px;color:#7c879d;font-size:12px;line-height:18px;">${t.why(company)}</p>
-<p class="muted" style="margin:0 0 16px;color:#7c879d;font-size:12px;line-height:18px;">${t.address}</p>
-<a class="unsub" href="${unsubscribeUrl}" target="_blank" style="display:inline-block;border:1px solid #d3dbea;border-radius:6px;padding:6px 14px;background:#ffffff;color:#53617c;font-size:12px;line-height:16px;font-weight:600;text-decoration:none;">${t.unsubscribe}</a>
+<td style="border-top:1px solid #2a2d33;padding-top:20px;text-align:${align};">
+<p class="ft-small" style="margin:0 0 6px;color:#9aa0aa;font-size:12px;line-height:18px;">${t.why(company)}</p>
+<p class="ft-small" style="margin:0 0 16px;color:#9aa0aa;font-size:12px;line-height:18px;">${t.address}</p>
+<a class="ft-unsub" href="${unsubscribeUrl}" target="_blank" style="display:inline-block;border:1px solid #3a3e46;border-radius:6px;padding:6px 14px;background:#000000;color:#d0d4db;font-size:12px;line-height:16px;font-weight:600;text-decoration:none;">${t.unsubscribe}</a>
 </td></tr></table>
 </td></tr>
 

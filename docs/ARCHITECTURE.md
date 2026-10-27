@@ -502,8 +502,9 @@ What the customer gets, in their preferred language (English or Arabic, right to
   activity take the top (the design's company-only layout).
 - "Share Your Milestone" (the studio, `?via=email`, counted as a view from email) and, when LinkedIn is set up,
   "Post on LinkedIn" (section 17, with the server's card and the default caption).
-- The closing lines, "Best regards, Team SPC Free Zone", and a footer band: the SPC logo and social icons (LinkedIn,
-  Instagram, Facebook, YouTube, as on www.spcfz.ae; PNGs from tools/email-icons.mjs), "Questions about your license
+- The closing lines, "Best regards, Team SPC Free Zone", and a black footer band (SPC, 27 October 2026): the SPC logo
+  in white and social icons on dark circles (LinkedIn, Instagram, Facebook, YouTube, as on www.spcfz.ae; PNGs from
+  tools/email-icons.mjs), "Questions about your license
   or your card? We're here to help." with Call 800 SPCFZ (77239), WhatsApp and Contact us; then why they got it,
   "SPC Free Zone · Sharjah, UAE" and an **Unsubscribe** button. No link to the other language (removed at SPC's request, 27 October
   2026); the card page has its own switch.

@@ -1,6 +1,7 @@
-// The welcome email's social icons (src/mail/welcome.ts footer): SPC blue glyphs on a white circle, as PNGs
-// (Gmail and Outlook do not show SVG in email). Drawn at 3x for sharp screens; shown at 36 px. Each file is named
-// by its content hash; after a change, run this and copy the printed names into src/mail/assets.ts.
+// The welcome email's footer pictures (src/mail/welcome.ts), for its black band: the social icons as white glyphs
+// on dark circles, and the SPC logo in white. PNGs, since Gmail and Outlook do not show SVG in email. Icons are
+// drawn at 3x for sharp screens and shown at 36 px. Each file is named by its content hash; after a change, run
+// this and copy the printed names into src/mail/assets.ts.
 //   node tools/email-icons.mjs
 import { createHash } from 'node:crypto';
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
@@ -9,8 +10,8 @@ import sharp from 'sharp';
 
 const OUT = path.resolve('assets/email');
 const SIZE = 108;
-const BG = '#ffffff'; // white circles on the footer's light band
-const FG = '#004dff';
+const BG = '#26292f'; // dark circles on the footer's black band
+const FG = '#ffffff';
 
 // Glyphs on a 24 x 24 grid, centred in the circle at 50%. LinkedIn's letters are from Simple Icons (CC0); the
 // others are drawn from basic shapes.
@@ -22,7 +23,7 @@ const GLYPHS = {
 };
 
 mkdirSync(OUT, { recursive: true });
-for (const f of readdirSync(OUT)) if (/^icon-/.test(f)) rmSync(path.join(OUT, f));
+for (const f of readdirSync(OUT)) if (/^(icon-|spc-logo-white-)/.test(f)) rmSync(path.join(OUT, f));
 for (const [name, glyph] of Object.entries(GLYPHS)) {
   const pad = 30; // the glyph takes the middle 48 of 108
   const s = (SIZE - 2 * pad) / 24;
@@ -32,3 +33,15 @@ for (const [name, glyph] of Object.entries(GLYPHS)) {
   writeFileSync(path.join(OUT, file), png);
   console.log(name.padEnd(10), file, `${png.length} B`);
 }
+
+// The colour SPC logo (the card's, design/source/assets) turned white, keeping its shape from the alpha channel.
+const LOGO = path.resolve('design/source/assets/a18673349b740aa2.png');
+const alpha = await sharp(LOGO).ensureAlpha().extractChannel('alpha').raw().toBuffer();
+const meta = await sharp(LOGO).metadata();
+const white = await sharp({ create: { width: meta.width, height: meta.height, channels: 3, background: '#ffffff' } })
+  .joinChannel(alpha, { raw: { width: meta.width, height: meta.height, channels: 1 } })
+  .png({ compressionLevel: 9 }).toBuffer();
+const logoFile = `spc-logo-white-${createHash('sha256').update(white).digest('hex').slice(0, 10)}.png`;
+writeFileSync(path.join(OUT, logoFile), white);
+console.log('logo'.padEnd(10), logoFile, `${white.length} B`);
+

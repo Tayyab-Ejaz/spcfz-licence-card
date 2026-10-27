@@ -14,11 +14,14 @@ export const EMAIL_HEADER = 'spc-header-66c2118e10.jpg';
 
 /** The footer's social links (as on www.spcfz.ae, 27 October 2026), with icons from tools/email-icons.mjs. */
 export const SOCIAL: ReadonlyArray<{ name: string; href: string; icon: string }> = [
-  { name: 'LinkedIn', href: 'https://www.linkedin.com/company/spcfreezone/', icon: 'icon-linkedin-2cd82cb42e.png' },
-  { name: 'Instagram', href: 'https://www.instagram.com/spcfreezone', icon: 'icon-instagram-794b6bcaa3.png' },
-  { name: 'Facebook', href: 'https://www.facebook.com/SPCFZ.WhereMoreIsPossible', icon: 'icon-facebook-46e4bc2edf.png' },
-  { name: 'YouTube', href: 'https://www.youtube.com/@spcfreezone', icon: 'icon-youtube-dd753659e0.png' },
+  { name: 'LinkedIn', href: 'https://www.linkedin.com/company/spcfreezone/', icon: 'icon-linkedin-b14c1e1df5.png' },
+  { name: 'Instagram', href: 'https://www.instagram.com/spcfreezone', icon: 'icon-instagram-8750a2f513.png' },
+  { name: 'Facebook', href: 'https://www.facebook.com/SPCFZ.WhereMoreIsPossible', icon: 'icon-facebook-36698a4838.png' },
+  { name: 'YouTube', href: 'https://www.youtube.com/@spcfreezone', icon: 'icon-youtube-9fb3684622.png' },
 ];
+
+/** The SPC logo in white, for the footer's black band (tools/email-icons.mjs). */
+export const FOOTER_LOGO = 'spc-logo-white-adf4090152.png';
 
 /** SPC's phone and WhatsApp, as on www.spcfz.ae. */
 export const PHONE = { href: 'tel:80077239', label: '800 SPCFZ (77239)' };
