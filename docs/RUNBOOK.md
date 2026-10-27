@@ -158,6 +158,14 @@ every webhook is rejected with 403, which is visible in Admin, Events.
 Cloudflare publishes new ranges, update the file, regenerate the Apache site
 from it, and reinstall that file with an approved change.
 
+## Test everything before the ERP is connected
+
+Admin, **Test flow**. Pick a scenario (or paste a payload the ERP team sent) and press Send as the ERP. The run
+page shows each step: the ERP's answer, how its fields were read (and which it ignores), the card with a QR code
+for your phone, the welcome email, Post to LinkedIn, and buttons for what the ERP does next (same licence again,
+renewal, correction, expired), each checked against what should happen. The test email goes to your own
+address, so sign in with your @spcfz.ae account. Test cards are kept; delete them by hand if you like.
+
 ## Welcome email: turn it on
 
 Until `MAIL_TRANSPORT=smtp` is set, welcome emails are queued in the admin but

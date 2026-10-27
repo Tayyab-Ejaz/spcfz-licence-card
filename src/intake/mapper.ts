@@ -237,3 +237,24 @@ export function mapPayload(payload: unknown, fieldMapJson: string): Record<strin
 
   return out;
 }
+
+/**
+ * Which top-level payload fields the card can use, and which it ignores: for the admin's Test flow, so a sample
+ * ERP payload shows at a glance whether its field names are recognised. FIELD_MAP paths count by their first part.
+ */
+export function fieldReport(payload: unknown, fieldMapJson: string): { used: Array<[field: string, key: CanonicalKey]>; unused: string[] } {
+  const used: Array<[string, CanonicalKey]> = [];
+  const unused: string[] = [];
+  if (!isPlainObject(payload)) return { used, unused };
+  const mapped = new Map<string, CanonicalKey>();
+  for (const [path, key] of parseFieldMap(fieldMapJson)) {
+    const root = path.split('.')[0] ?? path;
+    if (!mapped.has(root)) mapped.set(root, key);
+  }
+  for (const k of Object.keys(payload)) {
+    const key = mapped.get(k) ?? ALIAS_INDEX.get(normaliseKey(k));
+    if (key) used.push([k, key]);
+    else unused.push(k);
+  }
+  return { used, unused };
+}

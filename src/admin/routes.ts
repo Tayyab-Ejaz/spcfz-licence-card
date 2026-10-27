@@ -24,10 +24,18 @@ import { createAuthHandlers, sessionVerifier } from './auth.js';
 import { csrfFailure, csrfToken, ensureCsrf } from './csrf.js';
 import { emailCounts, emailsForCard } from '../db/emails.js';
 import type { EmailRow } from '../db/emails.js';
-import { queueWelcome } from '../mail/outbox.js';
+import { queueWelcome, testRecipientAllowed } from '../mail/outbox.js';
 import { renderWelcome } from '../mail/welcome.js';
 import { linkedinPostsForCard } from '../db/linkedin.js';
 import { linkedinEnabled } from '../linkedin/client.js';
+import { acceptPayload } from '../intake/accept.js';
+import { isPlainObject } from '../intake/common.js';
+import { MAX_BODY_BYTES } from '../intake/routes.js';
+import { parseAllowlist } from '../util/ip.js';
+import {
+  EXPECTS, FOLLOW_UPS, SCENARIOS, defaultRecipient, followUpPayload, formBody, freshLicence, recentRuns, runBody, scenarioPayload,
+} from './test-flow.js';
+import type { Scenario, StatusLine } from './test-flow.js';
 import type { AdminStatus } from './layout.js';
 import {
   EMPTY, actionForm, adminHeaders, badge, csrfField, fmtDateTime, h, kv, pager, respond, table, testBadge,
@@ -372,7 +380,9 @@ export function createAdminRoutes(verify: AdminVerifier, auth: AuthHandlers = cr
       metricsTotals(db, since),
       listEvents(db, { outcome: 'rejected', limit: 10 }),
     ]);
+    const erpOff = parseAllowlist(c.env.ERP_IP_ALLOWLIST).length === 0;
     const body = h`
+${erpOff ? h`<div class="flash">The ERP is not connected yet. <a href="/admin/test-flow">Test flow</a> sends a licence the way it will, so you can try the card, the email and LinkedIn now.</div>` : EMPTY}
 <h2>Live cards by status</h2>
 <div class="cards">${STATUSES.map(
   (s) => h`<div class="stat"><b>${byStatus[s]}</b><span><a href="/admin/cards?status=${s}&amp;is_test=0">${s}</a></span></div>`,
@@ -547,13 +557,16 @@ ${eventsTable(events.rows)}`;
   });
 
   app.post('/cards/:id/email', async (c) => {
-    const bad = csrfFailure(c, await readForm(c));
+    const form = await readForm(c);
+    const bad = csrfFailure(c, form);
     if (bad) return forbidden(c, bad);
     const card = await getCardById(c.env.DB, c.req.param('id'));
     if (!card) return notFoundPage(c, 'card');
     const r = await queueWelcome(c.env, card, { actor: c.get('actor') ?? null, force: true });
     if (r === 'queued') await audit(c, 'emailed', card.id);
     const m = r === 'queued' ? 'emailed' : r === 'no-email' ? 'email-none' : r === 'expired' ? 'email-expired' : 'email-test';
+    const back = field(form, 'back');
+    if (/^\/admin\/test-flow\/runs\/[0-9A-Z]{26}$/.test(back)) return c.redirect(`${back}?m=${m}`, 303);
     return c.redirect(`/admin/cards/${card.id}?m=${m}`, 303);
   });
 
@@ -685,6 +698,99 @@ ${ev.raw_body
     }
 
     return replayError(c, ev, ['This event has no raw body, so there is nothing to replay.']);
+  });
+
+  // ---------------------------------------------------------------- test flow (./test-flow.ts)
+
+  const testStatus = (c: Context<AppEnv>): StatusLine => ({
+    mail: c.env.MAIL_TRANSPORT ?? (c.env.MAIL_SMTP_URL ? 'smtp' : 'off'),
+    linkedin: c.env.LINKEDIN_FAKE === '1' ? 'pretend' : linkedinEnabled(c.env) ? 'on' : 'off',
+    erpConnected: parseAllowlist(c.env.ERP_IP_ALLOWLIST).length > 0,
+  });
+
+  const testForm = async (c: Context<AppEnv>, scenario: Scenario, payload: string | null, error: string | null, status: AdminStatus = 200): Promise<Response> => {
+    const recipient = defaultRecipient(c.env, c.get('actor'));
+    const body = formBody({
+      token: csrfToken(c),
+      scenario,
+      payload: payload ?? scenarioPayload(scenario, freshLicence(), recipient),
+      status: testStatus(c),
+      recipient,
+      recipientAllowed: testRecipientAllowed(c.env, recipient),
+      runs: await recentRuns(c.env.DB),
+    });
+    return respond(c, { title: 'Test flow', active: 'test', error, body }, status);
+  };
+
+  /** Exactly the webhook's steps after its network checks, as a TEST card; the run is a test-route event. */
+  const runTest = async (c: Context<AppEnv>, text: string, sendEmail: boolean): Promise<{ eventId: string } | { error: string }> => {
+    if (new TextEncoder().encode(text).byteLength > MAX_BODY_BYTES) return { error: `The payload is over ${MAX_BODY_BYTES} bytes; the webhook would refuse it (413).` };
+    let payload: unknown;
+    try {
+      payload = JSON.parse(text);
+    } catch (err) {
+      return { error: `That is not valid JSON (${err instanceof Error ? err.message : 'parse error'}). The webhook would answer 400.` };
+    }
+    if (!isPlainObject(payload)) return { error: 'The payload must be one JSON object, { … }. The webhook would answer 400.' };
+    const actor = c.get('actor') ?? null;
+    const r = await acceptPayload(c.env, payload, { is_test: true, source: 'test', actor, sendEmail });
+    const eventId = await insertEvent(c.env.DB, {
+      route: 'test',
+      source_ip: sourceIp(c),
+      http_status: r.ok ? 200 : 400,
+      outcome: r.ok ? r.outcome : 'rejected',
+      errors: r.ok ? null : r.errors,
+      card_id: r.ok ? r.card.id : null,
+      raw_body: text,
+      raw_body_expires_at: null,
+      actor,
+    });
+    return { eventId };
+  };
+
+  app.get('/test-flow', (c) => testForm(c, SCENARIOS.find((s) => s.id === c.req.query('scenario')) ?? (SCENARIOS[0] as Scenario), null, null));
+
+  app.post('/test-flow', async (c) => {
+    const body = await readForm(c);
+    const bad = csrfFailure(c, body);
+    if (bad) return forbidden(c, bad);
+    const text = field(body, 'payload');
+    const r = await runTest(c, text, checked(body, 'send_email'));
+    if ('error' in r) return testForm(c, SCENARIOS[0] as Scenario, text, r.error, 400);
+    const expect = pick(field(body, 'expect'), EXPECTS);
+    return c.redirect(`/admin/test-flow/runs/${r.eventId}${expect ? `?expect=${expect}` : ''}`, 303);
+  });
+
+  app.get('/test-flow/runs/:id', async (c) => {
+    const db = c.env.DB;
+    const ev = await getEvent(db, c.req.param('id'));
+    if (!ev || ev.route !== 'test') return notFoundPage(c, 'test run');
+    const card = ev.card_id ? await getCardById(db, ev.card_id) : null;
+    const [emails, posts, timeline] = card
+      ? await Promise.all([emailsForCard(db, card.id), linkedinPostsForCard(db, card.id), listEvents(db, { card_id: card.id, limit: 50 })])
+      : [[], [], { rows: [], total: 0 }];
+    const status = testStatus(c);
+    const sending = emails[0]?.status === 'queued' && status.mail !== 'off';
+    return respond(c, {
+      title: card ? `Test run · ${card.company_name_en}` : 'Test run · rejected',
+      active: 'test',
+      flash: flashOf(c),
+      refresh: sending ? 4 : undefined,
+      body: runBody({ env: c.env, token: csrfToken(c), ev, card, emails, posts, timeline: timeline.rows, expect: pick(c.req.query('expect'), EXPECTS) ?? null, status }),
+    });
+  });
+
+  app.post('/test-flow/runs/:id/next', async (c) => {
+    const body = await readForm(c);
+    const bad = csrfFailure(c, body);
+    if (bad) return forbidden(c, bad);
+    const ev = await getEvent(c.env.DB, c.req.param('id'));
+    const card = ev?.card_id ? await getCardById(c.env.DB, ev.card_id) : null;
+    const next = FOLLOW_UPS.find((f) => f.kind === field(body, 'kind'));
+    if (!ev || ev.route !== 'test' || !card || !next) return notFoundPage(c, 'test run');
+    const r = await runTest(c, followUpPayload(next.kind, card, ev.raw_body), true);
+    if ('error' in r) return testForm(c, SCENARIOS[0] as Scenario, null, r.error, 400);
+    return c.redirect(`/admin/test-flow/runs/${r.eventId}?expect=${next.expect}`, 303);
   });
 
   // ---------------------------------------------------------------- create

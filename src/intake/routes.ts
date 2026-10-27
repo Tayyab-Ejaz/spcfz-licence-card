@@ -6,13 +6,10 @@ import { Hono } from 'hono';
 import type { Context } from 'hono';
 import type { AppEnv, CardSource, Env, EventOutcome, IntakeRoute } from '../types.js';
 import { insertEvent } from '../db/cards.js';
-import { queueWelcome } from '../mail/outbox.js';
 
 import { checkIp, checkSecret, extractSecret } from './auth.js';
 import { isPlainObject } from './common.js';
-import { mapPayload } from './mapper.js';
-import { upsertFromCanonical } from './upsert.js';
-import { validateCanonical } from './validate.js';
+import { acceptPayload } from './accept.js';
 
 export const MAX_BODY_BYTES = 65536;
 export const PRODUCTION_PATH = '/v1/licence-issued';
@@ -147,21 +144,10 @@ function makeHandler(cfg: RouteConfig) {
       const payload = parseJsonObject(body.text);
       if (payload === null) return await reject(400, ['body is not a JSON object']);
 
-      // 4. Map, then validate.
-      const validated = validateCanonical(mapPayload(payload, env.FIELD_MAP));
-      if (!validated.ok) return await reject(400, validated.errors);
-
-      // 5. Create or update the card.
-      const result = await upsertFromCanonical(env, validated.fields, { is_test: cfg.is_test, source: cfg.source });
+      // 4-6. Map, validate, create or update the card, queue the welcome email (./accept.ts).
+      const result = await acceptPayload(env, payload, { is_test: cfg.is_test, source: cfg.source, actor: null });
+      if (!result.ok) return await reject(400, result.errors);
       await record(200, result.outcome, null, result.card.id);
-      // 6. The welcome email, once per card (src/mail/outbox.ts). A mail problem never fails the webhook.
-      if (result.outcome !== 'unchanged') {
-        try {
-          await queueWelcome(env, result.card, { actor: null });
-        } catch (err) {
-          console.error('welcome email not queued', { card_id: result.card.id, message: err instanceof Error ? err.message : String(err) });
-        }
-      }
       console.log('intake accepted', {
         route: cfg.route, outcome: result.outcome, licence_number: result.card.licence_number, card_id: result.card.id,
       });

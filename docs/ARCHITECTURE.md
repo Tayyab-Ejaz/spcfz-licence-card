@@ -492,12 +492,14 @@ Layout and deployment are in docs/DEV.md and docs/RUNBOOK.md.
 
 What the customer gets, in their preferred language (English or Arabic, right to left), from `MAIL_FROM`:
 
-- Subject: "<Company> is officially licensed. Your announcement card is ready".
+- SPC's copy (27 October 2026), English verbatim: subject and headline "Your Business Is Official. Let the World
+  Know!", "A milestone worth celebrating. A story worth sharing.", "Hi <first name>," and the congratulations.
 - Their own card as a picture (the Day One style, 1080x1080, drawn by the server: `/c/<token>/card/<hash>-v<n>[-ar].jpg`),
   linked to their studio.
-- "Make it yours" (the studio, `?via=email`, counted as a view from email) and, when LinkedIn is set up,
+- "Share Your Milestone" (the studio, `?via=email`, counted as a view from email) and, when LinkedIn is set up,
   "Post on LinkedIn" (section 17, with the server's card and the default caption).
-- Three steps, the licence details (company, licence number, issued, valid until), a link to the other language.
+- The closing lines, "Best regards, Team SPC Free Zone", and a footer: why they got it, the address, a contact link,
+  the other language.
 - Built for real inboxes: tables and inline styles, a preheader, Outlook buttons, dark mode, alt text, and a
   plain-text part. Headers `Auto-Submitted: auto-generated` and `X-Auto-Response-Suppress`.
 
@@ -541,4 +543,20 @@ attached, which the phone share sheet cannot do from a web page.
   LinkedIn still supports (about a year).
 - The local copy uses a pretend LinkedIn (`LINKEDIN_FAKE=1`, refused unless BASE_URL is localhost) and writes
   each post to `DATA_DIR/linkedin-outbox`.
+
+## 18. Test flow (27 October 2026)
+
+Admin, Test flow (`/admin/test-flow`, src/admin/test-flow.ts) tries the whole path before the ERP is connected.
+Staff paste or pick a payload (six scenarios, English first: typical, ERP-style field names, an owner object, an
+Arabic customer, no email, a missing company name) and press Send as the ERP. It runs the webhook's own steps
+after its network checks (src/intake/accept.ts: mapping, validation, card, welcome email) as a TEST card, and
+logs the run as a test-route event with the staff member as actor and the payload kept (so Replay works too).
+
+Each run has a page: whether the run matched what the scenario expects; the JSON the ERP would get back; how each
+payload field was read, and which fields the card ignores; the card (links, a QR code for a phone, the email
+picture and the link preview); the welcome email (status, preview, send again; the page reloads while it
+sends); Post to LinkedIn; and the ERP's follow-ups, each checked against its expected outcome: the same licence
+again (unchanged), a renewal (updated), a correction (updated), and a lapsed licence (updated; the page says
+expired). The dashboard links to it while ERP_IP_ALLOWLIST is empty. The email goes to the signed-in person when
+MAIL_TEST_ALLOWLIST allows them.
 

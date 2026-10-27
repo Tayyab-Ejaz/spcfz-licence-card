@@ -1,10 +1,9 @@
-// The welcome email: "<Company> is officially licensed", the customer's own card (the Day One picture), a button
-// to make it theirs in the studio and, when LinkedIn is set up, one to post it on LinkedIn straight away.
+// The welcome email: "Your Business Is Official. Let the World Know!" (SPC's copy), the customer's own card (the
+// Day One picture), "Share Your Milestone" into the studio and, when LinkedIn is set up, "Post on LinkedIn".
 // Built for real inboxes: tables and inline styles, a hidden preheader, Outlook (VML) buttons, a dark-mode
 // palette for clients that honour it, right-to-left Arabic, alt text on every image and a plain-text part.
 import type { CardRow, Lang } from '../types.js';
 import { html, raw } from '../util/html.js';
-import { formatFullDate } from '../util/time.js';
 import { CONTACT_URL } from '../page/strings.js';
 import { cardImagePath } from '../page/studio.js';
 
@@ -21,49 +20,56 @@ export interface WelcomeInput {
   linkedin: boolean;
 }
 
-/** Exported for docs/ARABIC-STRINGS.md. */
+/**
+ * The words, from SPC's copy of 27 October 2026 ("Your Business Is Official. Let the World Know!"), English
+ * verbatim; the Arabic is Claude's draft for review. Exported for docs/ARABIC-STRINGS.md.
+ */
 export const COPY = {
   en: {
-    subject: (co: string) => `${co} is officially licensed. Your announcement card is ready`,
-    preheader: 'Make it yours in a minute, then post it on LinkedIn.',
-    eyebrow: 'OFFICIALLY LICENSED',
-    hello: (first: string | null) => (first ? `Congratulations, ${first}.` : 'Congratulations!'),
-    lead: (co: string) => `${co} is now licensed at SPC Free Zone. To help you share the news, we've made you an announcement card.`,
-    cardAlt: (co: string) => `Your announcement card for ${co}`,
-    make: 'Make it yours',
+    subject: 'Your Business Is Official. Let the World Know!',
+    preheader: 'A milestone worth celebrating. A story worth sharing.',
+    h1: 'Your Business Is Official. Let the World Know!',
+    sub: 'A milestone worth celebrating. A story worth sharing.',
+    hello: (first: string | null) => (first ? `Hi ${first},` : 'Hello,'),
+    congrats: 'Congratulations on receiving your business license with',
+    congratsBold: 'SPC Free Zone!',
+    milestone: "This is an exciting milestone in your entrepreneurial journey, and we believe it's worth sharing.",
+    prepared: "We've prepared a special announcement image to help you celebrate this achievement with your network.",
+    cardAlt: (co: string) => `Business license announcement for ${co}`,
+    readyTitle: 'Your announcement is ready to share!',
+    readyBody: 'Simply download your image, add your personal touch, and share it on LinkedIn or your favourite social media platform.',
+    make: 'Share Your Milestone',
     linkedin: 'Post on LinkedIn',
-    small: 'Takes about a minute. The link is yours to keep, so you can come back any time.',
-    stepsTitle: 'Three quick steps',
-    steps: [
-      ['Pick a style', 'Day One, Launch Pass or Daylight, in square, portrait or landscape.'],
-      ['Make it personal', 'Add your photo or logo and choose a headline.'],
-      ['Share it', 'Post straight to LinkedIn, or share it on WhatsApp and anywhere else.'],
-    ] as Array<[string, string]>,
-    details: 'Your licence',
-    company: 'Company', licence: 'Licence no.', issued: 'Issued', valid: 'Valid until',
+    network: 'Let your network know about your new venture. Your next customer, business partner, or opportunity could be just one post away!',
+    cheers: "Here's to new beginnings and bigger opportunities ahead.",
+    welcome: 'Welcome to the SPC Free Zone business community!',
+    regards: 'Best regards,',
+    team: 'Team SPC Free Zone',
     other: 'Prefer Arabic?', otherLink: 'Open your card in Arabic',
     address: 'SPC Free Zone · Sharjah Publishing City · Sharjah, UAE',
-    why: (co: string) => `You're receiving this email because SPC Free Zone issued a business licence to ${co}.`,
+    why: (co: string) => `You're receiving this email because SPC Free Zone issued a business license to ${co}.`,
     help: 'Questions? Contact us',
   },
   ar: {
-    subject: (co: string) => `${co} مرخّصة رسمياً. بطاقة الإعلان جاهزة`,
-    preheader: 'اجعلها بطابعك خلال دقيقة، ثم انشرها على لينكدإن.',
-    eyebrow: 'مرخّصة رسمياً',
-    hello: (first: string | null) => (first ? `تهانينا، ${first}.` : 'تهانينا!'),
-    lead: (co: string) => `أصبحت ${co} مرخّصة في المنطقة الحرة لمدينة الشارقة للنشر. ولمساعدتك على مشاركة الخبر، جهّزنا لك بطاقة إعلان.`,
-    cardAlt: (co: string) => `بطاقة الإعلان الخاصة بـ ${co}`,
-    make: 'خصّص بطاقتك',
+    subject: 'أعمالك أصبحت رسمية. شارك الخبر مع العالم!',
+    preheader: 'إنجاز يستحق الاحتفال، وقصة تستحق المشاركة.',
+    h1: 'أعمالك أصبحت رسمية. شارك الخبر مع العالم!',
+    sub: 'إنجاز يستحق الاحتفال، وقصة تستحق المشاركة.',
+    hello: (first: string | null) => (first ? `مرحباً ${first}،` : 'مرحباً،'),
+    congrats: 'تهانينا على حصولك على رخصتك التجارية من',
+    congratsBold: 'المنطقة الحرة لمدينة الشارقة للنشر!',
+    milestone: 'إنها محطة مميزة في رحلتك الريادية، ونؤمن أنها تستحق المشاركة.',
+    prepared: 'جهّزنا لك صورة إعلان خاصة لتحتفل بهذا الإنجاز مع شبكة معارفك.',
+    cardAlt: (co: string) => `إعلان الرخصة التجارية لشركة ${co}`,
+    readyTitle: 'إعلانك جاهز للمشاركة!',
+    readyBody: 'ما عليك سوى تنزيل صورتك وإضافة لمستك الخاصة، ثم مشاركتها على لينكدإن أو منصتك المفضلة.',
+    make: 'شارك إنجازك',
     linkedin: 'انشرها على لينكدإن',
-    small: 'يستغرق الأمر دقيقة تقريباً. الرابط خاص بك، ويمكنك العودة إليه في أي وقت.',
-    stepsTitle: 'ثلاث خطوات سريعة',
-    steps: [
-      ['اختر التصميم', 'ثلاثة تصاميم وثلاثة مقاسات: مربع أو عمودي أو أفقي.'],
-      ['أضف لمستك', 'أضف صورتك أو شعار شركتك واختر العنوان.'],
-      ['شاركها', 'انشرها مباشرة على لينكدإن، أو شاركها عبر واتساب وغيره.'],
-    ] as Array<[string, string]>,
-    details: 'رخصتك',
-    company: 'الشركة', licence: 'رقم الرخصة', issued: 'تاريخ الإصدار', valid: 'صالحة حتى',
+    network: 'أخبر شبكتك عن مشروعك الجديد. قد يكون عميلك القادم أو شريكك التجاري أو فرصتك المقبلة على بُعد منشور واحد!',
+    cheers: 'نتمنى لك بدايات جديدة وفرصاً أكبر.',
+    welcome: 'أهلاً بك في مجتمع الأعمال في المنطقة الحرة لمدينة الشارقة للنشر!',
+    regards: 'مع أطيب التحيات،',
+    team: 'فريق المنطقة الحرة لمدينة الشارقة للنشر',
     other: 'تفضّل الإنجليزية؟', otherLink: 'افتح بطاقتك بالإنجليزية',
     address: 'المنطقة الحرة لمدينة الشارقة للنشر · الشارقة، الإمارات العربية المتحدة',
     why: (co: string) => `وصلتك هذه الرسالة لأن المنطقة الحرة لمدينة الشارقة للنشر أصدرت رخصة تجارية لشركة ${co}.`,
@@ -98,20 +104,6 @@ export function renderWelcome(i: WelcomeInput): WelcomeEmail {
   const linkedinUrl = `${base}/c/${c.token}/linkedin?lang=${langQ}&via=email`;
   const cardImg = `${base}${cardImagePath(c, i.lang)}`;
   const logo = `${base}/static/studio/a/a18673349b740aa2.png`;
-  const issued = formatFullDate(c.issued_on, i.lang);
-  const valid = c.licence_expires_on ? formatFullDate(c.licence_expires_on, i.lang) : null;
-
-  const detailRow = (label: string, value: string, mono = false): string => html`<tr>
-<td class="muted" style="padding:9px 0;border-top:1px solid #e3e9f6;color:#53617c;font-size:14px;line-height:20px;text-align:${align};width:42%;">${label}</td>
-<td class="text" style="padding:9px 0;border-top:1px solid #e3e9f6;color:#071329;font-size:14px;line-height:20px;font-weight:600;text-align:${align};${mono ? 'font-variant-numeric:tabular-nums;' : ''}" dir="auto">${value}</td>
-</tr>`;
-
-  const step = (n: number, title: string, body: string): string => html`<td class="stack" valign="top" width="33%" style="padding:0 8px;text-align:${align};">
-<div style="width:32px;height:32px;line-height:32px;border-radius:10px;background:#eef3ff;color:#004dff;font-weight:800;font-size:15px;text-align:center;${ar ? 'margin-left:auto;' : ''}" class="chip">${String(n)}</div>
-<p class="text" style="margin:12px 0 4px;color:#071329;font-size:15px;line-height:20px;font-weight:700;">${title}</p>
-<p class="muted" style="margin:0;color:#53617c;font-size:13px;line-height:19px;">${body}</p>
-</td>`;
-
   const out = html`<!doctype html>
 <html lang="${langQ}" dir="${dir}" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
@@ -120,7 +112,7 @@ export function renderWelcome(i: WelcomeInput): WelcomeEmail {
 <meta name="x-apple-disable-message-reformatting">
 <meta name="color-scheme" content="light dark">
 <meta name="supported-color-schemes" content="light dark">
-<title>${t.subject(company)}</title>
+<title>${t.subject}</title>
 <!--[if mso]><noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript><![endif]-->
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&family=Noto+Kufi+Arabic:wght@500;700;800&display=swap" rel="stylesheet">
 <style>
@@ -140,6 +132,7 @@ a{text-decoration:none}
   .card{background:#121b2e!important}
   .text,.h1{color:#e8edf7!important}
   .muted{color:#9aa7c0!important}
+  .accent{color:#8fb0ff!important}
   .chip{background:#1b2a4d!important;color:#8fb0ff!important}
   .eyebrow{background:#16244a!important;color:#8fb0ff!important}
   .panel{background:#16213a!important}
@@ -163,44 +156,35 @@ a{text-decoration:none}
 
 <tr><td class="card" style="background:#ffffff;border-radius:24px;box-shadow:0 18px 40px -28px rgba(7,19,41,.35);">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-<tr><td class="pad" style="padding:36px 40px 8px;text-align:${align};">
-<span class="eyebrow" style="display:inline-block;background:#eef3ff;color:#004dff;font-size:12px;line-height:16px;font-weight:700;letter-spacing:${ar ? '0' : '.14em'};padding:7px 12px;border-radius:999px;">${t.eyebrow}</span>
-<h1 class="h1" style="margin:16px 0 10px;color:#071329;font-size:32px;line-height:38px;font-weight:800;letter-spacing:${ar ? '0' : '-.02em'};">${t.hello(first)}</h1>
-<p class="muted" style="margin:0;color:#53617c;font-size:16px;line-height:25px;">${t.lead(company)}</p>
+<tr><td class="pad" style="padding:38px 40px 6px;text-align:${align};">
+<h1 class="h1" style="margin:0 0 12px;color:#071329;font-size:32px;line-height:38px;font-weight:800;letter-spacing:${ar ? '0' : '-.02em'};">${t.h1}</h1>
+<p class="accent" style="margin:0 0 24px;color:#004dff;font-size:17px;line-height:24px;font-weight:700;">${t.sub}</p>
+<p class="text" style="margin:0 0 14px;color:#071329;font-size:16px;line-height:25px;">${t.hello(first)}</p>
+<p class="text" style="margin:0 0 14px;color:#071329;font-size:16px;line-height:25px;">${t.congrats} <strong style="white-space:nowrap;">${t.congratsBold}</strong></p>
+<p class="muted" style="margin:0 0 14px;color:#53617c;font-size:16px;line-height:25px;">${t.milestone}</p>
+<p class="muted" style="margin:0;color:#53617c;font-size:16px;line-height:25px;">${t.prepared}</p>
 </td></tr>
 
-<tr><td class="pad" style="padding:24px 40px 8px;">
+<tr><td class="pad" style="padding:24px 40px 4px;">
 <a href="${studio}" target="_blank" style="display:block;border-radius:18px;overflow:hidden;">
 <img src="${cardImg}" width="520" alt="${t.cardAlt(company)}" style="width:100%;max-width:520px;height:auto;border-radius:18px;background:#eef3ff;">
 </a>
 </td></tr>
 
-<tr><td class="pad" style="padding:22px 40px 6px;text-align:center;">
+<tr><td class="pad" style="padding:24px 40px 4px;text-align:center;">
+<p class="text" style="margin:0 0 8px;color:#071329;font-size:19px;line-height:26px;font-weight:800;">${t.readyTitle}</p>
+<p class="muted" style="margin:0 auto 20px;max-width:460px;color:#53617c;font-size:15px;line-height:23px;">${t.readyBody}</p>
 <table role="presentation" cellpadding="0" cellspacing="0" align="center"><tr>
-<td class="btn-cell" style="padding:0 6px;">${raw(button({ href: studio, label: t.make, bg: '#004dff', fg: '#ffffff', border: '#004dff', width: 220, cls: 'btn-primary' }))}</td>
+<td class="btn-cell" style="padding:0 6px;">${raw(button({ href: studio, label: t.make, bg: '#004dff', fg: '#ffffff', border: '#004dff', width: 240, cls: 'btn-primary' }))}</td>
 ${i.linkedin ? raw(html`<td class="btn-cell" style="padding:0 6px;">${raw(button({ href: linkedinUrl, label: t.linkedin, bg: '#ffffff', fg: '#0a66c2', border: '#0a66c2', width: 220, cls: 'btn-secondary' }))}</td>`) : ''}
 </tr></table>
-<p class="muted" style="margin:14px 0 0;color:#53617c;font-size:13px;line-height:19px;">${t.small}</p>
 </td></tr>
 
-<tr><td class="pad" style="padding:30px 32px 6px;">
-<p class="text" style="margin:0 8px 16px;color:#071329;font-size:13px;line-height:18px;font-weight:700;letter-spacing:${ar ? '0' : '.08em'};text-transform:uppercase;text-align:${align};">${t.stepsTitle}</p>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-${raw(t.steps.map(([title, body], n) => step(n + 1, title, body)).join(''))}
-</tr></table>
-</td></tr>
-
-<tr><td class="pad" style="padding:22px 40px 36px;">
-<table role="presentation" class="panel" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f8fd;border-radius:16px;">
-<tr><td style="padding:16px 20px 10px;">
-<p class="text" style="margin:0 0 6px;color:#071329;font-size:13px;line-height:18px;font-weight:700;letter-spacing:${ar ? '0' : '.08em'};text-transform:uppercase;text-align:${align};">${t.details}</p>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-${raw(detailRow(t.company, company))}
-${raw(detailRow(t.licence, c.licence_number, true))}
-${raw(detailRow(t.issued, issued))}
-${valid ? raw(detailRow(t.valid, valid)) : ''}
-</table>
-</td></tr></table>
+<tr><td class="pad" style="padding:28px 40px 38px;text-align:${align};">
+<p class="muted" style="margin:0 0 14px;color:#53617c;font-size:16px;line-height:25px;">${t.network}</p>
+<p class="muted" style="margin:0 0 14px;color:#53617c;font-size:16px;line-height:25px;">${t.cheers}</p>
+<p class="text" style="margin:0 0 22px;color:#071329;font-size:16px;line-height:25px;font-weight:700;">${t.welcome}</p>
+<p class="text" style="margin:0;color:#071329;font-size:16px;line-height:25px;">${t.regards}<br><strong>${t.team}</strong></p>
 </td></tr>
 </table>
 </td></tr>
@@ -219,17 +203,31 @@ ${valid ? raw(detailRow(t.valid, valid)) : ''}
 </html>`;
 
   const lines = [
+    t.h1,
+    t.sub,
+    '',
     t.hello(first),
     '',
-    t.lead(company),
+    `${t.congrats} ${t.congratsBold}`,
+    '',
+    t.milestone,
+    '',
+    t.prepared,
+    '',
+    t.readyTitle,
+    t.readyBody,
     '',
     `${t.make}: ${studio}`,
     ...(i.linkedin ? [`${t.linkedin}: ${linkedinUrl}`] : []),
     '',
-    `${t.company}: ${company}`,
-    `${t.licence}: ${c.licence_number}`,
-    `${t.issued}: ${issued}`,
-    ...(valid ? [`${t.valid}: ${valid}`] : []),
+    t.network,
+    '',
+    t.cheers,
+    '',
+    t.welcome,
+    '',
+    t.regards,
+    t.team,
     '',
     `${t.other} ${otherStudio}`,
     '',
@@ -237,5 +235,5 @@ ${valid ? raw(detailRow(t.valid, valid)) : ''}
     t.address,
     `${t.help}: ${CONTACT_URL}`,
   ];
-  return { subject: t.subject(company), html: out, text: lines.join('\n') };
+  return { subject: t.subject, html: out, text: lines.join('\n') };
 }

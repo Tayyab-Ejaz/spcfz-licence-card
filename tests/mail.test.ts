@@ -70,8 +70,12 @@ describe('the welcome email', () => {
   it('greets the founder, shows their card and links to the studio and to LinkedIn', async () => {
     const card = await seedCard();
     const m = renderWelcome({ card, lang: 'en', baseUrl: 'https://licensed.test/', linkedin: true });
-    expect(m.subject).toBe('Nimbus Publishing FZE is officially licensed. Your announcement card is ready');
-    expect(m.html).toContain('Congratulations, Layla.');
+    expect(m.subject).toBe('Your Business Is Official. Let the World Know!');
+    expect(m.html).toContain('Hi Layla,');
+    expect(m.html).toContain('Congratulations on receiving your business license with <strong style="white-space:nowrap;">SPC Free Zone!</strong>');
+    expect(m.html).toContain('Share Your Milestone');
+    expect(m.html).toContain('Team SPC Free Zone');
+    expect(m.text).toContain('Your announcement is ready to share!');
     expect(m.html).toContain(`https://licensed.test/c/${card.token}/card/${card.content_hash.slice(0, 10)}-v${CARD_DESIGN}.jpg`);
     expect(m.html).toContain(`https://licensed.test/c/${card.token}?lang=en&amp;via=email`);
     expect(m.html).toContain(`https://licensed.test/c/${card.token}/linkedin?lang=en&amp;via=email`);
@@ -91,8 +95,14 @@ describe('the welcome email', () => {
     const m = renderWelcome({ card, lang: 'ar', baseUrl: 'https://licensed.test', linkedin: true });
     expect(m.html).toContain('dir="rtl"');
     expect(m.html).toContain('lang="ar"');
-    expect(m.subject).toContain('نيمبوس للنشر');
+    expect(m.subject).toBe('أعمالك أصبحت رسمية. شارك الخبر مع العالم!');
+    expect(m.html).toContain('مرحباً ليلى،');
     expect(m.html).toContain('-ar.jpg');
+  });
+
+  it('greets without a name when the ERP sends no founder', async () => {
+    const card = await seedCard({ fields: { founder_name_en: null, founder_name_ar: null } });
+    expect(renderWelcome({ card, lang: 'en', baseUrl: 'https://licensed.test', linkedin: false }).html).toContain('>Hello,</p>');
   });
 
   it('escapes what the ERP sends', async () => {

@@ -405,7 +405,7 @@ describe('welcome email', () => {
   it('previews the email in either language, and the card shows the history', async () => {
     const card = await seedCard({ fields: { customer_email: 'layla@nimbus.example' } });
     const en = await (await get(`/admin/cards/${card.id}/email-preview?lang=en`)).res.text();
-    expect(en).toContain('is officially licensed');
+    expect(en).toContain('Your Business Is Official. Let the World Know!');
     const ar = await (await get(`/admin/cards/${card.id}/email-preview?lang=ar`)).res.text();
     expect(ar).toContain('dir="rtl"');
     await post(`/admin/cards/${card.id}/email`);
@@ -419,6 +419,97 @@ describe('welcome email', () => {
     const body = await (await get('/admin/settings')).res.text();
     expect(body).toContain('Email and LinkedIn');
     expect(body).toContain('the button is hidden until the LinkedIn app is set up');
+  });
+});
+
+describe('test flow', () => {
+  const runId = (res: Response): string => /\/admin\/test-flow\/runs\/([0-9A-Z]{26})/.exec(res.headers.get('Location') ?? '')?.[1] ?? '';
+  const payloadOf = async (scenario = 'typical'): Promise<string> => {
+    const page = await (await get(`/admin/test-flow?scenario=${scenario}`)).res.text();
+    const m = /<textarea class="tf-json" name="payload"[^>]*>([\s\S]*?)<\/textarea>/.exec(page);
+    return (m?.[1] ?? '').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+  };
+
+  it('offers the scenarios, English first, with a fresh licence number and the signed-in address', async () => {
+    const body = await (await get('/admin/test-flow')).res.text();
+    expect(body.indexOf('Typical licence')).toBeLessThan(body.indexOf('Arabic-speaking customer'));
+    const payload = JSON.parse(await payloadOf()) as Record<string, string>;
+    expect(payload['licence_number']).toMatch(/^TEST-FLOW-\d{6}-\d{4}$/);
+    expect(payload['customer_email']).toBe(ACTOR);
+    expect(payload['preferred_language']).toBe('en');
+  });
+
+  it('runs a licence through the webhook\'s steps as a TEST card and reports each step', async () => {
+    const { res } = await post('/admin/test-flow', { payload: await payloadOf(), send_email: '1', expect: 'created' });
+    expect(res.status).toBe(303);
+    const id = runId(res);
+    expect(res.headers.get('Location')).toBe(`/admin/test-flow/runs/${id}?expect=created`);
+    const ev = await getEvent(env.DB, id);
+    expect(ev).toMatchObject({ route: 'test', outcome: 'created', http_status: 200, actor: ACTOR });
+    const card = await getCardById(env.DB, ev?.card_id ?? '');
+    expect(card?.is_test).toBe(true);
+    expect((await emailsForCard(env.DB, card?.id ?? '')).map((e) => [e.status, e.to_email])).toEqual([['queued', ACTOR]]);
+    const page = await (await get(`/admin/test-flow/runs/${id}?expect=created`)).res.text();
+    expect(page).toContain('Expected “created” and got “created”');
+    expect(page).toContain('Accepted: created (HTTP 200)');
+    expect(page).toContain('&quot;page_url&quot;: &quot;https://licensed.test/c/');
+    expect(page).toContain('<svg'); // the QR code
+    expect(page).toContain(`/c/${card?.token}/card/`);
+  });
+
+  it('shows what the ERP gets when a required field is missing', async () => {
+    const { res } = await post('/admin/test-flow', { payload: await payloadOf('missing'), expect: 'rejected' });
+    const page = await (await get(res.headers.get('Location') ?? '')).res.text();
+    expect(page).toContain('Rejected (HTTP 400)');
+    expect(page).toContain('Expected “rejected” and got “rejected”');
+    expect(page).toContain('&quot;status&quot;: &quot;rejected&quot;');
+  });
+
+  it('names the ERP fields the card does not use', async () => {
+    const { res } = await post('/admin/test-flow', { payload: await payloadOf('erp-style') });
+    const page = await (await get(res.headers.get('Location') ?? '')).res.text();
+    expect(page).toContain('Not used by the card: <b>Branch, MobileNumber</b>');
+    expect(page).toMatch(/<td>LicenseNo<\/td><td>licence_number<\/td>/);
+  });
+
+  it('refuses text that is not a JSON object, without logging a run', async () => {
+    const before = (await listEvents(env.DB, { route: 'test' })).total;
+    const { res } = await post('/admin/test-flow', { payload: '{ not json' });
+    expect(res.status).toBe(400);
+    expect(await res.text()).toContain('not valid JSON');
+    expect((await listEvents(env.DB, { route: 'test' })).total).toBe(before);
+    expect((await post('/admin/test-flow', { payload: '{}' }, { csrfField: null })).res.status).toBe(403);
+  });
+
+  it('follow-ups: the same licence is unchanged, a renewal updates, expiring shows the card as expired', async () => {
+    const first = runId((await post('/admin/test-flow', { payload: await payloadOf(), send_email: '1' })).res);
+    const same = await post(`/admin/test-flow/runs/${first}/next`, { kind: 'same' });
+    expect(same.res.headers.get('Location')).toMatch(/\?expect=unchanged$/);
+    expect((await getEvent(env.DB, runId(same.res)))?.outcome).toBe('unchanged');
+    const renewal = await post(`/admin/test-flow/runs/${first}/next`, { kind: 'renewal' });
+    const renewed = await getEvent(env.DB, runId(renewal.res));
+    expect(renewed?.outcome).toBe('updated');
+    const card = await getCardById(env.DB, renewed?.card_id ?? '');
+    expect(await emailsForCard(env.DB, card?.id ?? '')).toHaveLength(1); // no second welcome email
+    const exp = await post(`/admin/test-flow/runs/${first}/next`, { kind: 'expire' });
+    const page = await (await get(exp.res.headers.get('Location') ?? '')).res.text();
+    expect(page).toContain('Expected “updated” and got “updated”');
+    expect(page).toContain('Expired: the page says so');
+  });
+
+  it('"Send it again" comes back to the run', async () => {
+    const id = runId((await post('/admin/test-flow', { payload: await payloadOf(), send_email: '1' })).res);
+    const card = await getCardById(env.DB, (await getEvent(env.DB, id))?.card_id ?? '');
+    const { res } = await post(`/admin/cards/${card?.id}/email`, { back: `/admin/test-flow/runs/${id}` });
+    expect(res.headers.get('Location')).toBe(`/admin/test-flow/runs/${id}?m=emailed`);
+    const elsewhere = await post(`/admin/cards/${card?.id}/email`, { back: 'https://evil.example/' });
+    expect(elsewhere.res.headers.get('Location')).toBe(`/admin/cards/${card?.id}?m=emailed`);
+  });
+
+  it('the dashboard points to it while the ERP is not connected', async () => {
+    const plain = createTestEnv({ ERP_IP_ALLOWLIST: '' });
+    const res = await staff.request('/admin', { headers: { Cookie: `admin_csrf=${CSRF}` } }, plain);
+    expect(await res.text()).toContain('The ERP is not connected yet');
   });
 });
 

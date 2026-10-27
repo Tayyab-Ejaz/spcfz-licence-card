@@ -76,30 +76,33 @@ numbers use Latin digits in both languages.
 Added 27 October 2026, drafted by Claude, not yet reviewed: the welcome email, the Post to LinkedIn pages and
 the LinkedIn caption. Generated from the source; `{company}` and `{first name}` are filled in per card.
 
-## Welcome email (src/mail/welcome.ts, COPY)
+## Welcome email (src/mail/welcome.ts, COPY; English is SPC's copy of 27 October 2026, verbatim)
 
 | Key | Arabic | English |
 |---|---|---|
-| subject | {company} مرخّصة رسمياً. بطاقة الإعلان جاهزة | {company} is officially licensed. Your announcement card is ready |
-| preheader | اجعلها بطابعك خلال دقيقة، ثم انشرها على لينكدإن. | Make it yours in a minute, then post it on LinkedIn. |
-| eyebrow | مرخّصة رسمياً | OFFICIALLY LICENSED |
-| hello | تهانينا، {first name}. | Congratulations, {first name}. |
-| lead | أصبحت {company} مرخّصة في المنطقة الحرة لمدينة الشارقة للنشر. ولمساعدتك على مشاركة الخبر، جهّزنا لك بطاقة إعلان. | {company} is now licensed at SPC Free Zone. To help you share the news, we've made you an announcement card. |
-| cardAlt | بطاقة الإعلان الخاصة بـ {company} | Your announcement card for {company} |
-| make | خصّص بطاقتك | Make it yours |
+| subject | أعمالك أصبحت رسمية. شارك الخبر مع العالم! | Your Business Is Official. Let the World Know! |
+| preheader | إنجاز يستحق الاحتفال، وقصة تستحق المشاركة. | A milestone worth celebrating. A story worth sharing. |
+| h1 | أعمالك أصبحت رسمية. شارك الخبر مع العالم! | Your Business Is Official. Let the World Know! |
+| sub | إنجاز يستحق الاحتفال، وقصة تستحق المشاركة. | A milestone worth celebrating. A story worth sharing. |
+| hello | مرحباً {first name}، | Hi {first name}, |
+| congrats | تهانينا على حصولك على رخصتك التجارية من | Congratulations on receiving your business license with |
+| congratsBold | المنطقة الحرة لمدينة الشارقة للنشر! | SPC Free Zone! |
+| milestone | إنها محطة مميزة في رحلتك الريادية، ونؤمن أنها تستحق المشاركة. | This is an exciting milestone in your entrepreneurial journey, and we believe it's worth sharing. |
+| prepared | جهّزنا لك صورة إعلان خاصة لتحتفل بهذا الإنجاز مع شبكة معارفك. | We've prepared a special announcement image to help you celebrate this achievement with your network. |
+| cardAlt | إعلان الرخصة التجارية لشركة {company} | Business license announcement for {company} |
+| readyTitle | إعلانك جاهز للمشاركة! | Your announcement is ready to share! |
+| readyBody | ما عليك سوى تنزيل صورتك وإضافة لمستك الخاصة، ثم مشاركتها على لينكدإن أو منصتك المفضلة. | Simply download your image, add your personal touch, and share it on LinkedIn or your favourite social media platform. |
+| make | شارك إنجازك | Share Your Milestone |
 | linkedin | انشرها على لينكدإن | Post on LinkedIn |
-| small | يستغرق الأمر دقيقة تقريباً. الرابط خاص بك، ويمكنك العودة إليه في أي وقت. | Takes about a minute. The link is yours to keep, so you can come back any time. |
-| stepsTitle | ثلاث خطوات سريعة | Three quick steps |
-| steps | اختر التصميم: ثلاثة تصاميم وثلاثة مقاسات: مربع أو عمودي أو أفقي. / أضف لمستك: أضف صورتك أو شعار شركتك واختر العنوان. / شاركها: انشرها مباشرة على لينكدإن، أو شاركها عبر واتساب وغيره. | Pick a style: Day One, Launch Pass or Daylight, in square, portrait or landscape. / Make it personal: Add your photo or logo and choose a headline. / Share it: Post straight to LinkedIn, or share it on WhatsApp and anywhere else. |
-| details | رخصتك | Your licence |
-| company | الشركة | Company |
-| licence | رقم الرخصة | Licence no. |
-| issued | تاريخ الإصدار | Issued |
-| valid | صالحة حتى | Valid until |
+| network | أخبر شبكتك عن مشروعك الجديد. قد يكون عميلك القادم أو شريكك التجاري أو فرصتك المقبلة على بُعد منشور واحد! | Let your network know about your new venture. Your next customer, business partner, or opportunity could be just one post away! |
+| cheers | نتمنى لك بدايات جديدة وفرصاً أكبر. | Here's to new beginnings and bigger opportunities ahead. |
+| welcome | أهلاً بك في مجتمع الأعمال في المنطقة الحرة لمدينة الشارقة للنشر! | Welcome to the SPC Free Zone business community! |
+| regards | مع أطيب التحيات، | Best regards, |
+| team | فريق المنطقة الحرة لمدينة الشارقة للنشر | Team SPC Free Zone |
 | other | تفضّل الإنجليزية؟ | Prefer Arabic? |
 | otherLink | افتح بطاقتك بالإنجليزية | Open your card in Arabic |
 | address | المنطقة الحرة لمدينة الشارقة للنشر · الشارقة، الإمارات العربية المتحدة | SPC Free Zone · Sharjah Publishing City · Sharjah, UAE |
-| why | وصلتك هذه الرسالة لأن المنطقة الحرة لمدينة الشارقة للنشر أصدرت رخصة تجارية لشركة {company}. | You're receiving this email because SPC Free Zone issued a business licence to {company}. |
+| why | وصلتك هذه الرسالة لأن المنطقة الحرة لمدينة الشارقة للنشر أصدرت رخصة تجارية لشركة {company}. | You're receiving this email because SPC Free Zone issued a business license to {company}. |
 | help | لديك سؤال؟ تواصل معنا | Questions? Contact us |
 
 ## Post to LinkedIn pages (src/linkedin/view.ts, LI_STRINGS)
@@ -158,4 +161,4 @@ the LinkedIn caption. Generated from the source; `{company}` and `{first name}` 
 3. The caption hashtags are a marketing choice.
 4. LinkedIn is written لينكدإن in the Arabic email and pages (the caption keeps the hashtag #SPCFreeZone and the
    mention "@SPC Free Zone" in Latin letters, since LinkedIn links them). Say if it should stay "LinkedIn".
-5. The welcome email says "بطاقة الإعلان" (announcement card) where the page says "بطاقة رخصة".
+5. The welcome email says "صورة إعلان" (announcement image), following SPC's English copy, where the page says "بطاقة رخصة".

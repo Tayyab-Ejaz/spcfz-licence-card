@@ -12,12 +12,13 @@ export function h(strings: TemplateStringsArray, ...values: unknown[]): RawHtml 
 
 export const EMPTY = raw('');
 
-export type NavKey = 'dashboard' | 'cards' | 'events' | 'create' | 'import' | 'settings';
+export type NavKey = 'dashboard' | 'cards' | 'events' | 'test' | 'create' | 'import' | 'settings';
 
 const NAV: ReadonlyArray<{ key: NavKey; href: string; label: string }> = [
   { key: 'dashboard', href: '/admin', label: 'Dashboard' },
   { key: 'cards', href: '/admin/cards', label: 'Cards' },
   { key: 'events', href: '/admin/events', label: 'Events' },
+  { key: 'test', href: '/admin/test-flow', label: 'Test flow' },
   { key: 'create', href: '/admin/create', label: 'Create' },
   { key: 'import', href: '/admin/import', label: 'Import CSV' },
   { key: 'settings', href: '/admin/settings', label: 'Settings' },
@@ -66,7 +67,7 @@ textarea{width:100%;min-height:90px}
 .form label{display:grid;gap:4px;font-weight:600}
 .form label small{font-weight:400;color:var(--muted)}
 .form .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
-.check{display:flex;align-items:center;gap:8px;font-weight:600}
+.check,.form label.check{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-weight:600}
 .btn{display:inline-block;background:var(--blue);color:#fff;border:0;border-radius:8px;padding:8px 14px;font:inherit;font-weight:700;cursor:pointer;text-decoration:none}
 .btn:hover{background:var(--blue2)}
 .btn.secondary{background:#fff;color:var(--blue2);border:1px solid var(--blue2)}
@@ -100,6 +101,8 @@ export interface LayoutOptions {
   /** CSRF value for the Sign out form; the button shows only when set. */
   signOut?: string | undefined;
   active?: NavKey | undefined;
+  /** Reload the page every this many seconds (the Test flow, while an email is sending). */
+  refresh?: number | undefined;
   flash?: string | null | undefined;
   error?: string | string[] | null | undefined;
   body: RawHtml;
@@ -114,6 +117,7 @@ export function adminLayout(o: LayoutOptions): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>${o.title} · SPC licence cards</title>
+${o.refresh ? h`<meta http-equiv="refresh" content="${String(o.refresh)}">` : EMPTY}
 <style>${raw(CSS)}</style>
 </head>
 <body>
