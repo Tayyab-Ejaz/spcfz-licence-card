@@ -171,25 +171,36 @@ address, so sign in with your @spcfz.ae account. Test cards are kept; delete the
 Until `MAIL_TRANSPORT=smtp` is set, welcome emails are queued in the admin but
 not sent (Settings shows "off").
 
-1. Pick the sender address, for example `licence@spcfz.ae`, and an SMTP
-   provider (ZeptoMail, Amazon SES or Microsoft 365 all work). In the
-   provider, verify the domain and publish the SPF and DKIM records it gives
-   you in Cloudflare DNS for spcfz.ae. Without them the emails land in spam.
-2. Add these lines to `/opt/spcfz-licence-card/licence-card.env`, typing the
-   password yourself, for example with
-   `ssh -t root@13.206.34.102 nano /opt/spcfz-licence-card/licence-card.env`:
+1. The sender (decided 27 Oct 2026): SPC's Microsoft 365. The service signs
+   in as `more@spcfz.ae`, the account the marketing dashboard's lead monitor
+   already uses, and sends as `license@spcfz.ae`. That needs IT to create
+   `license@spcfz.ae` (a shared mailbox, where replies land), give
+   `more@spcfz.ae` Send As on it, and keep SMTP AUTH on for `more@spcfz.ae`.
+   Without Send As, Office 365 refuses every email with `SendAsDenied`.
+   spcfz.ae already publishes Microsoft 365's DKIM, so DNS needs no change.
+   From December 2026 Microsoft turns password SMTP off by default
+   (Message Center MC786329): if sends start failing with an authentication
+   error, IT re-enables it for `more@spcfz.ae`, or we move to OAuth.
+2. Add these lines to `/opt/spcfz-licence-card/licence-card.env`:
 
    ```
    MAIL_TRANSPORT=smtp
-   MAIL_SMTP_URL=smtps://<user>:<password>@<host>:465
-   MAIL_FROM=SPC Free Zone <licence@spcfz.ae>
-   MAIL_REPLY_TO=info@spcfz.ae
+   MAIL_SMTP_URL=smtp://more%40spcfz.ae:<app password>@smtp.office365.com:587
+   MAIL_FROM=SPC Free Zone <license@spcfz.ae>
    ```
 
-   Characters such as `@`, `:` or `/` in the user or password must be
-   percent-encoded (`@` is `%40`). `MAIL_BCC` keeps a copy of every email
-   (optional). `MAIL_TEST_ALLOWLIST` lists who test cards may email
-   (default `spcfz.ae`).
+   Office 365 takes port 587 with STARTTLS, so the URL starts `smtp://`,
+   not `smtps://` (other providers often use `smtps://...:465`). The app
+   password is the one in the dashboard's `quiet_monitor/config.php`: copy it
+   on the server so it is never shown, or type it yourself with
+   `ssh -t root@13.206.34.102 nano /opt/spcfz-licence-card/licence-card.env`.
+   If that password is ever changed, change it in both files. Characters
+   such as `@`, `:` or `/` in the user or password must be percent-encoded
+   (`@` is `%40`). `MAIL_REPLY_TO` sends replies somewhere other than the
+   sender (optional). `MAIL_BCC` keeps a copy of every email (optional).
+   `MAIL_TEST_ALLOWLIST` lists who test cards may email (default
+   `spcfz.ae`). Office 365 allows 30 emails a minute per mailbox; the
+   service sends 10 at a time and retries anything it throttles.
 3. Apply the env-file change (see Secrets).
 4. Check: in the admin, open a TEST card, set its customer email to your own
    @spcfz.ae address and press Send again. The card's Welcome email table
