@@ -50,7 +50,8 @@ export const COPY = {
     team: 'Team SPC Free Zone',
     why: (co: string) => `You're receiving this email because SPC Free Zone issued a business license to ${co}.`,
     contactTitle: 'CONTACT US',
-    tollFree: 'Toll Free Number:',
+    tollFree: 'Toll Free Number',
+    emailLabel: 'Email',
     copyright: (year: string) => `© ${year} Sharjah Publishing City (SPC) Free Zone`,
     location: 'Sharjah, United Arab Emirates.',
     unsubscribe: 'Unsubscribe',
@@ -77,7 +78,8 @@ export const COPY = {
     team: 'فريق المنطقة الحرة لمدينة الشارقة للنشر',
     why: (co: string) => `وصلتك هذه الرسالة لأن المنطقة الحرة لمدينة الشارقة للنشر أصدرت رخصة تجارية لشركة ${co}.`,
     contactTitle: 'تواصل معنا',
-    tollFree: 'الرقم المجاني:',
+    tollFree: 'الرقم المجاني',
+    emailLabel: 'البريد الإلكتروني',
     copyright: (year: string) => `© ${year} المنطقة الحرة لمدينة الشارقة للنشر`,
     location: 'الشارقة، الإمارات العربية المتحدة.',
     unsubscribe: 'إلغاء الاشتراك',
@@ -139,8 +141,7 @@ a{text-decoration:none}
   .btn-cell a{display:block!important;text-align:center!important}
   .stack-m{display:block!important;width:100%!important;text-align:${align}!important}
   .social{padding-top:18px!important}
-  .ft-sep{display:none!important}
-  .ft-mail{display:block!important}
+  .ft-gap{padding-top:16px!important}
 }
 @media (prefers-color-scheme:dark){
   .page,.outer,.wrap{background:#0b1220!important}
@@ -199,19 +200,38 @@ ${i.linkedin ? raw(html`<td class="btn-cell" style="padding:0;">${raw(button({ h
 
 <tr><td style="height:40px;line-height:40px;font-size:0;">&nbsp;</td></tr>
 
-<tr><td class="pad foot" style="padding:32px 32px 36px;background:#000000;text-align:${align};">
+<tr><td class="pad foot" style="padding:34px 32px 34px;background:#000000;text-align:${align};">
+
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
 <td class="stack-m" valign="middle" style="text-align:${align};"><a href="https://www.spcfz.ae/" target="_blank"><img src="${logo}" width="148" alt="SPC Free Zone" style="width:148px;height:auto;${ar ? 'margin-left:auto;' : ''}"></a></td>
 <td class="stack-m social" valign="middle" style="text-align:${ar ? 'left' : 'right'};white-space:nowrap;">${raw(social)}</td>
 </tr></table>
-<p style="margin:28px 0 12px;color:#ffffff;font-size:17px;line-height:22px;font-weight:800;letter-spacing:${ar ? '0' : '.04em'};">${t.contactTitle}</p>
-<p style="margin:0 0 10px;color:#ffffff;font-size:14px;line-height:24px;"><span style="white-space:nowrap;">${t.tollFree} <a href="${PHONE.href}" style="color:#ffffff;text-decoration:none;white-space:nowrap;" dir="ltr">${PHONE.label}</a></span> <span class="ft-sep" style="color:#5d636e;">&nbsp;&nbsp;|&nbsp;&nbsp;</span> <a class="ft-mail" href="mailto:${CONTACT_EMAIL}" style="color:#ffffff;text-decoration:none;white-space:nowrap;">${CONTACT_EMAIL}</a></p>
-<p style="margin:0 0 26px;color:#ffffff;font-size:14px;line-height:24px;">${t.copyright(year)}<br>${t.location}</p>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding:28px 0 0;"><div style="height:1px;line-height:1px;font-size:0;background:#24272d;">&nbsp;</div></td></tr></table>
+
+<p style="margin:26px 0 14px;color:#7fa6ff;font-size:12px;line-height:16px;font-weight:800;letter-spacing:${ar ? '0' : '.16em'};">${t.contactTitle}</p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-<td style="border-top:1px solid #2a2d33;padding-top:20px;text-align:${align};">
-<p class="ft-small" style="margin:0 0 16px;color:#9aa0aa;font-size:12px;line-height:18px;">${t.why(company)}</p>
-<a class="ft-unsub" href="${unsubscribeUrl}" target="_blank" style="display:inline-block;border:1px solid #3a3e46;border-radius:6px;padding:6px 14px;background:#000000;color:#d0d4db;font-size:12px;line-height:16px;font-weight:600;text-decoration:none;">${t.unsubscribe}</a>
-</td></tr></table>
+<td class="stack-m" valign="top" width="50%" style="text-align:${align};${ar ? 'padding-left:16px;' : 'padding-right:16px;'}">
+<p style="margin:0 0 4px;color:#8b919c;font-size:12px;line-height:16px;">${t.tollFree}</p>
+<a href="${PHONE.href}" dir="ltr" style="color:#ffffff;font-size:17px;line-height:24px;font-weight:700;text-decoration:none;white-space:nowrap;">${PHONE.label}</a>
+</td>
+<td class="stack-m ft-gap" valign="top" width="50%" style="text-align:${align};">
+<p style="margin:0 0 4px;color:#8b919c;font-size:12px;line-height:16px;">${t.emailLabel}</p>
+<a href="mailto:${CONTACT_EMAIL}" style="color:#ffffff;font-size:17px;line-height:24px;font-weight:700;text-decoration:none;white-space:nowrap;">${CONTACT_EMAIL}</a>
+</td>
+</tr></table>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding:28px 0 0;"><div style="height:1px;line-height:1px;font-size:0;background:#24272d;">&nbsp;</div></td></tr></table>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:22px;"><tr>
+<td class="stack-m" valign="top" style="text-align:${align};">
+<p style="margin:0;color:#c3c8d0;font-size:13px;line-height:20px;">${t.copyright(year)}<br>${t.location}</p>
+</td>
+<td class="stack-m ft-gap" valign="top" style="text-align:${ar ? 'left' : 'right'};white-space:nowrap;">
+<a href="${unsubscribeUrl}" target="_blank" style="display:inline-block;border:1px solid #3a3e46;border-radius:6px;padding:6px 14px;background:#000000;color:#d0d4db;font-size:12px;line-height:16px;font-weight:600;text-decoration:none;">${t.unsubscribe}</a>
+</td>
+</tr></table>
+<p style="margin:16px 0 0;color:#6f7581;font-size:11.5px;line-height:17px;">${t.why(company)}</p>
 </td></tr>
 
 </table>
@@ -248,7 +268,8 @@ ${i.linkedin ? raw(html`<td class="btn-cell" style="padding:0;">${raw(button({ h
     t.team,
     '',
     t.contactTitle,
-    `${t.tollFree} ${PHONE.label} | ${CONTACT_EMAIL}`,
+    `${t.tollFree}: ${PHONE.label}`,
+    `${t.emailLabel}: ${CONTACT_EMAIL}`,
     t.copyright(year),
     t.location,
     '',

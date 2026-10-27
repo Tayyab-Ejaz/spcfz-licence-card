@@ -108,7 +108,8 @@ the LinkedIn caption. Generated from the source; `{company}` and `{first name}` 
 | team | فريق المنطقة الحرة لمدينة الشارقة للنشر | Team SPC Free Zone |
 | why | وصلتك هذه الرسالة لأن المنطقة الحرة لمدينة الشارقة للنشر أصدرت رخصة تجارية لشركة {company}. | You're receiving this email because SPC Free Zone issued a business license to {company}. |
 | contactTitle | تواصل معنا | CONTACT US |
-| tollFree | الرقم المجاني: | Toll Free Number: |
+| tollFree | الرقم المجاني | Toll Free Number |
+| emailLabel | البريد الإلكتروني | Email |
 | copyright | © {company} المنطقة الحرة لمدينة الشارقة للنشر | © {company} Sharjah Publishing City (SPC) Free Zone |
 | location | الشارقة، الإمارات العربية المتحدة. | Sharjah, United Arab Emirates. |
 | unsubscribe | إلغاء الاشتراك | Unsubscribe |

@@ -106,18 +106,19 @@ describe('the welcome email', () => {
     const card = await seedCard();
     const m = renderWelcome({ card, lang: 'en', baseUrl: 'https://licensed.test', linkedin: false });
     expect(m.html).toContain('>CONTACT US</p>');
-    expect(m.html).toContain('Toll Free Number: <a href="tel:80077239"');
-    expect(m.html).toContain('>800 77239</a>');
+    expect(m.html).toContain('>Toll Free Number</p>');
+    expect(m.html).toMatch(/<a href="tel:80077239" dir="ltr"[^>]*>800 77239<\/a>/);
     expect(m.html).toContain('href="mailto:marketing@spcfz.ae"');
     expect(m.html).toContain(`© ${new Date().getFullYear()} Sharjah Publishing City (SPC) Free Zone<br>Sharjah, United Arab Emirates.`);
-    expect(m.text).toContain('Toll Free Number: 800 77239 | marketing@spcfz.ae');
+    expect(m.text).toContain('Toll Free Number: 800 77239\nEmail: marketing@spcfz.ae');
     const app = new Hono<AppEnv>().route('/', emailAssetRoutes);
     for (const n of SOCIAL) {
       expect(m.html).toContain(`href="${n.href}"`);
       expect((await app.request(`/static/email/${n.icon}`)).status).toBe(200);
     }
     const ar = renderWelcome({ card, lang: 'ar', baseUrl: 'https://licensed.test', linkedin: false });
-    expect(ar.html).toContain('الرقم المجاني: <a href="tel:80077239" style="color:#ffffff;text-decoration:none;white-space:nowrap;" dir="ltr">800 77239</a>'); // the number stays in order inside Arabic
+    expect(ar.html).toContain('>الرقم المجاني</p>');
+    expect(ar.html).toMatch(/<a href="tel:80077239" dir="ltr"/); // the number keeps its order inside Arabic
   });
 
   it('pictures the card in the Daylight style, square', async () => {
