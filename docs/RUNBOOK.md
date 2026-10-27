@@ -171,13 +171,13 @@ address, so sign in with your @spcfz.ae account. Test cards are kept; delete the
 Until `MAIL_TRANSPORT=smtp` is set, welcome emails are queued in the admin but
 not sent (Settings shows "off").
 
-1. The sender (decided 27 Oct 2026): SPC's Microsoft 365. The service signs
-   in as `more@spcfz.ae`, the account the marketing dashboard's lead monitor
-   already uses, and sends as `license@spcfz.ae`. That needs IT to create
-   `license@spcfz.ae` (a shared mailbox, where replies land), give
-   `more@spcfz.ae` Send As on it, and keep SMTP AUTH on for `more@spcfz.ae`.
-   Without Send As, Office 365 refuses every email with `SendAsDenied`.
-   spcfz.ae already publishes Microsoft 365's DKIM, so DNS needs no change.
+1. The sender (decided 27 Oct 2026): SPC's Microsoft 365, from
+   `more@spcfz.ae`, the account the marketing dashboard's lead monitor
+   already uses. Replies land in its inbox and Office 365 keeps a copy of
+   each email in its Sent Items. To send from a different address, IT gives
+   `more@spcfz.ae` Send As on it first, or Office 365 refuses every email
+   with `SendAsDenied`. spcfz.ae already publishes Microsoft 365's DKIM, so
+   DNS needs no change.
    From December 2026 Microsoft turns password SMTP off by default
    (Message Center MC786329): if sends start failing with an authentication
    error, IT re-enables it for `more@spcfz.ae`, or we move to OAuth.
@@ -186,7 +186,7 @@ not sent (Settings shows "off").
    ```
    MAIL_TRANSPORT=smtp
    MAIL_SMTP_URL=smtp://more%40spcfz.ae:<app password>@smtp.office365.com:587
-   MAIL_FROM=SPC Free Zone <license@spcfz.ae>
+   MAIL_FROM=SPC Free Zone <more@spcfz.ae>
    ```
 
    Office 365 takes port 587 with STARTTLS, so the URL starts `smtp://`,

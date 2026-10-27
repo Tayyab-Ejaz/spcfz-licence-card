@@ -136,7 +136,7 @@ export function readConfig(source: ConfigSource, envFile: string | null = null):
   if (mailMode === 'smtp') {
     if (!smtpUrl) errors.push('MAIL_TRANSPORT=smtp needs MAIL_SMTP_URL (smtp(s)://user:password@host:port)');
     else if (!/^smtps?:\/\//i.test(smtpUrl)) errors.push('MAIL_SMTP_URL must start with smtp:// or smtps://');
-    if (!mailFrom) errors.push('MAIL_TRANSPORT=smtp needs MAIL_FROM, e.g. "SPC Free Zone <license@spcfz.ae>"');
+    if (!mailFrom) errors.push('MAIL_TRANSPORT=smtp needs MAIL_FROM, e.g. "SPC Free Zone <more@spcfz.ae>"');
   }
   if (mailMode === 'off') warnings.push('MAIL_TRANSPORT=off: welcome emails are queued in the admin but not sent');
   const liId = text(source, 'LINKEDIN_CLIENT_ID');

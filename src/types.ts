@@ -84,7 +84,7 @@ export interface Env {
   MAIL_TRANSPORT?: MailTransportMode;
   /** smtp(s)://user:password@host:port of the provider (ZeptoMail, SES, Microsoft 365...). A secret. */
   MAIL_SMTP_URL?: string;
-  /** The sender, e.g. "SPC Free Zone <license@spcfz.ae>"; its domain needs SPF and DKIM for that provider. */
+  /** The sender, e.g. "SPC Free Zone <more@spcfz.ae>"; its domain needs SPF and DKIM for that provider. */
   MAIL_FROM?: string;
   MAIL_REPLY_TO?: string;
   /** An address that receives a hidden copy of every email (an SPC archive), optional. */
