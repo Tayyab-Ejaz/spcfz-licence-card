@@ -25,7 +25,8 @@ export interface WelcomeInput {
 
 /**
  * The words, from SPC's copy of 27 October 2026 ("Your Business Is Official. Let the World Know!"), English
- * verbatim; the Arabic is Claude's draft for review. Exported for docs/ARABIC-STRINGS.md.
+ * verbatim except readyBody, reordered so the personal touch comes before the download (SPC, 27 October 2026);
+ * the Arabic is Claude's draft for review. Exported for docs/ARABIC-STRINGS.md.
  */
 export const COPY = {
   en: {
@@ -45,7 +46,7 @@ export const COPY = {
     makeYours: 'Before you post, make it yours:',
     chips: ['+ Add your photo', 'Change the headline', 'Try another style'],
     readyTitle: 'Your announcement is ready to share!',
-    readyBody: 'Simply download your image, add your personal touch, and share it on LinkedIn or your favourite social media platform.',
+    readyBody: 'Simply add your personal touch, then download your image and share it on LinkedIn or your favourite social media platform.',
     make: 'Share Your Milestone',
     network: 'Let your network know about your new venture. Your next customer, business partner, or opportunity could be just one post away!',
     cheers: "Here's to new beginnings and bigger opportunities ahead.",
@@ -75,7 +76,7 @@ export const COPY = {
     makeYours: 'قبل النشر، اجعلها بطابعك:',
     chips: ['+ أضف صورتك', 'غيّر العنوان', 'جرّب تصميماً آخر'],
     readyTitle: 'إعلانك جاهز للمشاركة!',
-    readyBody: 'ما عليك سوى تنزيل صورتك وإضافة لمستك الخاصة، ثم مشاركتها على لينكدإن أو منصتك المفضلة.',
+    readyBody: 'ما عليك سوى إضافة لمستك الخاصة، ثم تنزيل صورتك ومشاركتها على لينكدإن أو منصتك المفضلة.',
     make: 'شارك إنجازك',
     network: 'أخبر شبكتك عن مشروعك الجديد. قد يكون عميلك القادم أو شريكك التجاري أو فرصتك المقبلة على بُعد منشور واحد!',
     cheers: 'نتمنى لك بدايات جديدة وفرصاً أكبر.',

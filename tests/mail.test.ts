@@ -83,6 +83,7 @@ describe('the welcome email', () => {
     expect(m.html).toContain('Sharjah, United Arab Emirates.');
     expect(m.html).not.toContain('Prefer Arabic?');
     expect(m.text).toContain('Your announcement is ready to share!');
+    expect(m.html).toContain('Simply add your personal touch, then download your image and share it');
     expect(m.html).toContain(`https://licensed.test/c/${card.token}/card/${card.content_hash.slice(0, 10)}-v${CARD_DESIGN}.jpg`);
     expect(m.html).toContain(`https://licensed.test/c/${card.token}?lang=en&amp;via=email`);
     expect(m.html).toContain('dir="ltr"');

@@ -83,7 +83,7 @@ numbers use Latin digits in both languages.
 Added 27 October 2026, drafted by Claude, not yet reviewed: the welcome email, the Post to LinkedIn pages and
 the LinkedIn caption. Generated from the source; `{company}` and `{first name}` are filled in per card.
 
-## Welcome email (src/mail/welcome.ts, COPY; English is SPC's copy of 27 October 2026, verbatim)
+## Welcome email (src/mail/welcome.ts, COPY; English is SPC's copy of 27 October 2026, verbatim except readyBody, reordered)
 
 | Key | Arabic | English |
 |---|---|---|
@@ -103,7 +103,7 @@ the LinkedIn caption. Generated from the source; `{company}` and `{first name}` 
 | makeYours | قبل النشر، اجعلها بطابعك: | Before you post, make it yours: |
 | chips | + أضف صورتك / غيّر العنوان / جرّب تصميماً آخر | + Add your photo / Change the headline / Try another style |
 | readyTitle | إعلانك جاهز للمشاركة! | Your announcement is ready to share! |
-| readyBody | ما عليك سوى تنزيل صورتك وإضافة لمستك الخاصة، ثم مشاركتها على لينكدإن أو منصتك المفضلة. | Simply download your image, add your personal touch, and share it on LinkedIn or your favourite social media platform. |
+| readyBody | ما عليك سوى إضافة لمستك الخاصة، ثم تنزيل صورتك ومشاركتها على لينكدإن أو منصتك المفضلة. | Simply add your personal touch, then download your image and share it on LinkedIn or your favourite social media platform. |
 | make | شارك إنجازك | Share Your Milestone |
 | network | أخبر شبكتك عن مشروعك الجديد. قد يكون عميلك القادم أو شريكك التجاري أو فرصتك المقبلة على بُعد منشور واحد! | Let your network know about your new venture. Your next customer, business partner, or opportunity could be just one post away! |
 | cheers | نتمنى لك بدايات جديدة وفرصاً أكبر. | Here's to new beginnings and bigger opportunities ahead. |
