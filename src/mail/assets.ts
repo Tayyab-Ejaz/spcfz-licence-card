@@ -9,8 +9,8 @@ import type { AppEnv } from '../types.js';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const EMAIL_ASSET_DIR = path.resolve(HERE, '../../assets/email');
 
-/** The header banner (SPC, 27 October 2026, the slim one): white SPC Free Zone logo on brand blue, 1200 x 250 for 600 px. */
-export const EMAIL_HEADER = 'spc-header-66c2118e10.jpg';
+/** The header banner (SPC, 27 October 2026): white SPC Free Zone logo on brand blue, 1200 x 300 for 600 px. */
+export const EMAIL_HEADER = 'spc-header-b29a79f5a2.jpg';
 
 /** The footer's social links (as on www.spcfz.ae, 27 October 2026), with icons from tools/email-icons.mjs. */
 export const SOCIAL: ReadonlyArray<{ name: string; href: string; icon: string }> = [
