@@ -501,11 +501,11 @@ What the customer gets, in their preferred language (English or Arabic, right to
   server: `/c/<token>/card/<hash>-v<n>[-ar].jpg`), linked to their studio. It sits in a small editor window: a bar
   with "Your announcement card · Draft" and "Customise →", and under the card "Before you post, make it yours:" with
   three chips (Add your photo, Change the headline, Try another style), all opening the studio, so it reads as a
-  draft to personalise rather than a finished picture. The picture itself stays clean (it is what "Post on
-  LinkedIn" from the email posts). Without a founder, the company and
+  draft to personalise rather than a finished picture. The picture itself stays clean. Without a founder, the company and
   activity take the top (the design's company-only layout).
-- "Share Your Milestone" (the studio, `?via=email`, counted as a view from email) and, when LinkedIn is set up,
-  "Post on LinkedIn" (section 17, with the server's card and the default caption).
+- One button, "Share Your Milestone" (the studio, `?via=email`, counted as a view from email), where they make the
+  card theirs and post it (Post to LinkedIn is the studio's first button). The email has no LinkedIn shortcut
+  (removed 27 October 2026): it would post the card un-personalised, with the empty photo slot.
 - The closing lines, "Best regards, Team SPC Free Zone", and a black footer band (SPC, 27 October 2026): the SPC logo
   in white and social icons on dark circles (LinkedIn, Instagram, Facebook, YouTube, as on www.spcfz.ae; PNGs from
   tools/email-icons.mjs); one line,
@@ -542,7 +542,8 @@ Posts the card to the customer's own LinkedIn profile through LinkedIn's API, so
 attached, which the phone share sheet cannot do from a web page.
 
     studio  POST /c/:token/linkedin   the picture the customer made (JPEG) + their caption, from the studio
-    email   GET  /c/:token/linkedin   the server-drawn card + the default caption, from the welcome email
+    email   GET  /c/:token/linkedin   the server-drawn card + the default caption (not linked from the welcome
+                                      email since 27 October 2026; kept for a later email, e.g. a reminder)
        -> LinkedIn sign-in (scope "openid profile w_member_social")
        -> GET /linkedin/callback   code -> access token -> who they are (name, photo)
        -> GET /linkedin/review     the post as it will appear; caption editable (3,000 characters)

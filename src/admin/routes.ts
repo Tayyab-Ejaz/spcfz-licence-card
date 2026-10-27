@@ -581,7 +581,7 @@ ${eventsTable(events.rows)}`;
     const card = await getCardById(c.env.DB, c.req.param('id'));
     if (!card) return notFoundPage(c, 'card');
     const lang = c.req.query('lang') === 'ar' ? 'ar' : 'en';
-    const mail = renderWelcome({ card, lang, baseUrl: c.env.BASE_URL, linkedin: linkedinEnabled(c.env) });
+    const mail = renderWelcome({ card, lang, baseUrl: c.env.BASE_URL });
     c.header('Content-Security-Policy', "default-src 'none'; img-src 'self' https: http://localhost:* data:; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; base-uri 'none'; form-action 'none'; frame-ancestors 'none'");
     return c.html(mail.html.replace('<body', `<body data-subject="${mail.subject.replace(/"/g, '&quot;')}"`));
   });

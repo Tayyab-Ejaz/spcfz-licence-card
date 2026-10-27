@@ -105,7 +105,6 @@ the LinkedIn caption. Generated from the source; `{company}` and `{first name}` 
 | readyTitle | إعلانك جاهز للمشاركة! | Your announcement is ready to share! |
 | readyBody | ما عليك سوى تنزيل صورتك وإضافة لمستك الخاصة، ثم مشاركتها على لينكدإن أو منصتك المفضلة. | Simply download your image, add your personal touch, and share it on LinkedIn or your favourite social media platform. |
 | make | شارك إنجازك | Share Your Milestone |
-| linkedin | انشرها على لينكدإن | Post on LinkedIn |
 | network | أخبر شبكتك عن مشروعك الجديد. قد يكون عميلك القادم أو شريكك التجاري أو فرصتك المقبلة على بُعد منشور واحد! | Let your network know about your new venture. Your next customer, business partner, or opportunity could be just one post away! |
 | cheers | نتمنى لك بدايات جديدة وفرصاً أكبر. | Here's to new beginnings and bigger opportunities ahead. |
 | welcome | أهلاً بك في مجتمع الأعمال في المنطقة الحرة لمدينة الشارقة للنشر! | Welcome to the SPC Free Zone business community! |

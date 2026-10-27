@@ -417,8 +417,8 @@ ${card.customer_email ? h`<form method="post" action="/admin/cards/${card.id}/em
   const s4 = step(4, 'Post to LinkedIn', liState[0], liState[1], h`
 ${i.status.linkedin === 'off'
     ? h`<p class="muted">The buttons are hidden until LINKEDIN_CLIENT_ID and LINKEDIN_CLIENT_SECRET are set (docs/RUNBOOK.md).</p>`
-    : h`<p>From the card: choose a photo or “Use initials”, go to Share, press <b>Post to LinkedIn</b>. From the email: its button below.</p>
-<div class="actions"><a class="btn secondary" href="${base}/c/${card.token}/linkedin?lang=en&amp;via=email" target="_blank" rel="noopener">The email's “Post on LinkedIn”</a></div>`}
+    : h`<p>Open the card, choose a photo or “Use initials”, go to Share and press <b>Post to LinkedIn</b>. (The email has no LinkedIn button: it would post the card before it is personalised.)</p>
+<div class="actions"><a class="btn secondary" href="${base}/c/${card.token}?lang=en" target="_blank" rel="noopener">Open the card</a></div>`}
 ${i.posts.length ? table(['When', 'Result', ''], i.posts.map((p) => [
     h`${fmtDateTime(p.created_at)}`,
     h`${p.status}`,

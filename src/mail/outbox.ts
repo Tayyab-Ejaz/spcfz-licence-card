@@ -10,7 +10,6 @@ import {
 import type { EmailKind } from '../db/emails.js';
 import { isPast, nowIso } from '../util/time.js';
 import { renderWelcome } from './welcome.js';
-import { linkedinEnabled } from '../linkedin/client.js';
 import type { MailTransport } from './transport.js';
 
 const RETRY_MINUTES = [1, 5, 30, 120, 720];
@@ -66,7 +65,7 @@ export async function processOutbox(env: Env, transport: MailTransport | null, n
     const lang = e.lang === 'ar' ? 'ar' : 'en';
     let subject: string | null = null;
     try {
-      const mail = renderWelcome({ card, lang, baseUrl: env.BASE_URL, linkedin: linkedinEnabled(env) });
+      const mail = renderWelcome({ card, lang, baseUrl: env.BASE_URL });
       subject = mail.subject;
       const sent = await transport.send({ to: e.to_email, cc: e.cc_email, subject: mail.subject, html: mail.html, text: mail.text, unsubscribeUrl: mail.unsubscribeUrl });
       await markEmailSent(env.DB, e.id, mail.subject, sent.id, nowIso());

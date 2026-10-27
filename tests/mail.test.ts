@@ -74,7 +74,7 @@ beforeEach(async () => {
 describe('the welcome email', () => {
   it('greets the founder, shows their card and links to the studio and to LinkedIn', async () => {
     const card = await seedCard();
-    const m = renderWelcome({ card, lang: 'en', baseUrl: 'https://licensed.test/', linkedin: true });
+    const m = renderWelcome({ card, lang: 'en', baseUrl: 'https://licensed.test/' });
     expect(m.subject).toBe('Your Business Is Official. Let the World Know!');
     expect(m.html).toContain('Hi Layla,');
     expect(m.html).toContain('Congratulations on receiving your business license with <strong style="white-space:nowrap;">SPC Free Zone!</strong>');
@@ -85,14 +85,13 @@ describe('the welcome email', () => {
     expect(m.text).toContain('Your announcement is ready to share!');
     expect(m.html).toContain(`https://licensed.test/c/${card.token}/card/${card.content_hash.slice(0, 10)}-v${CARD_DESIGN}.jpg`);
     expect(m.html).toContain(`https://licensed.test/c/${card.token}?lang=en&amp;via=email`);
-    expect(m.html).toContain(`https://licensed.test/c/${card.token}/linkedin?lang=en&amp;via=email`);
     expect(m.html).toContain('dir="ltr"');
     expect(m.text).toContain(`https://licensed.test/c/${card.token}?lang=en&via=email`);
   });
 
   it('opens with the SPC banner, served from this service and cached for good', async () => {
     const card = await seedCard();
-    const m = renderWelcome({ card, lang: 'en', baseUrl: 'https://licensed.test', linkedin: false });
+    const m = renderWelcome({ card, lang: 'en', baseUrl: 'https://licensed.test' });
     expect(m.html).toContain(`src="https://licensed.test/static/email/${EMAIL_HEADER}"`);
     const app = new Hono<AppEnv>().route('/', emailAssetRoutes);
     const res = await app.request(`/static/email/${EMAIL_HEADER}`);
@@ -104,7 +103,7 @@ describe('the welcome email', () => {
 
   it('ends with Contact Us, the copyright and the social links, every icon served', async () => {
     const card = await seedCard();
-    const m = renderWelcome({ card, lang: 'en', baseUrl: 'https://licensed.test', linkedin: false });
+    const m = renderWelcome({ card, lang: 'en', baseUrl: 'https://licensed.test' });
     expect(m.html).not.toContain('CONTACT US');
     expect(m.html).toContain('>Toll Free Number</span>');
     expect(m.html).toMatch(/<a href="tel:80077239" dir="ltr"[^>]*>800 77239<\/a>/);
@@ -116,7 +115,7 @@ describe('the welcome email', () => {
       expect(m.html).toContain(`href="${n.href}"`);
       expect((await app.request(`/static/email/${n.icon}`)).status).toBe(200);
     }
-    const ar = renderWelcome({ card, lang: 'ar', baseUrl: 'https://licensed.test', linkedin: false });
+    const ar = renderWelcome({ card, lang: 'ar', baseUrl: 'https://licensed.test' });
     expect(ar.html).toContain('>الرقم المجاني</span>');
     expect(ar.html).toMatch(/<a href="tel:80077239" dir="ltr"/); // the number keeps its order inside Arabic
   });
@@ -127,16 +126,18 @@ describe('the welcome email', () => {
     expect([meta.format, meta.width, meta.height]).toEqual(['jpeg', 1080, 1080]);
   }, 30_000);
 
-  it('has no LinkedIn button until LinkedIn is set up', async () => {
+  it('has one button, Share Your Milestone, and no LinkedIn shortcut (it would post the card un-personalised)', async () => {
     const card = await seedCard();
-    const m = renderWelcome({ card, lang: 'en', baseUrl: 'https://licensed.test', linkedin: false });
+    const m = renderWelcome({ card, lang: 'en', baseUrl: 'https://licensed.test' });
+    expect(m.html.match(/class="btn-primary"/g)).toHaveLength(1);
+    expect(m.html).not.toContain('Post on LinkedIn');
     expect(m.html).not.toContain('/linkedin?');
     expect(m.text).not.toContain('/linkedin?');
   });
 
   it('is right to left in Arabic, with the Arabic names and the Arabic card', async () => {
     const card = await seedCard();
-    const m = renderWelcome({ card, lang: 'ar', baseUrl: 'https://licensed.test', linkedin: true });
+    const m = renderWelcome({ card, lang: 'ar', baseUrl: 'https://licensed.test' });
     expect(m.html).toContain('dir="rtl"');
     expect(m.html).toContain('lang="ar"');
     expect(m.subject).toBe('أعمالك أصبحت رسمية. شارك الخبر مع العالم!');
@@ -146,12 +147,12 @@ describe('the welcome email', () => {
 
   it('greets without a name when the ERP sends no founder', async () => {
     const card = await seedCard({ fields: { founder_name_en: null, founder_name_ar: null } });
-    expect(renderWelcome({ card, lang: 'en', baseUrl: 'https://licensed.test', linkedin: false }).html).toContain('>Hello,</p>');
+    expect(renderWelcome({ card, lang: 'en', baseUrl: 'https://licensed.test' }).html).toContain('>Hello,</p>');
   });
 
   it('escapes what the ERP sends', async () => {
     const card = await seedCard({ fields: { company_name_en: 'Evil <script>alert(1)</script> FZE', founder_name_en: '"><img src=x onerror=alert(1)>' } });
-    const m = renderWelcome({ card, lang: 'en', baseUrl: 'https://licensed.test', linkedin: false });
+    const m = renderWelcome({ card, lang: 'en', baseUrl: 'https://licensed.test' });
     expect(m.html).not.toContain('<script>alert');
     expect(m.html).not.toContain('<img src=x');
     expect(m.html).toContain('Evil &lt;script&gt;');
@@ -234,7 +235,7 @@ describe('unsubscribe', () => {
 
   it('the email has an Unsubscribe button, and mail apps get the one-click header', async () => {
     const card = await seedCard();
-    const m = renderWelcome({ card, lang: 'en', baseUrl: 'https://licensed.test', linkedin: false });
+    const m = renderWelcome({ card, lang: 'en', baseUrl: 'https://licensed.test' });
     expect(m.unsubscribeUrl).toBe(`https://licensed.test/c/${card.token}/unsubscribe?lang=en`);
     expect(m.html).toContain(`href="https://licensed.test/c/${card.token}/unsubscribe?lang=en"`);
     expect(m.html).toContain('>Unsubscribe</a>');

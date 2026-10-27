@@ -1,5 +1,6 @@
 // The welcome email: "Your Business Is Official. Let the World Know!" (SPC's copy), the customer's own card (the
-// Day One picture), "Share Your Milestone" into the studio and, when LinkedIn is set up, "Post on LinkedIn".
+// Daylight picture, shown as a draft), and one button, "Share Your Milestone", into the studio, where they make it
+// theirs and post it (Post to LinkedIn is there). No LinkedIn shortcut here: it would post the card un-personalised.
 // Built for real inboxes: tables and inline styles, a hidden preheader, Outlook (VML) buttons, a dark-mode
 // palette for clients that honour it, right-to-left Arabic, alt text on every image and a plain-text part.
 import type { CardRow, Lang } from '../types.js';
@@ -20,7 +21,6 @@ export interface WelcomeInput {
   card: CardRow;
   lang: Lang;
   baseUrl: string;
-  linkedin: boolean;
 }
 
 /**
@@ -47,7 +47,6 @@ export const COPY = {
     readyTitle: 'Your announcement is ready to share!',
     readyBody: 'Simply download your image, add your personal touch, and share it on LinkedIn or your favourite social media platform.',
     make: 'Share Your Milestone',
-    linkedin: 'Post on LinkedIn',
     network: 'Let your network know about your new venture. Your next customer, business partner, or opportunity could be just one post away!',
     cheers: "Here's to new beginnings and bigger opportunities ahead.",
     welcome: 'Welcome to the SPC Free Zone business community!',
@@ -78,7 +77,6 @@ export const COPY = {
     readyTitle: 'إعلانك جاهز للمشاركة!',
     readyBody: 'ما عليك سوى تنزيل صورتك وإضافة لمستك الخاصة، ثم مشاركتها على لينكدإن أو منصتك المفضلة.',
     make: 'شارك إنجازك',
-    linkedin: 'انشرها على لينكدإن',
     network: 'أخبر شبكتك عن مشروعك الجديد. قد يكون عميلك القادم أو شريكك التجاري أو فرصتك المقبلة على بُعد منشور واحد!',
     cheers: 'نتمنى لك بدايات جديدة وفرصاً أكبر.',
     welcome: 'أهلاً بك في مجتمع الأعمال في المنطقة الحرة لمدينة الشارقة للنشر!',
@@ -115,7 +113,6 @@ export function renderWelcome(i: WelcomeInput): WelcomeEmail {
   const font = ar ? "'Noto Kufi Arabic',Tahoma,Arial,sans-serif" : "Inter,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif";
   const langQ = ar ? 'ar' : 'en';
   const studio = `${base}/c/${c.token}?lang=${langQ}&via=email`;
-  const linkedinUrl = `${base}/c/${c.token}/linkedin?lang=${langQ}&via=email`;
   const unsubscribeUrl = `${base}/c/${c.token}/unsubscribe?lang=${langQ}`;
   const cardImg = `${base}${cardImagePath(c, i.lang)}`;
   const header = `${base}/static/email/${EMAIL_HEADER}`;
@@ -216,7 +213,6 @@ ${raw(t.chips.map((label) => html`<a class="chip" href="${studio}" target="_blan
 <p class="text" style="margin:0 0 20px;color:#1f2a44;font-size:16px;line-height:26px;">${t.readyBody}</p>
 <table role="presentation" class="btn-table" cellpadding="0" cellspacing="0" align="${align}"><tr>
 <td class="btn-cell" style="padding:0;${ar ? 'padding-left:10px;' : 'padding-right:10px;'}">${raw(button({ href: studio, label: t.make, bg: '#004dff', fg: '#ffffff', border: '#004dff', width: 220, cls: 'btn-primary' }))}</td>
-${i.linkedin ? raw(html`<td class="btn-cell" style="padding:0;">${raw(button({ href: linkedinUrl, label: t.linkedin, bg: '#ffffff', fg: '#0a66c2', border: '#0a66c2', width: 200, cls: 'btn-secondary' }))}</td>`) : ''}
 </tr></table>
 </td></tr>
 
@@ -272,7 +268,6 @@ ${i.linkedin ? raw(html`<td class="btn-cell" style="padding:0;">${raw(button({ h
     t.readyBody,
     '',
     `${t.make}: ${studio}`,
-    ...(i.linkedin ? [`${t.linkedin}: ${linkedinUrl}`] : []),
     '',
     t.network,
     '',
