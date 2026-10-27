@@ -39,6 +39,11 @@ export const COPY = {
     milestone: "This is an exciting milestone in your entrepreneurial journey, and we believe it's worth sharing.",
     prepared: "We've prepared a special announcement image to help you celebrate this achievement with your network.",
     cardAlt: (co: string) => `Business license announcement for ${co}`,
+    draftBar: 'Your announcement card',
+    draft: 'Draft',
+    customise: 'Customise →',
+    makeYours: 'Before you post, make it yours:',
+    chips: ['+ Add your photo', 'Change the headline', 'Try another style'],
     readyTitle: 'Your announcement is ready to share!',
     readyBody: 'Simply download your image, add your personal touch, and share it on LinkedIn or your favourite social media platform.',
     make: 'Share Your Milestone',
@@ -67,6 +72,11 @@ export const COPY = {
     milestone: 'إنها محطة مميزة في رحلتك الريادية، ونؤمن أنها تستحق المشاركة.',
     prepared: 'جهّزنا لك صورة إعلان خاصة لتحتفل بهذا الإنجاز مع شبكة معارفك.',
     cardAlt: (co: string) => `إعلان الرخصة التجارية لشركة ${co}`,
+    draftBar: 'بطاقة إعلانك',
+    draft: 'مسودة',
+    customise: 'خصّصها ←',
+    makeYours: 'قبل النشر، اجعلها بطابعك:',
+    chips: ['+ أضف صورتك', 'غيّر العنوان', 'جرّب تصميماً آخر'],
     readyTitle: 'إعلانك جاهز للمشاركة!',
     readyBody: 'ما عليك سوى تنزيل صورتك وإضافة لمستك الخاصة، ثم مشاركتها على لينكدإن أو منصتك المفضلة.',
     make: 'شارك إنجازك',
@@ -115,7 +125,9 @@ export function renderWelcome(i: WelcomeInput): WelcomeEmail {
   const header = `${base}/static/email/${EMAIL_HEADER}`;
   const year = todayInDubai().slice(0, 4);
   const logo = `${base}/static/email/${FOOTER_LOGO}`;
-  const social = SOCIAL.map((n, k) => html`<a href="${n.href}" target="_blank" style="display:inline-block;${k ? (ar ? 'margin-right:8px;' : 'margin-left:8px;') : ''}"><img src="${base}/static/email/${n.icon}" width="36" height="36" alt="${n.name}" style="display:inline-block;width:36px;height:36px;"></a>`).join('');
+  const social = SOCIAL.map((n, k) => html`<a href="${n.href}" target="_blank" style="display:inline-block;${k ? (ar ? 'margin-right:6px;' : 'margin-left:6px;') : ''}"><img src="${base}/static/email/${n.icon}" width="32" height="32" alt="${n.name}" style="display:inline-block;width:32px;height:32px;"></a>`).join('');
+  // The card sits in a small editor window (a bar with "Draft" and "Customise", then chips under it), so it reads as
+  // a draft to make their own before posting rather than a finished picture (SPC, 27 October 2026).
   const out = html`<!doctype html>
 <html lang="${langQ}" dir="${dir}" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
@@ -139,9 +151,12 @@ a{text-decoration:none}
   .btn-table{width:100%!important}
   .btn-cell{display:block!important;width:100%!important;padding:0 0 10px!important}
   .btn-cell a{display:block!important;text-align:center!important}
-  .stack-m{display:block!important;width:100%!important;text-align:${align}!important}
-  .social{padding-top:18px!important}
-  .ft-gap{padding-top:16px!important}
+  .stack-m{display:block!important;width:100%!important;text-align:${align}!important;padding-left:0!important;padding-right:0!important}
+  .ft-gap{padding-top:12px!important}
+  .ft-sep{display:none!important}
+  .ft-pair{display:block!important}
+  .bar-title{display:none!important}
+  .chip{padding:6px 10px!important;font-size:12.5px!important}
 }
 @media (prefers-color-scheme:dark){
   .page,.outer,.wrap{background:#0b1220!important}
@@ -150,6 +165,9 @@ a{text-decoration:none}
   .accent{color:#8fb0ff!important}
   .rule{border-color:#22304d!important}
   .shot{border-color:#22304d!important}
+  .studio{border-color:#22304d!important}
+  .studio-bar{background:#111a2c!important;border-color:#22304d!important}
+  .chip{background:#16244a!important;border-color:#2b3f73!important;color:#8fb0ff!important}
   .btn-secondary{background:#0b1220!important;color:#8fb0ff!important;border-color:#3b5bb0!important}
   .foot{background:#000000!important}
 }
@@ -177,9 +195,22 @@ a{text-decoration:none}
 </td></tr>
 
 <tr><td class="pad" style="padding:26px 32px 0;">
-<a href="${studio}" target="_blank" style="display:block;">
-<img class="shot" src="${cardImg}" width="536" alt="${t.cardAlt(company)}" style="width:100%;max-width:536px;height:auto;border-radius:10px;border:1px solid #e6ebf5;background:#eef3ff;">
-</a>
+<table role="presentation" class="studio" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #dfe5f1;border-radius:14px;border-collapse:separate;">
+<tr><td class="studio-bar" style="background:#f5f7fc;border-bottom:1px solid #e6ebf5;border-radius:14px 14px 0 0;padding:10px 14px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+<td class="bar-dots" width="46" style="font-size:0;line-height:0;white-space:nowrap;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#d3dae6;"></span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#d3dae6;margin:0 5px;"></span><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#d3dae6;"></span></td>
+<td class="muted" style="color:#53617c;font-size:12px;line-height:16px;font-weight:600;text-align:center;"><span class="bar-title">${t.draftBar} · </span><span style="display:inline-block;background:#fff4d6;color:#8a5a00;border-radius:999px;padding:1px 8px;font-size:11px;font-weight:700;">${t.draft}</span></td>
+<td width="96" style="text-align:${ar ? 'left' : 'right'};white-space:nowrap;"><a class="accent" href="${studio}" target="_blank" style="color:#004dff;font-size:12px;line-height:16px;font-weight:700;text-decoration:none;">${t.customise}</a></td>
+</tr></table>
+</td></tr>
+<tr><td style="padding:16px 16px 0;">
+<a href="${studio}" target="_blank" style="display:block;"><img class="shot" src="${cardImg}" width="502" alt="${t.cardAlt(company)}" style="width:100%;max-width:502px;height:auto;border-radius:8px;border:1px solid #edf1f8;background:#eef3ff;"></a>
+</td></tr>
+<tr><td style="padding:14px 16px 10px;text-align:${align};">
+<p class="text" style="margin:0 0 10px;color:#1f2a44;font-size:13px;line-height:18px;font-weight:600;">${t.makeYours}</p>
+${raw(t.chips.map((label) => html`<a class="chip" href="${studio}" target="_blank" style="display:inline-block;margin:0 ${ar ? '0' : '6px'} 8px ${ar ? '6px' : '0'};padding:7px 13px;border:1px solid #d6e1ff;background:#eef3ff;border-radius:999px;color:#004dff;font-size:13px;line-height:18px;font-weight:600;text-decoration:none;white-space:nowrap;">${label}</a>`).join(''))}
+</td></tr>
+</table>
 </td></tr>
 
 <tr><td class="pad" style="padding:28px 32px 0;text-align:${align};">
@@ -200,38 +231,27 @@ ${i.linkedin ? raw(html`<td class="btn-cell" style="padding:0;">${raw(button({ h
 
 <tr><td style="height:40px;line-height:40px;font-size:0;">&nbsp;</td></tr>
 
-<tr><td class="pad foot" style="padding:34px 32px 34px;background:#000000;text-align:${align};">
+<tr><td class="pad foot" style="padding:26px 32px 24px;background:#000000;text-align:${align};">
 
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-<td class="stack-m" valign="middle" style="text-align:${align};"><a href="https://www.spcfz.ae/" target="_blank"><img src="${logo}" width="148" alt="SPC Free Zone" style="width:148px;height:auto;${ar ? 'margin-left:auto;' : ''}"></a></td>
-<td class="stack-m social" valign="middle" style="text-align:${ar ? 'left' : 'right'};white-space:nowrap;">${raw(social)}</td>
+<td valign="middle" style="text-align:${align};"><a href="https://www.spcfz.ae/" target="_blank"><img src="${logo}" width="132" alt="SPC Free Zone" style="width:132px;height:auto;${ar ? 'margin-left:auto;' : ''}"></a></td>
+<td valign="middle" style="text-align:${ar ? 'left' : 'right'};white-space:nowrap;">${raw(social)}</td>
 </tr></table>
 
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding:28px 0 0;"><div style="height:1px;line-height:1px;font-size:0;background:#24272d;">&nbsp;</div></td></tr></table>
+<p style="margin:22px 0 6px;color:#7fa6ff;font-size:11px;line-height:14px;font-weight:800;letter-spacing:${ar ? '0' : '.16em'};">${t.contactTitle}</p>
+<p style="margin:0;color:#ffffff;font-size:14px;line-height:22px;"><span class="ft-pair" style="white-space:nowrap;"><span style="color:#8b919c;">${t.tollFree}</span>&nbsp; <a href="${PHONE.href}" dir="ltr" style="color:#ffffff;font-weight:600;text-decoration:none;">${PHONE.label}</a></span><span class="ft-sep" style="color:#3f434b;">&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;</span><span class="ft-pair" style="white-space:nowrap;"><span style="color:#8b919c;">${t.emailLabel}</span>&nbsp; <a href="mailto:${CONTACT_EMAIL}" style="color:#ffffff;font-weight:600;text-decoration:none;">${CONTACT_EMAIL}</a></span></p>
 
-<p style="margin:26px 0 14px;color:#7fa6ff;font-size:12px;line-height:16px;font-weight:800;letter-spacing:${ar ? '0' : '.16em'};">${t.contactTitle}</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding:20px 0 16px;"><div style="height:1px;line-height:1px;font-size:0;background:#202329;">&nbsp;</div></td></tr></table>
+
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-<td class="stack-m" valign="top" width="50%" style="text-align:${align};${ar ? 'padding-left:16px;' : 'padding-right:16px;'}">
-<p style="margin:0 0 4px;color:#8b919c;font-size:12px;line-height:16px;">${t.tollFree}</p>
-<a href="${PHONE.href}" dir="ltr" style="color:#ffffff;font-size:17px;line-height:24px;font-weight:700;text-decoration:none;white-space:nowrap;">${PHONE.label}</a>
+<td class="stack-m" valign="middle" style="text-align:${align};">
+<p style="margin:0;color:#aab0ba;font-size:12px;line-height:18px;">${t.copyright(year)}<br>${t.location}</p>
 </td>
-<td class="stack-m ft-gap" valign="top" width="50%" style="text-align:${align};">
-<p style="margin:0 0 4px;color:#8b919c;font-size:12px;line-height:16px;">${t.emailLabel}</p>
-<a href="mailto:${CONTACT_EMAIL}" style="color:#ffffff;font-size:17px;line-height:24px;font-weight:700;text-decoration:none;white-space:nowrap;">${CONTACT_EMAIL}</a>
+<td class="stack-m ft-gap" valign="middle" style="text-align:${ar ? 'left' : 'right'};white-space:nowrap;${ar ? 'padding-right:16px;' : 'padding-left:16px;'}">
+<a href="${unsubscribeUrl}" target="_blank" style="display:inline-block;border:1px solid #33373e;border-radius:6px;padding:5px 12px;background:#000000;color:#c9ced6;font-size:12px;line-height:16px;font-weight:600;text-decoration:none;">${t.unsubscribe}</a>
 </td>
 </tr></table>
-
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding:28px 0 0;"><div style="height:1px;line-height:1px;font-size:0;background:#24272d;">&nbsp;</div></td></tr></table>
-
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:22px;"><tr>
-<td class="stack-m" valign="top" style="text-align:${align};">
-<p style="margin:0;color:#c3c8d0;font-size:13px;line-height:20px;">${t.copyright(year)}<br>${t.location}</p>
-</td>
-<td class="stack-m ft-gap" valign="top" style="text-align:${ar ? 'left' : 'right'};white-space:nowrap;">
-<a href="${unsubscribeUrl}" target="_blank" style="display:inline-block;border:1px solid #3a3e46;border-radius:6px;padding:6px 14px;background:#000000;color:#d0d4db;font-size:12px;line-height:16px;font-weight:600;text-decoration:none;">${t.unsubscribe}</a>
-</td>
-</tr></table>
-<p style="margin:16px 0 0;color:#6f7581;font-size:11.5px;line-height:17px;">${t.why(company)}</p>
+<p style="margin:12px 0 0;color:#666c77;font-size:11px;line-height:16px;">${t.why(company)}</p>
 </td></tr>
 
 </table>

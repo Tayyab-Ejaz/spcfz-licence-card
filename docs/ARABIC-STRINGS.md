@@ -97,6 +97,11 @@ the LinkedIn caption. Generated from the source; `{company}` and `{first name}` 
 | milestone | إنها محطة مميزة في رحلتك الريادية، ونؤمن أنها تستحق المشاركة. | This is an exciting milestone in your entrepreneurial journey, and we believe it's worth sharing. |
 | prepared | جهّزنا لك صورة إعلان خاصة لتحتفل بهذا الإنجاز مع شبكة معارفك. | We've prepared a special announcement image to help you celebrate this achievement with your network. |
 | cardAlt | إعلان الرخصة التجارية لشركة {company} | Business license announcement for {company} |
+| draftBar | بطاقة إعلانك | Your announcement card |
+| draft | مسودة | Draft |
+| customise | خصّصها ← | Customise → |
+| makeYours | قبل النشر، اجعلها بطابعك: | Before you post, make it yours: |
+| chips | + أضف صورتك / غيّر العنوان / جرّب تصميماً آخر | + Add your photo / Change the headline / Try another style |
 | readyTitle | إعلانك جاهز للمشاركة! | Your announcement is ready to share! |
 | readyBody | ما عليك سوى تنزيل صورتك وإضافة لمستك الخاصة، ثم مشاركتها على لينكدإن أو منصتك المفضلة. | Simply download your image, add your personal touch, and share it on LinkedIn or your favourite social media platform. |
 | make | شارك إنجازك | Share Your Milestone |

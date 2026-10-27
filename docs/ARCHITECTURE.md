@@ -498,16 +498,20 @@ What the customer gets, in their preferred language (English or Arabic, right to
   Know!", "A milestone worth celebrating. A story worth sharing.", "Hi <first name>," and the congratulations.
 - Their own card as a picture (the Daylight style since 27 October 2026, SPC's choice: kicker, founder and role,
   the empty photo tile, "Officially in business.", company and activity, "Licensed with"; 1080x1080, drawn by the
-  server: `/c/<token>/card/<hash>-v<n>[-ar].jpg`), linked to their studio. Without a founder, the company and
+  server: `/c/<token>/card/<hash>-v<n>[-ar].jpg`), linked to their studio. It sits in a small editor window: a bar
+  with "Your announcement card · Draft" and "Customise →", and under the card "Before you post, make it yours:" with
+  three chips (Add your photo, Change the headline, Try another style), all opening the studio, so it reads as a
+  draft to personalise rather than a finished picture. The picture itself stays clean (it is what "Post on
+  LinkedIn" from the email posts). Without a founder, the company and
   activity take the top (the design's company-only layout).
 - "Share Your Milestone" (the studio, `?via=email`, counted as a view from email) and, when LinkedIn is set up,
   "Post on LinkedIn" (section 17, with the server's card and the default caption).
 - The closing lines, "Best regards, Team SPC Free Zone", and a black footer band (SPC, 27 October 2026): the SPC logo
   in white and social icons on dark circles (LinkedIn, Instagram, Facebook, YouTube, as on www.spcfz.ae; PNGs from
-  tools/email-icons.mjs); a rule; SPC's Contact Us
-  block (Toll Free Number 800 77239 and Email marketing@spcfz.ae, each a small label over the value); a rule;
-  "© <year> Sharjah Publishing City (SPC) Free Zone / Sharjah, United Arab Emirates." with **Unsubscribe**
-  opposite; and the reason they got it. Everything stacks on phones. No link to the other language (removed at SPC's request, 27 October
+  tools/email-icons.mjs); "CONTACT US" over one line,
+  Toll Free Number 800 77239 | Email marketing@spcfz.ae; a hairline; "© <year> Sharjah Publishing City (SPC) Free
+  Zone / Sharjah, United Arab Emirates." with **Unsubscribe** opposite; and the reason they got it. Compact
+  (about 285 px); the contact pairs and the bottom row stack on phones. No link to the other language (removed at SPC's request, 27 October
   2026); the card page has its own switch.
 - Unsubscribe: the button opens `/c/<token>/unsubscribe`, which asks first (mailbox link checkers open links, so
   opening it changes nothing) and unsubscribes on its button. Every email also carries `List-Unsubscribe` and
