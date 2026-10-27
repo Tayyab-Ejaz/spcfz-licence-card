@@ -86,7 +86,7 @@ const firstName = (full: string | null): string | null => {
 
 /** A button that survives Outlook (VML roundrect) and every other client (a padded link). */
 function button(o: { href: string; label: string; bg: string; fg: string; border: string; width: number; cls: string }): string {
-  return html`<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${o.href}" style="height:52px;v-text-anchor:middle;width:${o.width}px;" arcsize="50%" strokecolor="${o.border}" fillcolor="${o.bg}"><w:anchorlock/><center style="color:${o.fg};font-family:Arial,sans-serif;font-size:16px;font-weight:bold;">${o.label}</center></v:roundrect><![endif]--><!--[if !mso]><!--><a class="${o.cls}" href="${o.href}" target="_blank" style="display:inline-block;background:${o.bg};color:${o.fg};border:1.5px solid ${o.border};border-radius:999px;padding:15px 30px;font-size:16px;line-height:20px;font-weight:700;text-decoration:none;mso-hide:all;">${o.label}</a><!--<![endif]-->`;
+  return html`<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${o.href}" style="height:48px;v-text-anchor:middle;width:${o.width}px;" arcsize="17%" strokecolor="${o.border}" fillcolor="${o.bg}"><w:anchorlock/><center style="color:${o.fg};font-family:Arial,sans-serif;font-size:15px;font-weight:bold;">${o.label}</center></v:roundrect><![endif]--><!--[if !mso]><!--><a class="${o.cls}" href="${o.href}" target="_blank" style="display:inline-block;background:${o.bg};color:${o.fg};border:1.5px solid ${o.border};border-radius:8px;padding:13px 24px;font-size:15px;line-height:20px;font-weight:700;text-decoration:none;mso-hide:all;">${o.label}</a><!--<![endif]-->`;
 }
 
 export function renderWelcome(i: WelcomeInput): WelcomeEmail {
@@ -124,79 +124,78 @@ img{border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;di
 a{text-decoration:none}
 @media (max-width:620px){
   .wrap{width:100%!important}
-  .pad{padding-left:22px!important;padding-right:22px!important}
-  .stack{display:block!important;width:100%!important;padding:0 0 18px!important}
-  .h1{font-size:28px!important;line-height:34px!important}
+  .pad{padding-left:20px!important;padding-right:20px!important}
+  .h1{font-size:24px!important;line-height:31px!important}
+  .btn-table{width:100%!important}
   .btn-cell{display:block!important;width:100%!important;padding:0 0 10px!important}
+  .btn-cell a{display:block!important;text-align:center!important}
 }
 @media (prefers-color-scheme:dark){
-  .page,.outer{background:#0b1220!important}
-  .card{background:#121b2e!important}
+  .page,.outer,.wrap{background:#0b1220!important}
   .text,.h1{color:#e8edf7!important}
   .muted{color:#9aa7c0!important}
   .accent{color:#8fb0ff!important}
+  .rule{border-color:#22304d!important}
+  .shot{border-color:#22304d!important}
   .unsub{color:#9aa7c0!important;border-color:#3a4863!important}
-  .chip{background:#1b2a4d!important;color:#8fb0ff!important}
-  .eyebrow{background:#16244a!important;color:#8fb0ff!important}
-  .panel{background:#16213a!important}
-  .btn-secondary{background:#121b2e!important;color:#8fb0ff!important;border-color:#3b5bb0!important}
-  .logo{background:#ffffff!important;padding:8px 12px!important;border-radius:10px!important}
+  .btn-secondary{background:#0b1220!important;color:#8fb0ff!important;border-color:#3b5bb0!important}
+  .logo{background:#ffffff!important;padding:6px 10px!important;border-radius:8px!important}
 }
-[data-ogsc] .card{background:#121b2e!important}
 [data-ogsc] .text,[data-ogsc] .h1{color:#e8edf7!important}
 [data-ogsc] .muted{color:#9aa7c0!important}
 </style>
 </head>
-<body class="page" style="margin:0;padding:0;background:#eef3ff;">
+<body class="page" style="margin:0;padding:0;background:#ffffff;">
 <div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">${t.preheader}${raw('&#8199;&#65279;&#847;'.repeat(40))}</div>
-<table role="presentation" class="outer" width="100%" cellpadding="0" cellspacing="0" style="background:#eef3ff;">
-<tr><td align="center" style="padding:28px 12px 40px;">
-<table role="presentation" class="wrap" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:600px;font-family:${font};" dir="${dir}">
+<table role="presentation" class="outer" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;">
+<tr><td align="center" style="padding:0;">
+<table role="presentation" class="wrap" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:600px;background:#ffffff;font-family:${font};" dir="${dir}">
 
-<tr><td class="pad" style="padding:0 8px 18px;text-align:${align};">
-<a href="https://www.spcfz.ae/" target="_blank"><img class="logo" src="${logo}" width="150" alt="SPC Free Zone" style="width:150px;height:auto;${ar ? 'margin-left:auto;' : ''}"></a>
+<tr><td style="height:4px;line-height:4px;font-size:0;background:#004dff;">&nbsp;</td></tr>
+
+<tr><td class="pad rule" style="padding:26px 32px 22px;text-align:${align};border-bottom:1px solid #e6ebf5;">
+<a href="https://www.spcfz.ae/" target="_blank"><img class="logo" src="${logo}" width="128" alt="SPC Free Zone" style="width:128px;height:auto;${ar ? 'margin-left:auto;' : ''}"></a>
 </td></tr>
 
-<tr><td class="card" style="background:#ffffff;border-radius:24px;box-shadow:0 18px 40px -28px rgba(7,19,41,.35);">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-<tr><td class="pad" style="padding:38px 40px 6px;text-align:${align};">
-<h1 class="h1" style="margin:0 0 12px;color:#071329;font-size:32px;line-height:38px;font-weight:800;letter-spacing:${ar ? '0' : '-.02em'};">${t.h1}</h1>
-<p class="accent" style="margin:0 0 24px;color:#004dff;font-size:17px;line-height:24px;font-weight:700;">${t.sub}</p>
-<p class="text" style="margin:0 0 14px;color:#071329;font-size:16px;line-height:25px;">${t.hello(first)}</p>
-<p class="text" style="margin:0 0 14px;color:#071329;font-size:16px;line-height:25px;">${t.congrats} <strong style="white-space:nowrap;">${t.congratsBold}</strong></p>
-<p class="muted" style="margin:0 0 14px;color:#53617c;font-size:16px;line-height:25px;">${t.milestone}</p>
-<p class="muted" style="margin:0;color:#53617c;font-size:16px;line-height:25px;">${t.prepared}</p>
+<tr><td class="pad" style="padding:34px 32px 0;text-align:${align};">
+<h1 class="h1" style="margin:0 0 8px;color:#071329;font-size:26px;line-height:33px;font-weight:800;letter-spacing:${ar ? '0' : '-.01em'};">${t.h1}</h1>
+<p class="accent" style="margin:0 0 28px;color:#004dff;font-size:16px;line-height:24px;font-weight:600;">${t.sub}</p>
+<p class="text" style="margin:0 0 16px;color:#1f2a44;font-size:16px;line-height:26px;">${t.hello(first)}</p>
+<p class="text" style="margin:0 0 16px;color:#1f2a44;font-size:16px;line-height:26px;">${t.congrats} <strong style="white-space:nowrap;">${t.congratsBold}</strong></p>
+<p class="text" style="margin:0 0 16px;color:#1f2a44;font-size:16px;line-height:26px;">${t.milestone}</p>
+<p class="text" style="margin:0;color:#1f2a44;font-size:16px;line-height:26px;">${t.prepared}</p>
 </td></tr>
 
-<tr><td class="pad" style="padding:24px 40px 4px;">
-<a href="${studio}" target="_blank" style="display:block;border-radius:18px;overflow:hidden;">
-<img src="${cardImg}" width="520" alt="${t.cardAlt(company)}" style="width:100%;max-width:520px;height:auto;border-radius:18px;background:#eef3ff;">
+<tr><td class="pad" style="padding:26px 32px 0;">
+<a href="${studio}" target="_blank" style="display:block;">
+<img class="shot" src="${cardImg}" width="536" alt="${t.cardAlt(company)}" style="width:100%;max-width:536px;height:auto;border-radius:10px;border:1px solid #e6ebf5;background:#eef3ff;">
 </a>
 </td></tr>
 
-<tr><td class="pad" style="padding:24px 40px 4px;text-align:center;">
-<p class="text" style="margin:0 0 8px;color:#071329;font-size:19px;line-height:26px;font-weight:800;">${t.readyTitle}</p>
-<p class="muted" style="margin:0 auto 20px;max-width:460px;color:#53617c;font-size:15px;line-height:23px;">${t.readyBody}</p>
-<table role="presentation" cellpadding="0" cellspacing="0" align="center"><tr>
-<td class="btn-cell" style="padding:0 6px;">${raw(button({ href: studio, label: t.make, bg: '#004dff', fg: '#ffffff', border: '#004dff', width: 240, cls: 'btn-primary' }))}</td>
-${i.linkedin ? raw(html`<td class="btn-cell" style="padding:0 6px;">${raw(button({ href: linkedinUrl, label: t.linkedin, bg: '#ffffff', fg: '#0a66c2', border: '#0a66c2', width: 220, cls: 'btn-secondary' }))}</td>`) : ''}
+<tr><td class="pad" style="padding:28px 32px 0;text-align:${align};">
+<p class="text" style="margin:0 0 6px;color:#071329;font-size:17px;line-height:26px;font-weight:700;">${t.readyTitle}</p>
+<p class="text" style="margin:0 0 20px;color:#1f2a44;font-size:16px;line-height:26px;">${t.readyBody}</p>
+<table role="presentation" class="btn-table" cellpadding="0" cellspacing="0" align="${align}"><tr>
+<td class="btn-cell" style="padding:0;${ar ? 'padding-left:10px;' : 'padding-right:10px;'}">${raw(button({ href: studio, label: t.make, bg: '#004dff', fg: '#ffffff', border: '#004dff', width: 220, cls: 'btn-primary' }))}</td>
+${i.linkedin ? raw(html`<td class="btn-cell" style="padding:0;">${raw(button({ href: linkedinUrl, label: t.linkedin, bg: '#ffffff', fg: '#0a66c2', border: '#0a66c2', width: 200, cls: 'btn-secondary' }))}</td>`) : ''}
 </tr></table>
 </td></tr>
 
-<tr><td class="pad" style="padding:28px 40px 38px;text-align:${align};">
-<p class="muted" style="margin:0 0 14px;color:#53617c;font-size:16px;line-height:25px;">${t.network}</p>
-<p class="muted" style="margin:0 0 14px;color:#53617c;font-size:16px;line-height:25px;">${t.cheers}</p>
-<p class="text" style="margin:0 0 22px;color:#071329;font-size:16px;line-height:25px;font-weight:700;">${t.welcome}</p>
-<p class="text" style="margin:0;color:#071329;font-size:16px;line-height:25px;">${t.regards}<br><strong>${t.team}</strong></p>
-</td></tr>
-</table>
+<tr><td class="pad" style="padding:30px 32px 0;text-align:${align};">
+<p class="text" style="margin:0 0 16px;color:#1f2a44;font-size:16px;line-height:26px;">${t.network}</p>
+<p class="text" style="margin:0 0 16px;color:#1f2a44;font-size:16px;line-height:26px;">${t.cheers}</p>
+<p class="text" style="margin:0;color:#071329;font-size:16px;line-height:26px;font-weight:700;">${t.welcome}</p>
+<p class="text" style="margin:28px 0 0;color:#1f2a44;font-size:16px;line-height:26px;">${t.regards}<br><strong class="text" style="color:#071329;">${t.team}</strong></p>
 </td></tr>
 
-<tr><td class="pad" style="padding:22px 16px 0;text-align:center;">
+<tr><td class="pad" style="padding:36px 32px 40px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+<td class="rule" style="border-top:1px solid #e6ebf5;padding-top:22px;text-align:${align};">
 <p class="muted" style="margin:0 0 6px;color:#7c879d;font-size:12px;line-height:18px;">${t.why(company)}</p>
-<p class="muted" style="margin:0 0 6px;color:#7c879d;font-size:12px;line-height:18px;">${t.address}</p>
+<p class="muted" style="margin:0 0 12px;color:#7c879d;font-size:12px;line-height:18px;">${t.address}</p>
 <p style="margin:0 0 14px;font-size:12px;line-height:18px;"><a href="${CONTACT_URL}" target="_blank" style="color:#004dff;font-weight:600;">${t.help}</a></p>
-<p style="margin:0;font-size:12px;line-height:18px;"><a class="unsub" href="${unsubscribeUrl}" target="_blank" style="display:inline-block;border:1px solid #c9d4ea;border-radius:999px;padding:6px 16px;color:#53617c;font-size:12px;line-height:16px;font-weight:600;text-decoration:none;">${t.unsubscribe}</a></p>
+<p style="margin:0;font-size:12px;line-height:18px;"><a class="unsub" href="${unsubscribeUrl}" target="_blank" style="display:inline-block;border:1px solid #d3dbea;border-radius:6px;padding:6px 14px;color:#53617c;font-size:12px;line-height:16px;font-weight:600;text-decoration:none;">${t.unsubscribe}</a></p>
+</td></tr></table>
 </td></tr>
 
 </table>
