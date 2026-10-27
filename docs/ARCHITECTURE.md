@@ -8,7 +8,10 @@ against. Change the document first, then the code.
 When the ERP issues a business licence, produce a set of branded social images
 that say the company is officially licensed at SPC Free Zone, and give the
 customer one personal page where they can view, download and share them. The
-ERP's licence-issued email links to that page. Nothing else is sent.
+ERP's licence-issued email links to that page. Since 27 October 2026 the
+service also sends its own welcome email with the customer's card in it
+(section 16), and can post the card to the customer's LinkedIn for them,
+after they review it (section 17).
 
 ### In version one
 
@@ -21,7 +24,7 @@ ERP's licence-issued email links to that page. Nothing else is sent.
 
 ### Not in version one
 
-Email or WhatsApp sent by us, QR referral codes, Zoho CRM write-back, print
+WhatsApp sent by us (email: since 27 October 2026, section 16), QR referral codes, Zoho CRM write-back, print
 files, any change to www.spcfz.ae, customer accounts, customer-editable text.
 
 ## 2. Decisions
@@ -50,10 +53,13 @@ files, any change to www.spcfz.ae, customer accounts, customer-editable text.
 | C3 | A separate test endpoint with its own secret, instead of a flag in the payload. Test cards say [TEST] in the page title and are excluded from counters. Since 19 October 2026 they are kept, like everything else. | The ERP team cannot be relied on to set a flag correctly. |
 | C4 | The test endpoint keeps the raw request body (kept for good since 19 October 2026). The production endpoint never stores a raw body. | The user cannot get a sample ERP record any other way. |
 | C5 | Only the licence number and the English company name are required. Everything else is optional with a fallback. ERP field names are mapped in config, not fixed. | The user has little control over what the ERP sends. |
-| C6 | Personal data is limited to the founder's name (since 16 Oct 2026, the user's decision: the ERP sends it so the studio can pre-fill it). The mapper drops everything else, including emails and phone numbers. The name is cleared when a card expires and deleted with the card. | The design pre-fills the founder; nothing else needs personal data. |
+| C6 | Personal data is limited to the founder's name (since 16 Oct 2026, so the studio can pre-fill it) and, since 27 Oct 2026, the customer's email and one copy-to email (for the welcome email, section 16). The mapper drops everything else, including phone numbers. Kept like the rest of the card (C8); deleted with the card. | The design pre-fills the founder; the welcome email needs an address; nothing else needs personal data. |
 | C7 | Admin has its own sign-in (19 October 2026, replacing Cloudflare Access): a key-gated login page, staff accounts with scrypt passwords, server-side sessions. | SPC chose not to depend on Cloudflare's login; the key keeps the page unfindable, the accounts give per-person audit. |
 | C8 | Nothing is deleted automatically (19 October 2026). A card expires when its licence does: from the licence expiry date the ERP (or staff) give, the page says the licence has expired, with nothing removed; a renewal brings it back at the same link. No expiry date, no expiry. | SPC's decision: keep all data; a card should follow the licence, not a fixed period. |
 | C9 | Google Tag Manager is not loaded on the page by default. A config switch can add the site container GTM-PZ8R4DN. | Marketing decision; counters cover v1 needs. |
+| C11 | The service sends the welcome email itself (27 October 2026), one per card: when a card arrives with an email, or when an email first arrives for an existing card. Staff can send it again. Through any SMTP provider; retries 5 times over 15 hours. | The email can carry the customer's own card and a one-tap LinkedIn button, which the ERP's email cannot. |
+| C12 | Test cards only email addresses on `MAIL_TEST_ALLOWLIST` (default: spcfz.ae). CSV imports do not email unless staff tick the box. | Test data and back-fills must never reach customers by accident. |
+| C13 | "Post to LinkedIn" always shows the customer the post (picture, text, their name) and posts only when they press Post now, once. The LinkedIn token is held in memory for at most 15 minutes and never stored; the database keeps only the outcome. | Posting under someone's name must be their explicit act; a stored token would be a standing credential for every customer's account. |
 | C10 | ~~Deployment runs from GitHub Actions.~~ Since 15 Oct 2026: deployment runs from the Mac with `tools/deploy.sh`, one approved step at a time; CI on GitHub runs the checks. | The server is SPC's own and every write on it needs the user's approval. |
 
 ## 3. System overview
@@ -70,6 +76,9 @@ Cloudflare Workers design; the behaviour in this document is unchanged.
 | Records and counters | SQLite file `DATA_DIR/licence-card.sqlite`, WAL mode |
 | Daily housekeeping | in-process scheduler at 05:15 Asia/Dubai, plus a SQLite backup |
 | Admin login | Own sign-in page, key in the link (src/admin/auth.ts) |
+| Welcome email | outbox table + in-process worker every 30 s, SMTP via nodemailer (src/mail/) |
+| Post to LinkedIn | LinkedIn OAuth + Posts API, drafts in memory (src/linkedin/) |
+| Pictures drawn on the server | sharp: the link preview (1200x630) and the email's card (1080x1080 Day One), cached in memory |
 | Edge, TLS, rate limits, IP allowlist | Cloudflare proxy and WAF on the spcfz.ae Pro zone; Apache admits Cloudflare only; the app checks the ERP allowlist itself |
 
 Flow:
@@ -395,9 +404,14 @@ Screens:
   set the new one as current, move the old one to previous, tell the ERP team,
   clear previous after they confirm.
 - Constant-time comparison. 64 KB body limit. JSON only.
-- The founder's name is the only personal data (C6). Logs record the licence
-  number and card id, never payload fields.
-- Rate limits in the app, per client per minute (an IPv4 address, or an IPv6 /64) (`DEFAULT_RATE_LIMITS` in src/index.ts): 300 GET/HEAD on `/c/*`, 60 POST on `/c/*`, 20 on `/v1/*` from addresses not on the ERP allowlist (allowlisted addresses are never limited). Answers 429 with Retry-After. Cloudflare rules may add an outer layer.
+- Personal data is the founder's name and the two emails (C6). Logs record the licence
+  number and card id, never payload fields or email addresses.
+- LinkedIn: the access token stays in memory with its draft for at most 15 minutes and is dropped once the
+  post is made (C13). The picture the customer made in the studio reaches the server only when they press
+  Post to LinkedIn, and is held in memory with the draft, never written to disk. Drafts are bound to an
+  HttpOnly, SameSite=Lax cookie; the review form carries a second key; the sign-in state is 40 random
+  characters and works once; the studio's upload must come from our own origin.
+- Rate limits in the app, per client per minute (an IPv4 address, or an IPv6 /64) (`DEFAULT_RATE_LIMITS` in src/index.ts): 300 GET/HEAD on `/c/*`, 60 POST on `/c/*`, 20 on `/v1/*` from addresses not on the ERP allowlist (allowlisted addresses are never limited); and 60 per 10 minutes for "Post to LinkedIn" (`/linkedin/*` and `/c/:token/linkedin`). Answers 429 with Retry-After. Cloudflare rules may add an outer layer.
 - Strict CSP, `Referrer-Policy: strict-origin-when-cross-origin`, HSTS from
   Cloudflare.
 - Admin actions are written to the events table with the signed-in staff email.
@@ -473,3 +487,58 @@ Layout and deployment are in docs/DEV.md and docs/RUNBOOK.md.
 4. ~~Who signs off the Arabic strings~~ Answered 15 Oct 2026: the user.
 5. ~~Which GitHub account owns the repository~~ Answered 15 Oct 2026: the
    personal account that holds spcfz-forms (`Tayyab-Ejaz/spcfz-licence-card`).
+
+## 16. Welcome email (27 October 2026)
+
+What the customer gets, in their preferred language (English or Arabic, right to left), from `MAIL_FROM`:
+
+- Subject: "<Company> is officially licensed. Your announcement card is ready".
+- Their own card as a picture (the Day One style, 1080x1080, drawn by the server: `/c/<token>/card/<hash>-v<n>[-ar].jpg`),
+  linked to their studio.
+- "Make it yours" (the studio, `?via=email`, counted as a view from email) and, when LinkedIn is set up,
+  "Post on LinkedIn" (section 17, with the server's card and the default caption).
+- Three steps, the licence details (company, licence number, issued, valid until), a link to the other language.
+- Built for real inboxes: tables and inline styles, a preheader, Outlook buttons, dark mode, alt text, and a
+  plain-text part. Headers `Auto-Submitted: auto-generated` and `X-Auto-Response-Suppress`.
+
+When it is sent (C11, C12): one per card, queued when a card is created or updated with a customer email it
+did not have an email for; staff can send it again from the card in the admin (logged as `emailed`). Not for
+expired cards. A worker sends what is due every 30 seconds and straight after queueing; a failure is retried
+after 1, 5, 30, 120 and 720 minutes, then marked failed with its last error. Test cards email only
+`MAIL_TEST_ALLOWLIST`; others get a `skipped` row that says why. CSV import emails only when ticked.
+
+Transport (`MAIL_TRANSPORT`): `smtp` (`MAIL_SMTP_URL`, any provider: ZeptoMail, Amazon SES, Microsoft 365),
+`file` (written to `DATA_DIR/mail-outbox`, the local copy), `off` (queued, not sent). `MAIL_REPLY_TO` and
+`MAIL_BCC` are optional. The sender's domain needs SPF and DKIM for the provider (docs/RUNBOOK.md).
+
+The admin shows each card's emails (queued, sent, failed, skipped), a Send again button and a preview in
+both languages; Settings shows the transport and counts. Table `emails` (migration 0007).
+
+## 17. Post to LinkedIn (27 October 2026)
+
+Posts the card to the customer's own LinkedIn profile through LinkedIn's API, so the picture arrives
+attached, which the phone share sheet cannot do from a web page.
+
+    studio  POST /c/:token/linkedin   the picture the customer made (JPEG) + their caption, from the studio
+    email   GET  /c/:token/linkedin   the server-drawn card + the default caption, from the welcome email
+       -> LinkedIn sign-in (scope "openid profile w_member_social")
+       -> GET /linkedin/callback   code -> access token -> who they are (name, photo)
+       -> GET /linkedin/review     the post as it will appear; caption editable (3,000 characters)
+       -> POST /linkedin/publish   upload the picture, create the post (public, main feed)
+       -> GET /linkedin/done       "Your announcement is live", with a link to the post
+
+- The caption goes as LinkedIn "little text": reserved characters escaped, `#Word` as hashtags and
+  "@SPC Free Zone" as a mention of SPC's page when `LINKEDIN_ORG_URN` is set. If LinkedIn refuses the
+  mention, the post is made once more with the name as plain text.
+- Nothing is posted without Post now; two presses make one post. Cancelling at LinkedIn shows "Nothing was
+  posted". An expired sign-in asks to sign in again and keeps the text.
+- Recorded: a `linkedin_posts` row per attempt (posted with the post's URN, or failed with the reason; no
+  token, no member id), and a `share` metric with network `linkedin` (not for test cards). The admin card
+  page lists the posts with links.
+- Needs a LinkedIn developer app with the products "Sign In with LinkedIn using OpenID Connect" and "Share on
+  LinkedIn", the redirect URL `<BASE_URL>/linkedin/callback`, and `LINKEDIN_CLIENT_ID`, `LINKEDIN_CLIENT_SECRET`
+  in the env file. Without them the buttons are hidden. `LINKEDIN_API_VERSION` (YYYYMM) must be a version
+  LinkedIn still supports (about a year).
+- The local copy uses a pretend LinkedIn (`LINKEDIN_FAKE=1`, refused unless BASE_URL is localhost) and writes
+  each post to `DATA_DIR/linkedin-outbox`.
+

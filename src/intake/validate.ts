@@ -43,6 +43,24 @@ function optionalText(input: Record<string, unknown>, key: string, max: number, 
   return clean;
 }
 
+const EMAIL_RE = /^[^\s@<>(),;:"\[\]]+@[^\s@<>(),;:"\[\]]+\.[A-Za-z]{2,}$/;
+
+/** Optional email address: blank -> null; trimmed and lower-cased; one address, at most 254 characters. */
+function optionalEmail(input: Record<string, unknown>, key: string, errors: string[]): string | null {
+  const v = input[key];
+  if (isBlank(v)) return null;
+  if (typeof v !== 'string') {
+    errors.push(`${key}: must be an email address`);
+    return null;
+  }
+  const s = v.trim().toLowerCase().replace(/^mailto:/, '');
+  if (s.length > 254 || !EMAIL_RE.test(s)) {
+    errors.push(`${key}: must be one valid email address`);
+    return null;
+  }
+  return s;
+}
+
 /** en / ar in the forms an ERP is likely to send; null when unrecognised. */
 export function normaliseLanguage(v: unknown): Lang | null {
   if (typeof v !== 'string') return null;
@@ -125,6 +143,10 @@ export function validateCanonical(input: Record<string, unknown>, opts: { today?
     else licence_expires_on = parsed;
   }
 
+  // customer_email, cc_email: optional; where the welcome email goes, and an optional copy.
+  const customer_email = optionalEmail(input, 'customer_email', errors);
+  const cc_email = optionalEmail(input, 'cc_email', errors);
+
   // preferred_language: optional, en or ar in any common spelling, default en.
   let preferred_language: Lang = 'en';
   const rawLang = input['preferred_language'];
@@ -149,6 +171,8 @@ export function validateCanonical(input: Record<string, unknown>, opts: { today?
       issued_on,
       preferred_language,
       licence_expires_on,
+      customer_email,
+      cc_email,
     },
   };
 }

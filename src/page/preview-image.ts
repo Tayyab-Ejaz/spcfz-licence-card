@@ -12,7 +12,7 @@ import { STUDIO_DIR } from './studio.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const FONT_DIR = path.resolve(HERE, '../../assets/fonts');
-const LOGO_FILE = path.join(STUDIO_DIR, 'a', 'a18673349b740aa2.png'); // the colour SPC Free Zone logo used on the card
+export const LOGO_FILE = path.join(STUDIO_DIR, 'a', 'a18673349b740aa2.png'); // the colour SPC Free Zone logo used on the card
 
 const W = 1200;
 const H = 630;
@@ -20,7 +20,7 @@ const INK = '#071329';
 const BLUE = '#004dff';
 const MUTED = '#53617c';
 
-interface Face { file: string; family: string; weight: string }
+export interface Face { file: string; family: string; weight: string }
 const FACES: Record<Lang, { name: Face; label: Face; small: Face }> = {
   en: {
     name: { file: 'Inter-ExtraBold.ttf', family: 'Inter', weight: 'Ultra-Bold' },
@@ -34,14 +34,14 @@ const FACES: Record<Lang, { name: Face; label: Face; small: Face }> = {
   },
 };
 
-const escapeMarkup = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+export const escapeMarkup = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 let fontsReady = false;
 /**
  * Point fontconfig at our six fonts and nothing else, before the first text is drawn. Without a config it
  * complains, scans every font on the machine (a minute on a Mac) and may draw Inter text in a system font.
  */
-function useOurFonts(): void {
+export function useOurFonts(): void {
   if (fontsReady) return;
   const dir = path.join(os.tmpdir(), 'spcfz-licence-card-fontconfig');
   mkdirSync(path.join(dir, 'cache'), { recursive: true });
@@ -68,9 +68,9 @@ export function unbreakable(name: string): string {
     .replace(/ ([-–—]) /g, '\u00a0$1 ');
 }
 
-interface TextImage { input: Buffer; width: number; height: number }
+export interface TextImage { input: Buffer; width: number; height: number }
 
-async function textImage(o: { text: string; face: Face; size: number; color: string; width: number; tracking?: number; lineHeight?: number }): Promise<TextImage> {
+export async function textImage(o: { text: string; face: Face; size: number; color: string; width: number; tracking?: number; lineHeight?: number; align?: 'left' | 'centre' | 'right' }): Promise<TextImage> {
   const letter = o.tracking ? ` letter_spacing="${Math.round(o.tracking * o.size * 1024)}"` : '';
   const line = o.lineHeight ? ` line_height="${o.lineHeight}"` : '';
   const markup = `<span foreground="${o.color}"${letter}${line}>${escapeMarkup(o.text)}</span>`;
@@ -80,7 +80,7 @@ async function textImage(o: { text: string; face: Face; size: number; color: str
       font: `${o.face.family} ${o.face.weight} ${o.size}`,
       fontfile: path.join(FONT_DIR, o.face.file),
       width: o.width,
-      align: 'centre',
+      align: o.align ?? 'centre',
       wrap: 'word',
       rgba: true,
       dpi: 72,

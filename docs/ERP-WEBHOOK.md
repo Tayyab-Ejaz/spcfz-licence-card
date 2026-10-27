@@ -1,10 +1,15 @@
 # Licence-issued webhook: specification for the ERP team
 
-From SPC Free Zone marketing. Version 0.1, 15 October 2026.
+From SPC Free Zone marketing. Version 0.2, 27 October 2026 (0.1: 15 October 2026).
 
-When a business licence is issued, please send us one HTTP request. We answer
-with a web address. That address goes into the licence-issued email you already
-send to the customer. Nothing else is needed from the ERP.
+When a business licence is issued, please send us one HTTP request, with the
+customer's email address in it. We email the customer their announcement card
+ourselves, and answer you with a web address to the same card. Nothing else is
+needed from the ERP.
+
+**New in 0.2:** the customer's email address (required for the welcome email)
+and an optional copy-to address. Putting the address into your own
+licence-issued email is now optional.
 
 ## Endpoints
 
@@ -53,11 +58,16 @@ our side. What we need:
 | Founder's name, Arabic | no | Used on the Arabic card. Without it the Arabic card shows the English name. |
 | Issue date | no | Any unambiguous format. ISO `YYYY-MM-DD` is best. Defaults to today. |
 | Licence expiry date | strongly recommended | The licence's last valid day, any unambiguous format (for example `expiry_date`). After this day the card's page says the licence has expired. Send the licence again with the new date when it is renewed, and the same link works again. Without it the card never expires. |
-| Customer's preferred language | no | `en` or `ar`. Defaults to English. |
+| Customer's preferred language | no | `en` or `ar`. Defaults to English. The welcome email is in this language. |
+| Customer's email address | yes, for the welcome email | One address, for example `customer_email` or `email`, or an `email` inside the owner or founder object. Without it the card is still made, but we send no email. |
+| Copy-to email | no | One address that receives a copy, for example the account manager (`cc_email` or `account_manager_email`). |
 
-The founder's name is the only personal detail we keep. Please do not send
-email addresses or phone numbers; if your system cannot leave them out, we
-discard them on receipt and never store them.
+The personal details we keep are the founder's name and these two email
+addresses. Please do not send phone numbers or other personal data; if your
+system cannot leave them out, we discard them on receipt and never store them.
+
+Each licence gets one welcome email: the first time we receive it with an email
+address. Sending the same licence again does not email the customer again.
 
 Example:
 
@@ -73,7 +83,9 @@ Example:
   "founder_name_ar": "مريم فوزي",
   "issued_on": "2026-10-15",
   "expiry_date": "2027-10-14",
-  "preferred_language": "en"
+  "preferred_language": "en",
+  "customer_email": "mariam@nimbus-publishing.com",
+  "cc_email": "account.manager@spcfz.ae"
 }
 ```
 
@@ -92,8 +104,9 @@ Normally within one second:
 }
 ```
 
-Put `page_url` into the customer's licence-issued email. The page is ready as
-soon as we answer: the customer builds and downloads the card in the browser.
+We email the card to the customer within a minute. You may also put `page_url`
+into your licence-issued email; it is the same card. The page is ready as soon
+as we answer: the customer builds and downloads the card in the browser.
 
 Sending the same licence twice is safe. You get the same `page_url` back.
 A renewal is the same licence number with a later expiry date: send it the
@@ -117,9 +130,10 @@ Set your request timeout to at least 10 seconds.
 
 1. We send you the two secrets. You send us your outbound IP addresses.
 2. You post several real-looking licences to the test endpoint, including at
-   least one with no Arabic name and one with a long company name.
+   least one with no Arabic name and one with a long company name. Test
+   licences only email @spcfz.ae addresses, so use one of yours to see the email.
 3. We confirm the field mapping with you and show you the resulting pages.
-4. You add `page_url` to the licence-issued email template.
+4. Optional: you add `page_url` to the licence-issued email template.
 5. You switch the URL to the live endpoint and the secret to the live secret.
 6. The first few live licences are checked by both teams.
 

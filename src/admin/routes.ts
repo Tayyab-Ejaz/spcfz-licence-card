@@ -22,6 +22,12 @@ import { hashFields, upsertFromCanonical } from '../intake/upsert.js';
 import type { AdminVerifier, AuthHandlers } from './auth.js';
 import { createAuthHandlers, sessionVerifier } from './auth.js';
 import { csrfFailure, csrfToken, ensureCsrf } from './csrf.js';
+import { emailCounts, emailsForCard } from '../db/emails.js';
+import type { EmailRow } from '../db/emails.js';
+import { queueWelcome } from '../mail/outbox.js';
+import { renderWelcome } from '../mail/welcome.js';
+import { linkedinPostsForCard } from '../db/linkedin.js';
+import { linkedinEnabled } from '../linkedin/client.js';
 import type { AdminStatus } from './layout.js';
 import {
   EMPTY, actionForm, adminHeaders, badge, csrfField, fmtDateTime, h, kv, pager, respond, table, testBadge,
@@ -34,13 +40,17 @@ const STATUSES: readonly CardStatus[] = ['pending', 'ready', 'failed', 'expired'
 const SOURCES: readonly CardSource[] = ['webhook', 'test', 'manual', 'csv', 'replay'];
 const EVENT_ROUTES: readonly EventRoute[] = ['production', 'test', 'admin'];
 const EVENT_OUTCOMES: readonly EventOutcome[] = [
-  'created', 'unchanged', 'updated', 'rejected', 'replayed', 'deleted', 'expired', 'unexpired', 'imported', 'settings',
+  'created', 'unchanged', 'updated', 'rejected', 'replayed', 'deleted', 'expired', 'unexpired', 'imported', 'settings', 'emailed',
 ];
 
 const FLASH: Record<string, string> = {
   expired: 'Card marked expired; the page now says the licence has expired. Nothing was removed.',
   unexpired: 'Card restored; the page works again.',
   expiry: 'Licence expiry date saved; the card follows it.',
+  emailed: 'Welcome email queued; it goes out within a minute.',
+  'email-none': 'This card has no customer email. Add one with Create (same licence number) or the next ERP update.',
+  'email-expired': 'This card has expired, so no email was sent.',
+  'email-test': 'Test card: the recipient is not on MAIL_TEST_ALLOWLIST, so the email was skipped.',
   deleted: 'Card deleted.',
   created: 'Card created; the page is ready now.',
   updated: 'Card updated; the page shows the new details now.',
@@ -174,7 +184,7 @@ interface CreateField {
   key: keyof CanonicalFields;
   label: string;
   required: boolean;
-  type: 'text' | 'date';
+  type: 'text' | 'date' | 'email';
   hint: string;
 }
 
@@ -188,6 +198,8 @@ const CREATE_FIELDS: readonly CreateField[] = [
   { key: 'founder_name_en', label: 'Founder name', required: false, type: 'text', hint: 'Optional. Pre-filled on the card; the customer can change it.' },
   { key: 'founder_name_ar', label: 'Founder name (Arabic)', required: false, type: 'text', hint: 'Optional. The English name is used on the Arabic card when empty.' },
   { key: 'issued_on', label: 'Issued on', required: false, type: 'date', hint: 'Today in Asia/Dubai when empty.' },
+  { key: 'customer_email', label: 'Customer email', required: false, type: 'email', hint: 'Optional. The welcome email with the card goes here.' },
+  { key: 'cc_email', label: 'Copy to', required: false, type: 'email', hint: 'Optional. Gets a copy of the welcome email, e.g. the account manager.' },
   { key: 'licence_expires_on', label: 'Licence expires on', required: false, type: 'date', hint: "Optional. The card shows \"expired\" after this day; it never expires when empty." },
 ];
 
@@ -204,6 +216,7 @@ ${CREATE_FIELDS.map(
   (l) => h`<option value="${l}"${l === lang ? raw(' selected') : EMPTY}>${l === 'en' ? 'English' : 'Arabic'}</option>`,
 )}</select><small>The language the page opens in; the visitor can switch.</small></label>
 <label class="check"><input type="checkbox" name="is_test" value="1"${isTest ? raw(' checked') : EMPTY}> Test card <small>([TEST] in the page title, excluded from counters)</small></label>
+<label class="check"><input type="checkbox" name="send_email" value="1"${values['send_email'] === '1' ? raw(' checked') : EMPTY}> Send the welcome email <small>(when a customer email is given; test cards only email MAIL_TEST_ALLOWLIST)</small></label>
 <div><button class="btn" type="submit">Create card</button></div>
 </form>`;
   return respond(c, { title: 'Create card', active: 'create', error: errors.length ? errors : null, flash: flashOf(c), body }, status);
@@ -269,7 +282,7 @@ interface ImportFormOptions {
 
 function importForm(c: Context<AppEnv>, o: ImportFormOptions): Response | Promise<Response> {
   const token = csrfToken(c);
-  const body = h`<p class="muted">Header row with canonical column names: <code>licence_number</code> and <code>company_name_en</code> are required; <code>company_name_ar</code>, <code>licence_type</code>, <code>activity_category</code>, <code>activity_category_ar</code>, <code>founder_name_en</code>, <code>founder_name_ar</code>, <code>issued_on</code>, <code>licence_expires_on</code> and <code>preferred_language</code> are optional. Headers are matched case-insensitively. Up to ${IMPORT_CAP} rows per run.</p>
+  const body = h`<p class="muted">Header row with canonical column names: <code>licence_number</code> and <code>company_name_en</code> are required; <code>company_name_ar</code>, <code>licence_type</code>, <code>activity_category</code>, <code>activity_category_ar</code>, <code>founder_name_en</code>, <code>founder_name_ar</code>, <code>issued_on</code>, <code>licence_expires_on</code>, <code>customer_email</code>, <code>cc_email</code> and <code>preferred_language</code> are optional. Headers are matched case-insensitively. Up to ${IMPORT_CAP} rows per run.</p>
 <form class="form" method="post" action="/admin/import" enctype="multipart/form-data">${csrfField(token)}
 <label>CSV file<input type="file" name="file" accept=".csv,text/csv"></label>
 <label>…or paste CSV<textarea name="csv" rows="10" dir="auto">${o.csv ?? ''}</textarea></label>
@@ -281,19 +294,44 @@ function importForm(c: Context<AppEnv>, o: ImportFormOptions): Response | Promis
 
 // ------------------------------------------------------------------ settings
 
-function settingsForm(c: Context<AppEnv>, values: Record<string, string>, errors: string[] | null, status: AdminStatus = 200): Response | Promise<Response> {
+async function settingsForm(c: Context<AppEnv>, values: Record<string, string>, errors: string[] | null, status: AdminStatus = 200): Promise<Response> {
   const token = csrfToken(c);
   const v = (k: string): string => values[k] ?? '';
+  const mailMode = c.env.MAIL_TRANSPORT ?? (c.env.MAIL_SMTP_URL ? 'smtp' : 'off');
+  const counts = await emailCounts(c.env.DB);
   const body = h`<form class="form" method="post" action="/admin/settings">${csrfField(token)}
 <label class="check"><input type="checkbox" name="gtm_enabled" value="1"${v('gtm_enabled') === '1' ? raw(' checked') : EMPTY}> Load Google Tag Manager on the personal page <small>(container <code>${c.env.GTM_CONTAINER || 'not set'}</code>)</small></label>
 <div><button class="btn" type="submit">Save settings</button></div>
 </form>
 <h2>Keeping data</h2>
 <p class="muted">Nothing is deleted automatically: cards, test cards, the request bodies the test webhook received, founder names and daily counters all stay. A card shows "expired" once its licence expiry date has passed, and comes back when the ERP sends a renewal.</p>
+<h2>Email and LinkedIn</h2>
+${kv([
+  ['Email sending', mailMode === 'smtp' ? h`<span class="badge ready">on</span> through the SMTP provider` : mailMode === 'file' ? h`<span class="badge pending">files</span> written to DATA_DIR/mail-outbox (local copy)` : h`<span class="badge expired">off</span> emails are queued but not sent`],
+  ['From', c.env.MAIL_FROM || 'SPC Free Zone <noreply@spcfz.ae> (default)'],
+  ['Test cards may email', c.env.MAIL_TEST_ALLOWLIST || 'spcfz.ae (default)'],
+  ['Emails so far', h`${counts.sent} sent, ${counts.queued} queued, ${counts.failed} failed, ${counts.skipped} skipped`],
+  ['Post to LinkedIn', c.env.LINKEDIN_FAKE === '1' ? h`<span class="badge pending">pretend</span> local copy: posts go to DATA_DIR/linkedin-outbox` : linkedinEnabled(c.env) ? h`<span class="badge ready">on</span>${c.env.LINKEDIN_ORG_URN ? ' with an @SPC Free Zone mention' : ' (no SPC page id: @SPC Free Zone stays plain text)'}` : h`<span class="badge expired">off</span> the button is hidden until the LinkedIn app is set up`],
+])}
+<p class="muted">These come from the service's env file (MAIL_*, LINKEDIN_*); docs/RUNBOOK.md has the steps.</p>
 <h2>Field mapping (read-only)</h2>
 <p class="muted">From the <code>FIELD_MAP</code> environment variable; change it in the service's env file and recreate the container (docs/RUNBOOK.md). Secrets and the ERP IP allowlist are not editable here.</p>
 <pre>${prettyJson(c.env.FIELD_MAP || '{}')}</pre>`;
   return respond(c, { title: 'Settings', active: 'settings', error: errors, flash: flashOf(c), body }, status);
+}
+
+function emailsTable(rows: EmailRow[]): RawHtml {
+  return table(
+    ['Queued', 'To', 'Status', 'Sent', 'Note'],
+    rows.map((e) => [
+      h`${fmtDateTime(e.created_at)}`,
+      h`${e.to_email}${e.cc_email ? h`<br><span class="muted">cc ${e.cc_email}</span>` : EMPTY}`,
+      h`<span class="badge ${e.status === 'sent' ? 'ready' : e.status === 'failed' ? 'failed' : e.status === 'queued' ? 'pending' : 'expired'}">${e.status}</span>`,
+      h`${e.sent_at ? fmtDateTime(e.sent_at) : ''}`,
+      h`<span class="muted">${e.last_error ?? (e.attempts > 1 ? `${e.attempts} attempts` : '')}</span>`,
+    ]),
+    'No welcome email yet.',
+  );
 }
 
 // ------------------------------------------------------------------ the router
@@ -402,6 +440,7 @@ ${pager('/admin/cards', query, page, total, PER_PAGE)}`;
       metricsForCard(c.env.DB, card.id),
       listEvents(c.env.DB, { card_id: card.id, limit: 20 }),
     ]);
+    const [emails, posts] = await Promise.all([emailsForCard(c.env.DB, card.id), linkedinPostsForCard(c.env.DB, card.id)]);
     const token = csrfToken(c);
     const url = pageUrl(c.env, card.token);
     const licencePast = isPast(card.expires_at);
@@ -417,6 +456,8 @@ ${kv([
   ['Founder (Arabic)', card.founder_name_ar ? h`<span dir="rtl">${card.founder_name_ar}</span>` : null],
   ['Issued on', card.issued_on],
   ['Licence expires on', card.licence_expires_on ?? h`<span class="muted">not known: the card does not expire</span>`],
+  ['Customer email', card.customer_email ?? h`<span class="muted">none: no welcome email</span>`],
+  ['Copy to', card.cc_email],
   ['Preferred language', card.preferred_language],
   ['Status', badge(card.status)],
   ['Test card', card.is_test ? 'yes' : 'no'],
@@ -441,6 +482,17 @@ ${licencePast
 <div><button class="btn small" type="submit">Save expiry date</button></div>
 </form>
 <p class="muted">The card is built in the customer's browser: open the page to see it.</p>
+<h2>Welcome email</h2>
+${emailsTable(emails)}
+<div class="actions">
+${card.customer_email
+  ? actionForm(`/admin/cards/${card.id}/email`, emails.some((e) => e.status === 'sent' || e.status === 'queued') ? 'Send it again' : 'Send welcome email', token, 'btn small')
+  : h`<span class="muted">No customer email on this card.</span>`}
+<a class="btn small secondary" href="/admin/cards/${card.id}/email-preview?lang=en" target="_blank" rel="noopener">Preview (English)</a>
+<a class="btn small secondary" href="/admin/cards/${card.id}/email-preview?lang=ar" target="_blank" rel="noopener">Preview (Arabic)</a>
+</div>
+<h2>LinkedIn posts</h2>
+${table(['When', 'Status', 'Post'], posts.map((p) => [h`${fmtDateTime(p.created_at)}`, h`${p.status}`, p.post_urn ? h`<a href="https://www.linkedin.com/feed/update/${p.post_urn}/" target="_blank" rel="noopener">View on LinkedIn</a>` : h`<span class="muted">${p.error ?? ''}</span>`]), 'No posts through "Post to LinkedIn" yet.')}
 <h2>Metrics (all time)</h2>
 ${table(
   ['Kind', 'Lang', 'Size', 'Network', 'Count'],
@@ -492,6 +544,27 @@ ${eventsTable(events.rows)}`;
     await setLicenceExpiry(c.env.DB, card.id, date, expires_at, status);
     await audit(c, 'updated', card.id);
     return c.redirect(`/admin/cards/${card.id}?m=expiry`, 303);
+  });
+
+  app.post('/cards/:id/email', async (c) => {
+    const bad = csrfFailure(c, await readForm(c));
+    if (bad) return forbidden(c, bad);
+    const card = await getCardById(c.env.DB, c.req.param('id'));
+    if (!card) return notFoundPage(c, 'card');
+    const r = await queueWelcome(c.env, card, { actor: c.get('actor') ?? null, force: true });
+    if (r === 'queued') await audit(c, 'emailed', card.id);
+    const m = r === 'queued' ? 'emailed' : r === 'no-email' ? 'email-none' : r === 'expired' ? 'email-expired' : 'email-test';
+    return c.redirect(`/admin/cards/${card.id}?m=${m}`, 303);
+  });
+
+  // The welcome email exactly as the customer gets it (images load from BASE_URL).
+  app.get('/cards/:id/email-preview', async (c) => {
+    const card = await getCardById(c.env.DB, c.req.param('id'));
+    if (!card) return notFoundPage(c, 'card');
+    const lang = c.req.query('lang') === 'ar' ? 'ar' : 'en';
+    const mail = renderWelcome({ card, lang, baseUrl: c.env.BASE_URL, linkedin: linkedinEnabled(c.env) });
+    c.header('Content-Security-Policy', "default-src 'none'; img-src 'self' https: http://localhost:* data:; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; base-uri 'none'; form-action 'none'; frame-ancestors 'none'");
+    return c.html(mail.html.replace('<body', `<body data-subject="${mail.subject.replace(/"/g, '&quot;')}"`));
   });
 
   app.get('/cards/:id/delete', async (c) => {
@@ -616,7 +689,7 @@ ${ev.raw_body
 
   // ---------------------------------------------------------------- create
 
-  app.get('/create', (c) => createForm(c, {}, false, []));
+  app.get('/create', (c) => createForm(c, { send_email: '1' }, false, []));
 
   app.post('/create', async (c) => {
     const body = await readForm(c);
@@ -625,11 +698,13 @@ ${ev.raw_body
     const values: Record<string, string> = {};
     for (const f of CREATE_FIELDS) values[f.key] = field(body, f.key);
     values['preferred_language'] = field(body, 'preferred_language');
+    values['send_email'] = checked(body, 'send_email') ? '1' : '0';
     const isTest = checked(body, 'is_test');
     const v = validateCanonical(values);
     if (!v.ok) return createForm(c, values, isTest, v.errors, 400);
     const r = await upsertFromCanonical(c.env, v.fields, { is_test: isTest, source: 'manual' });
     await audit(c, r.outcome, r.card.id);
+    if (checked(body, 'send_email') && r.outcome !== 'unchanged') await queueWelcome(c.env, r.card, { actor: c.get('actor') ?? null });
     return c.redirect(`/admin/cards/${r.card.id}?m=${r.outcome}`, 303);
   });
 
@@ -665,6 +740,7 @@ ${dryTable(dry)}
 <textarea name="csv" hidden>${csv}</textarea>
 <input type="hidden" name="confirm" value="1">
 ${isTest ? h`<input type="hidden" name="is_test" value="1">` : EMPTY}
+<label class="check"><input type="checkbox" name="send_email" value="1"> Email the welcome card to each new card's customer email <small>(off by default for back-fills)</small></label>
 <button class="btn" type="submit"${counts.valid === 0 ? raw(' disabled') : EMPTY}>Apply ${counts.valid} valid ${counts.valid === 1 ? 'row' : 'rows'}</button>
 <a class="btn secondary" href="/admin/import">Start over</a>
 </form>`;
@@ -672,6 +748,7 @@ ${isTest ? h`<input type="hidden" name="is_test" value="1">` : EMPTY}
     }
 
     const applied = { created: 0, updated: 0, unchanged: 0, rejected: 0 };
+    const sendEmails = checked(body, 'send_email');
     const rejected: string[] = [];
     for (const d of dry) {
       if (!d.fields) {
@@ -681,6 +758,7 @@ ${isTest ? h`<input type="hidden" name="is_test" value="1">` : EMPTY}
       }
       const r = await upsertFromCanonical(c.env, d.fields, { is_test: isTest, source: 'csv' });
       applied[r.outcome] += 1;
+      if (sendEmails && r.outcome !== 'unchanged') await queueWelcome(c.env, r.card, { actor: c.get('actor') ?? null });
     }
     await audit(c, 'imported', null, rejected.length ? rejected.slice(0, 50) : null);
     const result = h`<div class="cards">

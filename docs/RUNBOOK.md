@@ -158,11 +158,70 @@ every webhook is rejected with 403, which is visible in Admin, Events.
 Cloudflare publishes new ranges, update the file, regenerate the Apache site
 from it, and reinstall that file with an approved change.
 
+## Welcome email: turn it on
+
+Until `MAIL_TRANSPORT=smtp` is set, welcome emails are queued in the admin but
+not sent (Settings shows "off").
+
+1. Pick the sender address, for example `licence@spcfz.ae`, and an SMTP
+   provider (ZeptoMail, Amazon SES or Microsoft 365 all work). In the
+   provider, verify the domain and publish the SPF and DKIM records it gives
+   you in Cloudflare DNS for spcfz.ae. Without them the emails land in spam.
+2. Add these lines to `/opt/spcfz-licence-card/licence-card.env`, typing the
+   password yourself, for example with
+   `ssh -t root@13.206.34.102 nano /opt/spcfz-licence-card/licence-card.env`:
+
+   ```
+   MAIL_TRANSPORT=smtp
+   MAIL_SMTP_URL=smtps://<user>:<password>@<host>:465
+   MAIL_FROM=SPC Free Zone <licence@spcfz.ae>
+   MAIL_REPLY_TO=info@spcfz.ae
+   ```
+
+   Characters such as `@`, `:` or `/` in the user or password must be
+   percent-encoded (`@` is `%40`). `MAIL_BCC` keeps a copy of every email
+   (optional). `MAIL_TEST_ALLOWLIST` lists who test cards may email
+   (default `spcfz.ae`).
+3. Apply the env-file change (see Secrets).
+4. Check: in the admin, open a TEST card, set its customer email to your own
+   @spcfz.ae address and press Send again. The card's Welcome email table
+   shows sent, or the provider's error.
+
+The admin's card page has Preview links that show the email in both
+languages without sending anything.
+
+## Post to LinkedIn: turn it on
+
+Until `LINKEDIN_CLIENT_ID` and `LINKEDIN_CLIENT_SECRET` are set, the buttons
+are hidden in the studio and the email.
+
+1. At https://www.linkedin.com/developers/apps create an app: name "SPC Free
+   Zone", the SPC Free Zone company page, the SPC logo. A page admin of
+   SPC's LinkedIn page approves the link to the page.
+2. Products: add **Sign In with LinkedIn using OpenID Connect** and **Share on
+   LinkedIn** (both instant).
+3. Auth: add the redirect URL `https://licensed.spcfz.ae/linkedin/callback`.
+4. Put the Client ID and Client Secret in the env file, typing the secret
+   yourself:
+
+   ```
+   LINKEDIN_CLIENT_ID=<client id>
+   LINKEDIN_CLIENT_SECRET=<client secret>
+   LINKEDIN_ORG_URN=<SPC page id, the number in the page admin URL linkedin.com/company/<id>/admin>
+   ```
+
+   With `LINKEDIN_ORG_URN`, "@SPC Free Zone" in the caption becomes a real
+   mention of the page. `LINKEDIN_API_VERSION` (YYYYMM) is optional; the
+   built-in one is 202606, and LinkedIn retires a version after about a year,
+   so set a newer one by mid-2027.
+5. Apply the env-file change (see Secrets) and post from a TEST card to your
+   own LinkedIn. The admin card page lists the post with a link.
+
 ## Rate limits
 
 The app limits each visitor per minute, counting an IPv4 address or an IPv6 /64 block as one visitor: 300 page, status and image
 requests, 60 counter posts, and 20 webhook calls from addresses not on the
-ERP allowlist. Visitors over a limit get 429 with Retry-After. The numbers
+ERP allowlist; and 60 "Post to LinkedIn" requests per 10 minutes. Visitors over a limit get 429 with Retry-After. The numbers
 are `DEFAULT_RATE_LIMITS` in src/index.ts; changing them is a code change and
 a deploy. Counters live in memory and reset on restart.
 

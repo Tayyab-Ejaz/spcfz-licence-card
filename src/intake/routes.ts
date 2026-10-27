@@ -6,6 +6,7 @@ import { Hono } from 'hono';
 import type { Context } from 'hono';
 import type { AppEnv, CardSource, Env, EventOutcome, IntakeRoute } from '../types.js';
 import { insertEvent } from '../db/cards.js';
+import { queueWelcome } from '../mail/outbox.js';
 
 import { checkIp, checkSecret, extractSecret } from './auth.js';
 import { isPlainObject } from './common.js';
@@ -153,6 +154,14 @@ function makeHandler(cfg: RouteConfig) {
       // 5. Create or update the card.
       const result = await upsertFromCanonical(env, validated.fields, { is_test: cfg.is_test, source: cfg.source });
       await record(200, result.outcome, null, result.card.id);
+      // 6. The welcome email, once per card (src/mail/outbox.ts). A mail problem never fails the webhook.
+      if (result.outcome !== 'unchanged') {
+        try {
+          await queueWelcome(env, result.card, { actor: null });
+        } catch (err) {
+          console.error('welcome email not queued', { card_id: result.card.id, message: err instanceof Error ? err.message : String(err) });
+        }
+      }
       console.log('intake accepted', {
         route: cfg.route, outcome: result.outcome, licence_number: result.card.licence_number, card_id: result.card.id,
       });

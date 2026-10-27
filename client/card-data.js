@@ -175,6 +175,37 @@ export function withCardData(Base) {
       return promise;
     }
 
+    /**
+     * Post to LinkedIn (27 October 2026; src/linkedin/routes.ts): the card as it looks now, as a JPEG, goes to the
+     * service with the caption; the service keeps it for a few minutes and sends the customer to LinkedIn to sign
+     * in, then to a page where they review the post and press Post now. Nothing is posted from here.
+     */
+    async postLinkedIn() {
+      if (this.state.liBusy || this.state.busy || !this.preflight()) return;
+      const c = this.props.card;
+      const s = this.state;
+      const caption = s.caption ?? this.autoCaption();
+      this.setState({ liBusy: true });
+      // Back from LinkedIn with the browser's back button restores this page as it was: un-stick the button.
+      window.addEventListener('pageshow', (e) => { if (e.persisted) this.setState({ liBusy: false }); }, { once: true });
+      try {
+        const blob = await this.renderCard(true);
+        const fd = new FormData();
+        fd.append('image', blob, this.fileName(blob.type || 'image/jpeg'));
+        fd.append('caption', caption);
+        fd.append('lang', s.lang === 'ar' ? 'ar' : 'en');
+        const res = await fetch(`/c/${encodeURIComponent(c.token)}/linkedin`, { method: 'POST', body: fd, credentials: 'same-origin' });
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok || typeof j.go !== 'string') throw new Error(j.error || String(res.status));
+        window.location.assign(j.go);
+      } catch (e) {
+        this.setState({ liBusy: false });
+        this.showToast(e && e.message === 'expired'
+          ? 'This card has expired, so it can\'t be posted.'
+          : 'LinkedIn didn\'t open. Try again, or download the card and post it yourself.');
+      }
+    }
+
     /** The shared file is a JPEG: same name, .jpg. Downloads stay PNG. */
     fileName(type) {
       const name = super.fileName();
@@ -386,6 +417,7 @@ export function withCardData(Base) {
       const stub = fit ? { size: Math.min(est.size, fit.size), xtra: wrapCss(fit.lines || 2, fit.lastResort) } : est;
       const uae = s.hIdx === 4 || s.hIdx === 5;
       const lang = s.lang;
+      const liOn = c.linkedin === true;
       const track = (fn, kind, network) => (typeof fn === 'function'
         ? (...args) => { beacon(c.token, { kind, lang, network, size: s.format }); return fn(...args); }
         : fn);
@@ -413,9 +445,23 @@ export function withCardData(Base) {
         hdrActivity: c.activity_en || '',
         licenceNo: c.licence_number,
         // Desktop Share step intro (tools/build-studio.mjs DESKTOP_SHARE_ACTIONS); the phone layout does not use it.
-        shareIntro: v.canShare
-          ? 'Share your card to LinkedIn, WhatsApp or any app, or download it to post later. Your caption is below.'
-          : 'Download your card and post it anywhere, with the caption below.',
+        shareIntro: liOn
+          ? (v.canShare
+            ? 'Post your card straight to LinkedIn, share it to WhatsApp or any app, or download it. Your caption is below.'
+            : 'Post your card straight to LinkedIn, or download it to post anywhere. Your caption is below.')
+          : v.canShare
+            ? 'Share your card to LinkedIn, WhatsApp or any app, or download it to post later. Your caption is below.'
+            : 'Download your card and post it anywhere, with the caption below.',
+        // Post to LinkedIn (tools/build-studio.mjs): first and primary when on; Share and Download step down.
+        liOn,
+        postLinkedIn: () => this.postLinkedIn(),
+        liLabel: s.liBusy ? 'Opening LinkedIn…' : 'Post to LinkedIn',
+        liShort: s.liBusy ? 'Opening…' : 'LinkedIn',
+        shareVariant: liOn ? 'secondary' : 'primary',
+        dlVariant: liOn ? 'secondary' : v.dlVariant,
+        mDlVariant: liOn ? 'secondary' : 'primary',
+        mShareLabel: liOn ? (s.busy ? 'Preparing…' : 'Share') : v.shareLabel,
+        mBarCols: liOn ? 'minmax(0,1fr) minmax(0,1fr)' : 'minmax(0,1fr)',
         portalUrl: PORTAL_URL,
         goPortal: () => window.location.assign(PORTAL_URL),
         ...this.detailsNav(v),

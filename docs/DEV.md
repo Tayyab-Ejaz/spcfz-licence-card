@@ -39,6 +39,12 @@ because OneDrive should not sync a live SQLite file:
 - `local.env` is written on first run, with this copy's own random webhook
   secrets. To change the port, change `PORT` and `BASE_URL` together.
 - `data/` holds the database and its daily backups.
+- `data/mail-outbox/` gets every welcome email as `.html` (open it in a
+  browser) and `.txt`; nothing is sent (`MAIL_TRANSPORT=file`). The sample
+  cards' addresses are at example.com, which `MAIL_TEST_ALLOWLIST` allows here.
+- `data/linkedin-outbox/` gets every "Post to LinkedIn" post, the text as
+  LinkedIn would receive it and the picture. The sign-in is a pretend page
+  (`LINKEDIN_FAKE=1`), with Allow and Cancel.
 
 **The admin uses the same sign-in as production.** The first run writes a
 random `ADMIN_LOGIN_KEY` into `local.env` and creates the account

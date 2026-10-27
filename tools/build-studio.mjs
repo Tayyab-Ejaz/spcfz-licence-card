@@ -69,11 +69,16 @@ DATA_PATCHES.studio.push(...ROBUSTNESS_PATCHES);
 // put the phone-worded Share hint between the two buttons and had an Open LinkedIn button. Now: an intro that
 // leads with Share, then Share and a full-width Download stacked with one gap; no hint text and no LinkedIn
 // shortcut. The phone layout is untouched.
+// Post to LinkedIn (SPC, 27 October 2026): when the service has LinkedIn set up (card data `linkedin`), a first,
+// primary button posts the card straight to the customer's LinkedIn (src/linkedin/); Share and Download follow.
 const DESKTOP_SHARE_ACTIONS = `<p style="font-size:14.5px;line-height:1.5;color:var(--spc-muted);text-wrap:pretty">{{ shareIntro }}</p>
           </div>
           <div style="display:flex;flex-direction:column;gap:10px">
+            <sc-if value="{{ liOn }}" hint-placeholder-val="{{ false }}">
+              <x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="primary" size="lg" sc-camel-on-click="{{ postLinkedIn }}" style="display:block" hint-size="100%,54px"><i class="ph-bold ph-linkedin-logo" style="font-size:19px"></i><span>{{ liLabel }}</span></x-import>
+            </sc-if>
             <sc-if value="{{ canShare }}" hint-placeholder-val="{{ false }}">
-              <x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="primary" size="lg" sc-camel-on-click="{{ shareCard }}" style="display:block" hint-size="100%,54px"><i class="ph-bold ph-share-network" style="font-size:18px"></i><span>{{ shareLabel }}</span></x-import>
+              <x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="{{ shareVariant }}" size="lg" sc-camel-on-click="{{ shareCard }}" style="display:block" hint-size="100%,54px"><i class="ph-bold ph-share-network" style="font-size:18px"></i><span>{{ shareLabel }}</span></x-import>
             </sc-if>
             <x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="{{ dlVariant }}" size="lg" sc-camel-on-click="{{ download }}" style="display:block" hint-size="100%,54px"><i class="ph-bold ph-download-simple" style="font-size:18px"></i><span>{{ downloadLabel }}</span></x-import>
           </div>`;
@@ -124,7 +129,15 @@ DATA_PATCHES.mobile.push(
   ['transform:scale({{ scale }});transform-origin:0 0;overflow:hidden;font-family:var(--font-sans);-webkit-font-smoothing:antialiased;background:#fff">',
     'transform:scale({{ scale }});transform-origin:0 0;transition:transform .25s var(--ease-standard);overflow:hidden;font-family:var(--font-sans);-webkit-font-smoothing:antialiased;background:#fff">'],
   ['<div style="position:sticky;bottom:0;margin-top:auto;display:flex;flex-direction:column;gap:6px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--spc-border)">',
-    '<div class="m-bar m-in" style="position:sticky;bottom:0;margin-top:auto;display:flex;flex-direction:column;gap:6px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--spc-border)">'],
+    '<div class="m-bar m-in" style="position:sticky;bottom:0;margin-top:auto;display:grid;grid-template-columns:{{ mBarCols }};gap:8px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--spc-border)">'
+    + '\n      <sc-if value="{{ liOn }}" hint-placeholder-val="{{ false }}">'
+    + '\n        <x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="primary" size="lg" sc-camel-on-click="{{ postLinkedIn }}" style="display:block;min-width:0" hint-size="100%,54px"><i class="ph-bold ph-linkedin-logo" style="font-size:19px"></i><span>{{ liShort }}</span></x-import>'
+    + '\n      </sc-if>'],
+  // Post to LinkedIn (27 October 2026): beside it, Share (or Download) steps down to the secondary style.
+  ['variant="primary" size="lg" sc-camel-on-click="{{ shareCard }}" style="display:block" hint-size="100%,54px"><i class="ph-bold ph-share-network" style="font-size:18px"></i><span>{{ shareLabel }}</span>',
+    'variant="{{ shareVariant }}" size="lg" sc-camel-on-click="{{ shareCard }}" style="display:block;min-width:0" hint-size="100%,54px"><i class="ph-bold ph-share-network" style="font-size:18px"></i><span>{{ mShareLabel }}</span>'],
+  ['variant="primary" size="lg" sc-camel-on-click="{{ download }}" style="display:block" hint-size="100%,54px">',
+    'variant="{{ mDlVariant }}" size="lg" sc-camel-on-click="{{ download }}" style="display:block;min-width:0" hint-size="100%,54px">'],
 );
 
 // Logic patches: the same exactly-once rule, applied to design/source/<layout>/logic.js before it is wrapped.

@@ -33,7 +33,7 @@ describe('passwords', () => {
 });
 
 function setup(o: { base?: string; rate?: number } = {}) {
-  let clock = Date.parse('2026-10-19T08:00:00.000Z');
+  let clock = Date.now(); // sessions are checked against the real clock, so the test clock starts now
   const env = createTestEnv({ BASE_URL: o.base ?? 'https://licensed.test' });
   const handlers = createAuthHandlers({ rate: { limit: o.rate ?? 100, windowMs: 60_000 }, now: () => clock });
   const app = new Hono<AppEnv>().route('/admin', createAdminRoutes(sessionVerifier, handlers));

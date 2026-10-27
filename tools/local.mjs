@@ -66,11 +66,21 @@ function ensureEnvFile() {
     `TEST_SECRET_CURRENT=${secret()}`,
     'FIELD_MAP={}',
     'GTM_CONTAINER=',
+    ...LOCAL_EXTRAS,
     '',
   ];
   writeFileSync(ENV_FILE, lines.join('\n'), { mode: 0o600 });
   return true;
 }
+
+/** Welcome emails as files, the sample cards' example.com addresses allowed, and a pretend LinkedIn (27 October 2026). */
+const LOCAL_EXTRAS = [
+  '# Welcome emails are written to DATA_DIR/mail-outbox (.html, open it in a browser), never sent.',
+  'MAIL_TRANSPORT=file',
+  'MAIL_TEST_ALLOWLIST=example.com,spcfz.ae',
+  '# "Post to LinkedIn" against a pretend LinkedIn; posts are written to DATA_DIR/linkedin-outbox.',
+  'LINKEDIN_FAKE=1',
+];
 
 /** Copies made before 19 October 2026 opened the admin with LOCAL_ADMIN_EMAIL; move them to the sign-in key. */
 function upgradeEnvFile() {
@@ -79,9 +89,13 @@ function upgradeEnvFile() {
   if (!/^ADMIN_LOGIN_KEY=/m.test(next)) {
     next = next.replace(/\n*$/, '\n') + '# Opens the admin sign-in page at /admin/login?key=<this>; the account is in local-admin.txt.\n' + `ADMIN_LOGIN_KEY=${secret()}\n`;
   }
+  if (!/^MAIL_TRANSPORT=/m.test(next)) {
+    next = next.replace(/\n*$/, '\n') + LOCAL_EXTRAS.join('\n') + '\n';
+    say(`updated ${ENV_FILE}: welcome emails go to files, and Post to LinkedIn uses a pretend LinkedIn`);
+  }
   if (next !== text) {
     writeFileSync(ENV_FILE, next, { mode: 0o600 });
-    say(`updated ${ENV_FILE}: the admin now uses the sign-in page`);
+    if (!/^ADMIN_LOGIN_KEY=/m.test(text)) say(`updated ${ENV_FILE}: the admin now uses the sign-in page`);
   }
 }
 

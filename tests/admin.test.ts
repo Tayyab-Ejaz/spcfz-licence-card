@@ -9,6 +9,7 @@ import {
 } from '../src/db/cards.js';
 import { randomToken } from '../src/util/crypto.js';
 import { flushBackground } from '../src/util/background.js';
+import { emailsForCard } from '../src/db/emails.js';
 import { createTestEnv } from './env.js';
 
 const env = createTestEnv();
@@ -42,6 +43,8 @@ async function seedCard(o: SeedOptions = {}): Promise<CardRow> {
       issued_on: '2026-10-01',
       preferred_language: 'en',
       licence_expires_on: null,
+      customer_email: null,
+      cc_email: null,
       ...o.fields,
     },
     content_hash: `hash-${seq}`,
@@ -367,6 +370,55 @@ describe('create (needs the intake module)', () => {
     expect(await res.text()).toContain('class="error"');
     expect(await findCardByLicence(env.DB, 'X', false)).toBeNull();
     expect(await adminEvents()).toHaveLength(0);
+  });
+});
+
+describe('welcome email', () => {
+  it('the create form sends it by default, and only to a card that has an address', async () => {
+    expect(await (await get('/admin/create')).res.text()).toMatch(/name="send_email" value="1" checked/);
+    await post('/admin/create', { licence_number: 'SPC-2026-88881', company_name_en: 'Mail Co FZE', issued_on: '2026-10-10', customer_email: 'Owner@Mail.example', send_email: '1' });
+    const card = await findCardByLicence(env.DB, 'SPC-2026-88881', false);
+    expect(card?.customer_email).toBe('owner@mail.example');
+    expect((await emailsForCard(env.DB, card?.id ?? '')).map((e) => [e.status, e.to_email])).toEqual([['queued', 'owner@mail.example']]);
+    await post('/admin/create', { licence_number: 'SPC-2026-88882', company_name_en: 'Quiet Co FZE', issued_on: '2026-10-10', customer_email: 'q@mail.example' });
+    const quiet = await findCardByLicence(env.DB, 'SPC-2026-88882', false);
+    expect(await emailsForCard(env.DB, quiet?.id ?? '')).toEqual([]);
+  });
+
+  it('keeps an unticked box unticked when the form comes back with errors', async () => {
+    const { res } = await post('/admin/create', { licence_number: 'X', company_name_en: '' });
+    expect(await res.text()).not.toMatch(/name="send_email" value="1" checked/);
+  });
+
+  it('staff can send it again from the card, which is logged; a card without an address says so', async () => {
+    const card = await seedCard({ fields: { customer_email: 'layla@nimbus.example' } });
+    const { res } = await post(`/admin/cards/${card.id}/email`);
+    expect(res.headers.get('Location')).toBe(`/admin/cards/${card.id}?m=emailed`);
+    await post(`/admin/cards/${card.id}/email`);
+    expect(await emailsForCard(env.DB, card.id)).toHaveLength(2);
+    expect((await adminEvents())[0]).toMatchObject({ outcome: 'emailed', card_id: card.id, actor: ACTOR });
+    const none = await seedCard();
+    expect((await post(`/admin/cards/${none.id}/email`)).res.headers.get('Location')).toBe(`/admin/cards/${none.id}?m=email-none`);
+    expect((await post(`/admin/cards/${card.id}/email`, {}, { csrfField: null })).res.status).toBe(403);
+  });
+
+  it('previews the email in either language, and the card shows the history', async () => {
+    const card = await seedCard({ fields: { customer_email: 'layla@nimbus.example' } });
+    const en = await (await get(`/admin/cards/${card.id}/email-preview?lang=en`)).res.text();
+    expect(en).toContain('is officially licensed');
+    const ar = await (await get(`/admin/cards/${card.id}/email-preview?lang=ar`)).res.text();
+    expect(ar).toContain('dir="rtl"');
+    await post(`/admin/cards/${card.id}/email`);
+    const detail = await (await get(`/admin/cards/${card.id}`)).res.text();
+    expect(detail).toContain('layla@nimbus.example');
+    expect(detail).toContain('Welcome email');
+    expect(detail).toContain('<span class="badge pending">queued</span>');
+  });
+
+  it('settings say whether email and LinkedIn are on', async () => {
+    const body = await (await get('/admin/settings')).res.text();
+    expect(body).toContain('Email and LinkedIn');
+    expect(body).toContain('the button is hidden until the LinkedIn app is set up');
   });
 });
 

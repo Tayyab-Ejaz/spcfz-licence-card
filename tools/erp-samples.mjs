@@ -9,6 +9,8 @@
 //   ssh root@13.206.34.102 "docker exec -i -w /app spcfz-licence-card node --input-type=module" < tools/erp-samples.mjs
 //
 // The names are invented. Re-running updates the same cards (same licence numbers) instead of adding more.
+// The customer emails are at example.com, which no one receives: test cards only email the domains on
+// MAIL_TEST_ALLOWLIST (spcfz.ae unless set; the local copy adds example.com and writes mail to files).
 
 const today = new Date().toISOString().slice(0, 10);
 const [y, m, d] = today.split('-');
@@ -26,19 +28,21 @@ export const SAMPLES = [
       activity_category_ar: 'نشر الكتب',
       founder_name_en: 'Layla Haddad',
       founder_name_ar: 'ليلى حداد',
+      customer_email: 'layla.haddad@example.com',
+      cc_email: 'account.manager@example.com',
       issued_on: today,
       licence_expiry_date: nextYear,
       preferred_language: 'en',
     },
   },
   {
-    label: 'Arabic customer; founder sent as an owner object',
+    label: 'Arabic customer; founder and email sent as an owner object',
     payload: {
       licence_number: 'TEST-2026-0002',
       company_name: 'Al Noor Media FZ-LLC',
       company_name_ar: 'النور للإعلام ش.ذ.م.م - منطقة حرة',
       activities: [{ Description_EN: 'Digital media production', Description_AR: 'إنتاج الوسائط الرقمية' }],
-      owner: { full_name: 'Omar Al Mansoori', name_ar: 'عمر المنصوري', email: 'dropped@example.invalid' },
+      owner: { full_name: 'Omar Al Mansoori', name_ar: 'عمر المنصوري', email: 'omar.almansoori@example.com' },
       issue_date: today,
       language: 'Arabic',
     },
@@ -50,6 +54,7 @@ export const SAMPLES = [
       company_name_en: 'Brightpath Learning & Educational Consultancy FZE',
       activity_category: 'Educational consultancy',
       founder_name: 'Priya Raman',
+      email: 'priya@example.com',
       issued_on: today,
     },
   },
@@ -61,12 +66,13 @@ export const SAMPLES = [
       CompanyNameAr: 'فالكون ريدج للتجارة م.م.ح',
       Activities: [{ Description_EN: 'General trading', Description_AR: 'التجارة العامة' }],
       OwnerName: 'Daniel Mercer',
+      EmailAddress: 'Daniel.Mercer@Example.com',
       IssueDate: `${d}/${m}/${y}`,
       Language: 'English',
     },
   },
   {
-    label: 'Long legal founder name, shortened on the card',
+    label: 'Long legal founder name, shortened on the card; no email, so no welcome email',
     payload: {
       licence_number: 'TEST-2026-0005',
       company_name_en: 'Saffron Lane Events FZ-LLC',
@@ -87,6 +93,7 @@ export const SAMPLES = [
       company_name_ar: 'أولد هاربر للطباعة م.م.ح',
       activity_category: 'Printing',
       founder_name_en: 'Sara Khan',
+      customer_email: 'sara.khan@example.com',
       issued_on: '2024-10-01',
       expiry_date: '30/09/2025',
       preferred_language: 'en',

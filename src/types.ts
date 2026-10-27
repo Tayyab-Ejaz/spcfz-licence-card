@@ -76,7 +76,35 @@ export interface Env {
    * sign-in is closed and every /admin address answers 404 (src/admin/auth.ts).
    */
   ADMIN_LOGIN_KEY?: string;
+
+  /**
+   * The welcome email (src/mail/). smtp: send through MAIL_SMTP_URL. file: write each email to DATA_DIR/mail-outbox
+   * instead (the local copy). off: keep emails queued, send nothing. Defaults to smtp when MAIL_SMTP_URL is set.
+   */
+  MAIL_TRANSPORT?: MailTransportMode;
+  /** smtp(s)://user:password@host:port of the provider (ZeptoMail, SES, Microsoft 365...). A secret. */
+  MAIL_SMTP_URL?: string;
+  /** The sender, e.g. "SPC Free Zone <licence@spcfz.ae>"; its domain needs SPF and DKIM for that provider. */
+  MAIL_FROM?: string;
+  MAIL_REPLY_TO?: string;
+  /** An address that receives a hidden copy of every email (an SPC archive), optional. */
+  MAIL_BCC?: string;
+  /** Domains or addresses test cards may email (comma separated); others are skipped. Default: spcfz.ae. */
+  MAIL_TEST_ALLOWLIST?: string;
+
+  /** "Post to LinkedIn" (src/linkedin/): the LinkedIn developer app. Hidden until both are set. */
+  LINKEDIN_CLIENT_ID?: string;
+  LINKEDIN_CLIENT_SECRET?: string;
+  /** SPC's company page, for a real @mention in the post: urn:li:organization:<id> or just the id. */
+  LINKEDIN_ORG_URN?: string;
+  /** LinkedIn's monthly API version (YYYYMM). Versions retire after about a year. */
+  LINKEDIN_API_VERSION?: string;
+  /** '1' on the local copy only: a pretend LinkedIn (src/linkedin/fake.ts). Refused unless BASE_URL is localhost. */
+  LINKEDIN_FAKE?: string;
 }
+
+export type MailTransportMode = 'smtp' | 'file' | 'off';
+export const MAIL_TRANSPORT_MODES: readonly MailTransportMode[] = ['smtp', 'file', 'off'];
 
 /** Hono generic: every router in src/ is a `Hono<AppEnv>`. */
 export type AppEnv = {
@@ -121,6 +149,8 @@ export interface CanonicalFields {
   issued_on: string;             // YYYY-MM-DD
   preferred_language: Lang;
   licence_expires_on: string | null;  // YYYY-MM-DD, the licence's last valid day; the card expires after it
+  customer_email: string | null;      // where the welcome email goes; personal data, never shown on the page
+  cc_email: string | null;            // an optional copy of the welcome email, e.g. the account manager
 }
 
 export type CardStatus = 'pending' | 'ready' | 'failed' | 'expired';
@@ -145,7 +175,7 @@ export type IntakeRoute = 'production' | 'test';
 export type EventRoute = IntakeRoute | 'admin';
 export type EventOutcome =
   | 'created' | 'unchanged' | 'updated' | 'rejected'
-  | 'replayed' | 'deleted' | 'expired' | 'unexpired' | 'imported' | 'settings'
+  | 'replayed' | 'deleted' | 'expired' | 'unexpired' | 'imported' | 'settings' | 'emailed'
   | 'regenerated' | 'rerender';  // the last two only on rows from the server-render era
 
 export interface EventRow {

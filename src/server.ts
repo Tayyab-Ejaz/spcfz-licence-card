@@ -16,6 +16,8 @@ import { loadConfig } from './platform/config.js';
 import type { ServerConfig } from './platform/config.js';
 import { MIGRATIONS_DIR, applyMigrations } from './platform/migrate.js';
 import { Scheduler } from './platform/scheduler.js';
+import { onEmailQueued, processOutbox } from './mail/outbox.js';
+import { transportFromEnv } from './mail/transport.js';
 import { SqliteDb } from './platform/sqlite-db.js';
 import type { Env } from './types.js';
 
@@ -96,6 +98,19 @@ export async function startServer(options: StartOptions): Promise<RunningServer>
     await scheduler.start();
   }
 
+  // The email outbox (src/mail/outbox.ts): every 30 seconds, and a moment after something is queued.
+  const transport = transportFromEnv(env);
+  let sending = false;
+  const sendDue = (): void => {
+    if (sending || !transport) return;
+    sending = true;
+    processOutbox(env, transport).catch((err: unknown) => log('outbox failed', { message: err instanceof Error ? err.message : String(err) })).finally(() => { sending = false; });
+  };
+  const outboxTimer = (options.schedulerEnabled ?? true) ? setInterval(sendDue, 30_000) : null;
+  outboxTimer?.unref();
+  onEmailQueued(() => setTimeout(sendDue, 250).unref());
+  log('mail', { transport: transport?.mode ?? 'off' });
+
   log('listening', { host: address.address, port: address.port, dataDir: config.dataDir, trustProxy: config.trustProxy, pid: process.pid });
   for (const w of config.warnings) log(`warning: ${w}`);
 
@@ -111,6 +126,8 @@ export async function startServer(options: StartOptions): Promise<RunningServer>
       closed = true;
       if ('closeAllConnections' in server && typeof server.closeAllConnections === 'function') server.closeAllConnections();
       await new Promise<void>((resolve) => server.close(() => resolve()));
+      if (outboxTimer) clearInterval(outboxTimer);
+      onEmailQueued(null);
       if (scheduler) await scheduler.stop();
       db.close();
     },

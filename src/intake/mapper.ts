@@ -1,4 +1,4 @@
-// Field mapping: turns whatever the ERP sends into the eleven canonical keys and nothing else
+// Field mapping: turns whatever the ERP sends into the thirteen canonical keys and nothing else
 // (ARCHITECTURE section 4 "Field mapping", C5, C6). Pure; no I/O.
 import type { CanonicalFields } from '../types.js';
 import { isBlank, isPlainObject, normaliseKey } from './common.js';
@@ -18,6 +18,8 @@ export const CANONICAL_KEYS: readonly CanonicalKey[] = [
   'issued_on',
   'preferred_language',
   'licence_expires_on',
+  'customer_email',
+  'cc_email',
 ];
 
 /**
@@ -48,6 +50,11 @@ const ALIASES: Readonly<Record<CanonicalKey, readonly string[]>> = {
     'licence_expires_on', 'license_expires_on', 'licence_expiry_date', 'license_expiry_date', 'licence_expiry', 'license_expiry',
     'expiry_date', 'expiration_date', 'expires_on', 'expiry', 'valid_until', 'valid_to', 'LicenseExpiryDate', 'ExpiryDate',
   ],
+  customer_email: [
+    'customer_email', 'email', 'email_address', 'contact_email', 'owner_email', 'founder_email', 'applicant_email',
+    'client_email', 'investor_email', 'EmailAddress', 'CustomerEmail', 'ContactEmail',
+  ],
+  cc_email: ['cc_email', 'cc', 'account_manager_email', 'relationship_manager_email', 'rm_email', 'agent_email', 'sales_email'],
 };
 
 /** Sub-fields read from an activity object, in order of preference. Compared after `normaliseKey`. */
@@ -63,6 +70,8 @@ const ACTIVITY_NAME_AR_KEYS: readonly string[] = [
 /** A founder/owner sent as an object (or a list of shareholders): the name fields to read, in order. */
 const PERSON_NAME_KEYS: readonly string[] = ['name_en', 'full_name_en', 'full_name', 'name', 'english_name', 'display_name'];
 const PERSON_NAME_AR_KEYS: readonly string[] = ['name_ar', 'full_name_ar', 'arabic_name'];
+/** The email inside the same owner/founder object, when the ERP sends no top-level email. */
+const PERSON_EMAIL_KEYS: readonly string[] = ['email', 'email_address', 'emailAddress', 'contact_email'];
 
 /** Canonical keys whose value may arrive as an object or list, with the sub-fields to read. */
 const NAMED: Partial<Record<CanonicalKey, readonly string[]>> = {
@@ -75,6 +84,7 @@ const NAMED: Partial<Record<CanonicalKey, readonly string[]>> = {
 const SIBLINGS: ReadonlyArray<[CanonicalKey, CanonicalKey, readonly string[]]> = [
   ['activity_category', 'activity_category_ar', ACTIVITY_NAME_AR_KEYS],
   ['founder_name_en', 'founder_name_ar', PERSON_NAME_AR_KEYS],
+  ['founder_name_en', 'customer_email', PERSON_EMAIL_KEYS],
 ];
 
 /** normalised alias -> canonical key, built once. The canonical names themselves are included. */

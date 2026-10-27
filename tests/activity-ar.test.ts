@@ -64,7 +64,7 @@ describe('hashFields', () => {
   it('changes when only the Arabic activity changes', async () => {
     const f: CanonicalFields = {
       licence_number: 'SPC-1', company_name_en: 'Nimbus FZE', company_name_ar: null, licence_type: null,
-      activity_category: EN, activity_category_ar: null, founder_name_en: null, founder_name_ar: null, issued_on: '2026-10-16', preferred_language: 'en', licence_expires_on: null,
+      activity_category: EN, activity_category_ar: null, founder_name_en: null, founder_name_ar: null, issued_on: '2026-10-16', preferred_language: 'en', licence_expires_on: null, customer_email: null, cc_email: null,
     };
     expect(await hashFields(f)).not.toBe(await hashFields({ ...f, activity_category_ar: AR }));
   });

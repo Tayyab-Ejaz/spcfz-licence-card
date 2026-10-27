@@ -20,17 +20,19 @@ export interface UpsertResult {
 
 /**
  * Content hash over the canonical keys, so a CardRow and a CanonicalFields hash alike. The licence expiry date
- * joins the hash only when present, so cards stored before it existed keep their hash.
+ * and the emails join the hash only when present, so cards stored before they existed keep their hash.
  */
 export async function hashFields(fields: CanonicalFields): Promise<string> {
   const {
     licence_number, company_name_en, company_name_ar, licence_type, activity_category, activity_category_ar,
-    founder_name_en, founder_name_ar, issued_on, preferred_language, licence_expires_on,
+    founder_name_en, founder_name_ar, issued_on, preferred_language, licence_expires_on, customer_email, cc_email,
   } = fields;
   return contentHash({
     licence_number, company_name_en, company_name_ar, licence_type, activity_category, activity_category_ar,
     founder_name_en, founder_name_ar, issued_on, preferred_language,
     ...(licence_expires_on ? { licence_expires_on } : {}),
+    ...(customer_email ? { customer_email } : {}),
+    ...(cc_email ? { cc_email } : {}),
   });
 }
 

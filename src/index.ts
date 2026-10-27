@@ -6,6 +6,9 @@ import type { AppEnv } from './types.js';
 import { intakeRoutes } from './intake/routes.js';
 import { pageRoutes } from './page/routes.js';
 import { adminRoutes } from './admin/routes.js';
+import { createLinkedinRoutes } from './linkedin/routes.js';
+import type { LinkedinRouteOptions } from './linkedin/routes.js';
+import { fakeSigninRoutes } from './linkedin/fake.js';
 import { studioStaticRoutes } from './page/studio.js';
 import { ipAllowed, parseAllowlist, rateKeyForIp } from './util/ip.js';
 import { FixedWindowLimiter, rateLimit } from './util/rate-limit.js';
@@ -19,17 +22,21 @@ export interface RateLimits {
   beacon: RateRule;
   /** /v1/ from addresses NOT on the ERP allowlist; each rejection writes an event row, so this caps log growth. */
   intakeUnlisted: RateRule;
+  /** "Post to LinkedIn": starting a post (POST /c/:token/linkedin, GET from the email) and the /linkedin/ pages. */
+  linkedin: RateRule;
 }
 
 export const DEFAULT_RATE_LIMITS: RateLimits = {
   page: { limit: 300, windowMs: 60_000 },
   beacon: { limit: 60, windowMs: 60_000 },
   intakeUnlisted: { limit: 20, windowMs: 60_000 },
+  linkedin: { limit: 60, windowMs: 10 * 60_000 },
 };
 
 export interface AppOptions {
   limits?: Partial<RateLimits>;
   now?: () => number;
+  linkedin?: LinkedinRouteOptions;
 }
 
 /** IPv4 address, or the /64 of an IPv6 address (see rateKeyForIp). */
@@ -50,11 +57,14 @@ export function createApp(o: AppOptions = {}): Hono<AppEnv> {
   const page = new FixedWindowLimiter(limits.page, lo);
   const beacon = new FixedWindowLimiter(limits.beacon, lo);
   const intake = new FixedWindowLimiter(limits.intakeUnlisted, lo);
+  const linkedin = new FixedWindowLimiter(limits.linkedin, lo);
 
   const app = new Hono<AppEnv>();
 
   app.use('/c/*', rateLimit(page, { applies: (c) => c.req.method === 'GET' || c.req.method === 'HEAD', key: clientKey, onLimit: tooManyText }));
   app.use('/c/*', rateLimit(beacon, { applies: (c) => c.req.method === 'POST', key: clientKey, onLimit: tooManyText }));
+  const isLinkedin = (c: Context<AppEnv>): boolean => c.req.path.startsWith('/linkedin/') || /^\/c\/[^/]+\/linkedin$/.test(c.req.path);
+  app.use('*', rateLimit(linkedin, { applies: isLinkedin, key: clientKey, onLimit: tooManyText }));
   app.use('/v1/*', rateLimit(intake, {
     applies: () => true,
     key: (c) => {
@@ -74,6 +84,8 @@ export function createApp(o: AppOptions = {}): Hono<AppEnv> {
 
   app.route('/', studioStaticRoutes);
   app.route('/', intakeRoutes);
+  app.route('/', createLinkedinRoutes(o.linkedin));
+  app.route('/', fakeSigninRoutes);
   app.route('/', pageRoutes);
   app.route('/admin', adminRoutes);
 

@@ -41,6 +41,8 @@ async function seedCard(o: SeedOptions = {}): Promise<CardRow> {
       issued_on: '2026-10-01',
       preferred_language: 'en',
       licence_expires_on: null,
+      customer_email: null,
+      cc_email: null,
       ...o.fields,
     },
     content_hash: `hash-${seq}`,
@@ -112,7 +114,7 @@ describe('GET /c/:token', () => {
     const body = await (await call(`/c/${card.token}`)).res.text();
     expect(embedded(body)).toEqual({
       token: card.token, company_en: 'Nimbus Publishing FZE', company_ar: null, licence_number: card.licence_number,
-      issued_on: '2026-10-01', activity_en: 'Publishing', activity_ar: null, name_en: null, name_ar: null, lang: 'en', is_test: false,
+      issued_on: '2026-10-01', activity_en: 'Publishing', activity_ar: null, name_en: null, name_ar: null, lang: 'en', is_test: false, linkedin: false,
     });
   });
 

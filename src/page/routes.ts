@@ -11,7 +11,9 @@ import { isPast, todayInDubai } from '../util/time.js';
 import { renderExpiredPage, renderNotFoundPage } from './view.js';
 import { genericPreviewFile, renderStudioShell, studioCsp } from './studio.js';
 import { cachedPreview } from './preview-image.js';
+import { cachedCardImage, cardImageInput } from './card-image.js';
 import { readFile } from 'node:fs/promises';
+import { linkedinEnabled } from '../linkedin/client.js';
 
 const GTM_ID_RE = /^GTM-[A-Z0-9]{4,12}$/;
 const BEACON_LIMIT = 1024;
@@ -105,8 +107,10 @@ pageRoutes.get('/c/:token', async (c) => {
   pageHeaders(c, nonce, gtmContainer !== null, true);
 
   // The studio builds the card in the browser, so it never waits for the server-side render.
-  if (!card.is_test) safeMetric(c, { card_id: card.id, kind: 'view', lang });
-  return c.html(renderStudioShell({ card, lang, nonce, gtmContainer, baseUrl: c.env.BASE_URL }), 200);
+  // Opened from the welcome email (?via=email): counted apart, so the admin can see how many came that way.
+  if (!card.is_test) safeMetric(c, { card_id: card.id, kind: 'view', lang, network: c.req.query('via') === 'email' ? 'email' : null });
+  const linkedin = linkedinEnabled(c.env);
+  return c.html(renderStudioShell({ card, lang, nonce, gtmContainer, baseUrl: c.env.BASE_URL, linkedin }), 200);
 });
 
 // ------------------------------------------------------------------ beacon
@@ -146,6 +150,28 @@ pageRoutes.get('/c/:token/preview/:file', async (c) => {
     return new Response(new Uint8Array(img), { headers: { ...headers, 'Cache-Control': 'public, max-age=3600' } });
   }
   return new Response(new Uint8Array(img), { headers: { ...headers, 'Cache-Control': 'public, max-age=604800' } });
+});
+
+/**
+ * The customer's card as a picture (the Day One style, src/page/card-image.ts), shown in the welcome email and
+ * posted by "Post on LinkedIn" from the email. Same address rules and fallback as the preview picture.
+ */
+pageRoutes.get('/c/:token/card/:file', async (c) => {
+  const token = c.req.param('token');
+  const m = PREVIEW_FILE_RE.exec(c.req.param('file'));
+  if (!TOKEN_RE.test(token) || !m) return c.text('Not found', 404);
+  const lang: Lang = m[2] ? 'ar' : 'en';
+  const card = await getCardByToken(c.env.DB, token);
+  if (!card || card.status === 'expired' || isPast(card.expires_at)) return c.text('Not found', 404);
+  try {
+    const img = await cachedCardImage(`${token}:${card.content_hash}:${lang}`, cardImageInput(card, lang));
+    return new Response(new Uint8Array(img), {
+      headers: { 'Content-Type': 'image/jpeg', 'X-Content-Type-Options': 'nosniff', 'X-Robots-Tag': 'noindex', 'Cache-Control': 'public, max-age=604800' },
+    });
+  } catch (err) {
+    console.error('card image failed', { token_prefix: token.slice(0, 4), message: err instanceof Error ? err.message : String(err) });
+    return c.text('Not available', 503);
+  }
 });
 
 pageRoutes.post('/c/:token/m', async (c) => {

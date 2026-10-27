@@ -28,6 +28,8 @@ async function seedCard(o: { is_test?: boolean; expires_at?: string | null; fiel
       issued_on: '2026-10-01',
       preferred_language: 'en',
       licence_expires_on: null,
+      customer_email: null,
+      cc_email: null,
       ...o.fields,
     },
     content_hash: `hash-${seq}`,

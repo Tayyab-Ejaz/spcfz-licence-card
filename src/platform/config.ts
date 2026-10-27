@@ -4,7 +4,8 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import type { Env, TrustProxy } from '../types.js';
-import { TRUST_PROXY_MODES } from '../types.js';
+import { MAIL_TRANSPORT_MODES, TRUST_PROXY_MODES } from '../types.js';
+import type { MailTransportMode } from '../types.js';
 
 /** The part of Env that comes from configuration rather than from an adapter. */
 export type EnvVars = Omit<Env, 'DB' | 'BUCKET' | 'RENDER_QUEUE'>;
@@ -123,6 +124,31 @@ export function readConfig(source: ConfigSource, envFile: string | null = null):
   const loginKey = text(source, 'ADMIN_LOGIN_KEY');
   if (loginKey !== undefined && loginKey.length < 24) errors.push('ADMIN_LOGIN_KEY must be at least 24 characters (it is the only way to reach the sign-in page)');
 
+  // Mail: smtp needs a URL and a sender; file and off need nothing.
+  const smtpUrl = text(source, 'MAIL_SMTP_URL');
+  const modeRaw = text(source, 'MAIL_TRANSPORT')?.toLowerCase();
+  let mailMode: MailTransportMode = smtpUrl ? 'smtp' : 'off';
+  if (modeRaw !== undefined) {
+    if ((MAIL_TRANSPORT_MODES as readonly string[]).includes(modeRaw)) mailMode = modeRaw as MailTransportMode;
+    else errors.push(`MAIL_TRANSPORT must be one of ${MAIL_TRANSPORT_MODES.join(', ')}, got ${JSON.stringify(modeRaw)}`);
+  }
+  const mailFrom = text(source, 'MAIL_FROM');
+  if (mailMode === 'smtp') {
+    if (!smtpUrl) errors.push('MAIL_TRANSPORT=smtp needs MAIL_SMTP_URL (smtp(s)://user:password@host:port)');
+    else if (!/^smtps?:\/\//i.test(smtpUrl)) errors.push('MAIL_SMTP_URL must start with smtp:// or smtps://');
+    if (!mailFrom) errors.push('MAIL_TRANSPORT=smtp needs MAIL_FROM, e.g. "SPC Free Zone <licence@spcfz.ae>"');
+  }
+  if (mailMode === 'off') warnings.push('MAIL_TRANSPORT=off: welcome emails are queued in the admin but not sent');
+  const liId = text(source, 'LINKEDIN_CLIENT_ID');
+  const liSecret = text(source, 'LINKEDIN_CLIENT_SECRET');
+  if (Boolean(liId) !== Boolean(liSecret)) errors.push('LINKEDIN_CLIENT_ID and LINKEDIN_CLIENT_SECRET go together');
+  const liFake = text(source, 'LINKEDIN_FAKE') === '1' ? '1' : undefined;
+  if (liFake && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(baseUrl ?? '')) errors.push('LINKEDIN_FAKE=1 is for the local copy only (BASE_URL must be http://localhost)');
+  if (!liId && !liFake) warnings.push('LINKEDIN_CLIENT_ID is not set: the "Post to LinkedIn" button is hidden');
+  if (liFake) warnings.push('LINKEDIN_FAKE=1: "Post to LinkedIn" uses a pretend LinkedIn and writes posts to DATA_DIR/linkedin-outbox');
+  const liVersion = text(source, 'LINKEDIN_API_VERSION');
+  if (liVersion !== undefined && !/^20\d{4}$/.test(liVersion)) errors.push('LINKEDIN_API_VERSION must look like 202606 (YYYYMM)');
+
   const allowlist = text(source, 'ERP_IP_ALLOWLIST') ?? '';
   if (!allowlist) warnings.push('ERP_IP_ALLOWLIST is empty: both intake routes reject every request');
   if (!text(source, 'WEBHOOK_SECRET_CURRENT')) warnings.push('WEBHOOK_SECRET_CURRENT is not set: the production intake route accepts nothing');
@@ -145,6 +171,17 @@ export function readConfig(source: ConfigSource, envFile: string | null = null):
     TEST_SECRET_CURRENT: text(source, 'TEST_SECRET_CURRENT'),
     TEST_SECRET_PREVIOUS: text(source, 'TEST_SECRET_PREVIOUS'),
     ADMIN_LOGIN_KEY: loginKey,
+    MAIL_TRANSPORT: mailMode,
+    MAIL_SMTP_URL: smtpUrl,
+    MAIL_FROM: mailFrom,
+    MAIL_REPLY_TO: text(source, 'MAIL_REPLY_TO'),
+    MAIL_BCC: text(source, 'MAIL_BCC'),
+    MAIL_TEST_ALLOWLIST: text(source, 'MAIL_TEST_ALLOWLIST'),
+    LINKEDIN_CLIENT_ID: liId,
+    LINKEDIN_CLIENT_SECRET: liSecret,
+    LINKEDIN_ORG_URN: text(source, 'LINKEDIN_ORG_URN'),
+    LINKEDIN_API_VERSION: liVersion,
+    LINKEDIN_FAKE: liFake,
   };
   return { ok: true, config: { vars, host, port, dataDir, trustProxy, envFile, warnings } };
 }

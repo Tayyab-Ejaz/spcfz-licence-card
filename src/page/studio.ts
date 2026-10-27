@@ -41,10 +41,12 @@ export interface StudioCardData {
   name_ar: string | null;
   lang: 'en' | 'ar';
   is_test: boolean;
+  /** "Post to LinkedIn" is set up (src/linkedin/), so the studio shows its button. */
+  linkedin: boolean;
 }
 
 /** `lang` is the card language the studio opens with: ?lang= when given, else the customer's preference. */
-export function cardData(card: CardRow, lang: Lang = card.preferred_language): StudioCardData {
+export function cardData(card: CardRow, lang: Lang = card.preferred_language, linkedin = false): StudioCardData {
   return {
     token: card.token,
     company_en: card.company_name_en,
@@ -57,6 +59,7 @@ export function cardData(card: CardRow, lang: Lang = card.preferred_language): S
     name_ar: card.founder_name_ar,
     lang,
     is_test: card.is_test,
+    linkedin,
   };
 }
 
@@ -78,6 +81,8 @@ export interface ShellInput {
   gtmContainer: string | null;
   /** The service's public address, for the absolute URLs link previews need. */
   baseUrl?: string;
+  /** Show "Post to LinkedIn". */
+  linkedin?: boolean;
   manifest?: StudioManifest;
 }
 
@@ -90,6 +95,14 @@ export const PREVIEW_DESIGN = 2;
 /** Where a card's preview picture lives: /c/<token>/preview/<first 10 of the content hash>-v<design>[-ar].jpg */
 export function previewPath(card: Pick<CardRow, 'token' | 'content_hash'>, lang: Lang): string {
   return `/c/${card.token}/preview/${card.content_hash.slice(0, 10)}-v${PREVIEW_DESIGN}${lang === 'ar' ? '-ar' : ''}.jpg`;
+}
+
+/** The version of the card picture's design (src/page/card-image.ts, used in the welcome email). Raise it on change. */
+export const CARD_DESIGN = 1;
+
+/** Where a card's own Day One picture lives: /c/<token>/card/<hash10>-v<design>[-ar].jpg */
+export function cardImagePath(card: Pick<CardRow, 'token' | 'content_hash'>, lang: Lang): string {
+  return `/c/${card.token}/card/${card.content_hash.slice(0, 10)}-v${CARD_DESIGN}${lang === 'ar' ? '-ar' : ''}.jpg`;
 }
 
 /** The generic link-preview picture (design/og/licence-preview.jpg), as built into public/studio. */
@@ -154,7 +167,7 @@ ${i.gtmContainer ? raw(gtmSnippet(i.gtmContainer, i.nonce)) : ''}
 </head>
 <body>
 <div id="dc-root"></div>
-<script type="application/json" id="card-data">${raw(jsonForScript(cardData(i.card, i.lang)))}</script>
+<script type="application/json" id="card-data">${raw(jsonForScript(cardData(i.card, i.lang, i.linkedin ?? false)))}</script>
 <script src="${m.js}" defer></script>
 </body>
 </html>`;

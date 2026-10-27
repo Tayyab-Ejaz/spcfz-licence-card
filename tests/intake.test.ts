@@ -430,12 +430,25 @@ describe('mapPayload', () => {
     expect(out).toEqual({ licence_number: 'C-3', company_name_en: 'Cased Co', preferred_language: 'ar' });
   });
 
-  it('drops everything that is not canonical, including contact details', () => {
+  it('keeps the customer email (for the welcome email) and drops everything else that is not canonical', () => {
     const out = mapPayload(
       { licence_number: 'D-4', company_name_en: 'Dropped Co', owner_email: 'x@example.com', phone: '+971500000000', nested: { a: 1 } },
       '{}',
     );
-    expect(Object.keys(out).sort()).toEqual(['company_name_en', 'licence_number']);
+    expect(Object.keys(out).sort()).toEqual(['company_name_en', 'customer_email', 'licence_number']);
+  });
+
+  it('maps the customer and copy emails from common names or the owner object, and validates them', () => {
+    expect(mapPayload({ Email: 'A@B.ae' }, '{}')).toEqual({ customer_email: 'A@B.ae' });
+    expect(mapPayload({ owner: { full_name: 'Omar Haddad', email: 'o@x.ae' } }, '{}')).toEqual({ founder_name_en: 'Omar Haddad', customer_email: 'o@x.ae' });
+    expect(mapPayload({ email: 'top@x.ae', owner: { full_name: 'Omar', email: 'inner@x.ae' } }, '{}')).toMatchObject({ customer_email: 'top@x.ae' });
+    expect(mapPayload({ account_manager_email: 'rm@spcfz.ae' }, '{}')).toEqual({ cc_email: 'rm@spcfz.ae' });
+    const ok = validateCanonical({ licence_number: 'SPC-1', company_name_en: 'Nimbus FZE', customer_email: ' Mailto:Owner@Nimbus.AE ', cc_email: 'rm@spcfz.ae' });
+    expect(ok.ok && [ok.fields.customer_email, ok.fields.cc_email]).toEqual(['owner@nimbus.ae', 'rm@spcfz.ae']);
+    for (const bad of ['not-an-email', 'a@b', 'a@b.ae, c@d.ae', 'a b@c.ae', 42]) {
+      const v = validateCanonical({ licence_number: 'SPC-1', company_name_en: 'Nimbus FZE', customer_email: bad });
+      expect(v.ok, String(bad)).toBe(false);
+    }
   });
 
   it('unwraps activity lists and objects', () => {
@@ -574,14 +587,13 @@ describe('founder name', () => {
     expect(mapPayload({ founder_name: 'Mariam Fawzy', founder_name_ar: 'مريم فوزي' }, '{}')).toMatchObject({ founder_name_en: 'Mariam Fawzy', founder_name_ar: 'مريم فوزي' });
     expect(mapPayload({ OwnerName: 'Omar Haddad' }, '{}')).toMatchObject({ founder_name_en: 'Omar Haddad' });
     expect(mapPayload({ owner: { full_name: 'Omar Haddad', name_ar: 'عمر حداد', email: 'o@x.ae' } }, '{}'))
-      .toEqual({ founder_name_en: 'Omar Haddad', founder_name_ar: 'عمر حداد' });
+      .toEqual({ founder_name_en: 'Omar Haddad', founder_name_ar: 'عمر حداد', customer_email: 'o@x.ae' });
     expect(mapPayload({ shareholders: [{ name: 'Lina Saeed' }, { name: 'Other' }] }, '{}')).toEqual({ founder_name_en: 'Lina Saeed' });
   });
 
-  it('never stores contact details that came with the person', () => {
-    const out = mapPayload({ owner: { name: 'Omar Haddad', email: 'o@x.ae', phone: '+971' } }, '{}');
-    expect(JSON.stringify(out)).not.toContain('o@x.ae');
-    expect(JSON.stringify(out)).not.toContain('+971');
+  it('keeps only the email from the person object, never the phone or anything else', () => {
+    const out = mapPayload({ owner: { name: 'Omar Haddad', email: 'o@x.ae', phone: '+971', passport: 'X1' } }, '{}');
+    expect(out).toEqual({ founder_name_en: 'Omar Haddad', customer_email: 'o@x.ae' });
   });
 
   it('accepts long legal names rather than rejecting the licence', () => {
