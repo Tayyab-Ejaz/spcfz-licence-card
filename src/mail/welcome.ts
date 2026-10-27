@@ -164,8 +164,8 @@ a{text-decoration:none}
 <tr><td align="center" style="padding:0;">
 <table role="presentation" class="wrap" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:600px;background:#ffffff;font-family:${font};" dir="${dir}">
 
-<tr><td style="padding:0;background:#015dfe;">
-<a href="https://www.spcfz.ae/" target="_blank" style="display:block;"><img src="${header}" width="600" alt="SPC Free Zone · Where more is possible" style="width:100%;max-width:600px;height:auto;background:#015dfe;color:#ffffff;font-size:18px;font-weight:700;"></a>
+<tr><td style="padding:0;background:#015afe;">
+<a href="https://www.spcfz.ae/" target="_blank" style="display:block;"><img src="${header}" width="600" alt="SPC Free Zone · Where more is possible" style="width:100%;max-width:600px;height:auto;background:#015afe;color:#ffffff;font-size:18px;font-weight:700;"></a>
 </td></tr>
 
 <tr><td class="pad" style="padding:34px 32px 0;text-align:${align};">
