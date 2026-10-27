@@ -255,6 +255,7 @@ describe('unsubscribe', () => {
     // SPC's logo in the header, never the name typed out in colours.
     expect(html).toContain('<img src="/static/studio/a/a18673349b740aa2.png" alt="SPC Free Zone"');
     expect(html).not.toContain('<b>Free Zone</b>');
+    expect(html).toContain('<footer>SPC Free Zone · Sharjah, UAE · <a href="https://www.spcfz.ae/">spcfz.ae</a></footer>');
     expect(html).toContain('la•••@nimbus.example');
     expect(html).not.toContain('layla@nimbus.example');
     expect(await suppression(env.DB, 'layla@nimbus.example')).toBeNull();

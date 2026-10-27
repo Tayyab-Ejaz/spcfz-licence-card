@@ -17,6 +17,7 @@ export const LI_STRINGS = {
   en: {
     dir: 'ltr',
     pill: 'Post to LinkedIn',
+    footer: 'SPC Free Zone · Sharjah, UAE',
     stepSignIn: 'Sign in',
     stepReview: 'Review',
     stepPosted: 'Posted',
@@ -55,6 +56,7 @@ export const LI_STRINGS = {
   ar: {
     dir: 'rtl',
     pill: 'النشر على لينكدإن',
+    footer: 'المنطقة الحرة لمدينة الشارقة للنشر · الشارقة، الإمارات',
     stepSignIn: 'تسجيل الدخول',
     stepReview: 'المراجعة',
     stepPosted: 'تم النشر',
@@ -191,7 +193,7 @@ function page(p: Page): string {
 <main>
 ${p.body}
 </main>
-<footer>SPC Free Zone · <a href="https://www.spcfz.ae/">spcfz.ae</a></footer>
+<footer>${s.footer} · <a href="https://www.spcfz.ae/">spcfz.ae</a></footer>
 ${p.script ? h`<script nonce="${p.nonce}">${raw(p.script)}</script>` : ''}
 </body>
 </html>`;

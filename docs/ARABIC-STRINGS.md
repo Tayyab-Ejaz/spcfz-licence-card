@@ -71,7 +71,7 @@ numbers use Latin digits in both languages.
 | contactUs | تواصل معنا | Contact us |
 | testRibbon | تجريبي | TEST |
 | testNote | هذه بطاقة تجريبية وليست رخصة فعلية. | This is a test card, not a real licence. |
-| footerLine | المنطقة الحرة لمدينة الشارقة للنشر | SPC Free Zone · Sharjah Publishing City |
+| footerLine | المنطقة الحرة لمدينة الشارقة للنشر · الشارقة، الإمارات | SPC Free Zone · Sharjah, UAE |
 | unsubTitle | إلغاء الاشتراك في هذه الرسائل؟ | Unsubscribe from these emails? |
 | unsubBody | سنتوقف عن إرسال الرسائل الخاصة بإعلان رخصتك إلى {email}. | We will stop sending emails about your licence announcement to {email}. |
 | unsubButton | إلغاء الاشتراك | Unsubscribe |
