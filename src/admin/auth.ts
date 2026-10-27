@@ -20,6 +20,7 @@ import { FixedWindowLimiter } from '../util/rate-limit.js';
 import type { RateRule } from '../util/rate-limit.js';
 import { html, raw } from '../util/html.js';
 import { CSRF_FIELD, csrfFailure, ensureCsrf } from './csrf.js';
+import { LOGO_URL } from '../page/strings.js';
 import { burnPasswordCheck, verifyPassword } from './password.js';
 
 export type AdminVerifier = (c: Context<AppEnv>) => Promise<{ email: string } | null>;
@@ -79,8 +80,9 @@ const PAGE_CSS = `
 html,body{height:100%}
 body{margin:0;display:flex;align-items:center;justify-content:center;padding:24px 16px;background:var(--bg);color:var(--ink);font:15px/1.5 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
 main{width:100%;max-width:400px}
-.brand{display:flex;align-items:center;gap:10px;margin:0 0 18px;font-weight:800;font-size:15px;letter-spacing:-.01em}
-.brand span{display:inline-block;width:12px;height:12px;background:#f0b429;transform:rotate(45deg);border-radius:2px}
+.brand{display:flex;align-items:center;gap:12px;margin:0 0 18px}
+.brand img{display:block;height:40px;width:auto}
+.brand span{padding-inline-start:12px;border-inline-start:1px solid var(--border);color:var(--muted);font-size:13px;font-weight:600}
 .card{background:#fff;border:1px solid var(--border);border-radius:18px;padding:28px 26px;box-shadow:0 18px 40px -24px rgba(7,19,41,.25)}
 h1{margin:0 0 6px;font-size:22px;letter-spacing:-.02em}
 p.lead{margin:0 0 20px;color:var(--muted);font-size:14px}
@@ -104,7 +106,7 @@ function page(title: string, body: string): string {
 <style>${raw(PAGE_CSS)}</style>
 </head>
 <body><main>
-<div class="brand"><span></span>SPC licence cards</div>
+<div class="brand"><img src="${LOGO_URL}" alt="SPC Free Zone" width="98" height="40"><span>Licence cards admin</span></div>
 <div class="card">${raw(body)}</div>
 </main></body>
 </html>`;

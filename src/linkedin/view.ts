@@ -4,12 +4,12 @@ import type { Lang } from '../types.js';
 import { html, raw } from '../util/html.js';
 import type { RawHtml } from '../util/html.js';
 import { MAX_COMMENTARY } from './client.js';
+import { LOGO_URL } from '../page/strings.js';
 
 function h(strings: TemplateStringsArray, ...values: unknown[]): RawHtml {
   return raw(html(strings, ...values));
 }
 
-const LOGO = '/static/studio/a/a18673349b740aa2.png';
 // LinkedIn's mark (Simple Icons, CC0), as LinkedIn's brand guidelines allow on a "post to LinkedIn" control.
 const IN_MARK = h`<svg class="in" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20.45 20.45h-3.55v-5.57c0-1.33-.03-3.04-1.85-3.04-1.86 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0z"/></svg>`;
 
@@ -95,7 +95,7 @@ export const LI_STRINGS = {
 export type LiStrings = (typeof LI_STRINGS)[Lang];
 
 const CSS = `
-:root{--blue:#004dff;--blue2:#0038c2;--ink:#071329;--muted:#53617c;--line:#dfe7f4;--soft:#eef3ff;--bg:#f4f7fc;--li:#0a66c2;--ok:#0f9d58;--warn:#b42318}
+:root{--blue:#004dff;--blue2:#003fd1;--ink:#071329;--muted:#53617c;--line:#dfe7f4;--soft:#eef3ff;--bg:#f4f7fc;--li:#0a66c2;--ok:#0f9d58;--warn:#b42318}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;min-height:100vh;background:radial-gradient(1200px 500px at 50% -180px,#dfe8ff 0,rgba(223,232,255,0) 70%),var(--bg);color:var(--ink);font:16px/1.5 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Kufi Arabic","Noto Sans Arabic",Tahoma,Arial,sans-serif;-webkit-font-smoothing:antialiased}
@@ -187,7 +187,7 @@ function page(p: Page): string {
 <style nonce="${p.nonce}">${raw(CSS)}</style>
 </head>
 <body>
-<header class="top"><a href="https://www.spcfz.ae/"><img src="${LOGO}" alt="SPC Free Zone" width="98" height="40"></a><span class="pill">${IN_MARK}${s.pill}</span></header>
+<header class="top"><a href="https://www.spcfz.ae/"><img src="${LOGO_URL}" alt="SPC Free Zone" width="98" height="40"></a><span class="pill">${IN_MARK}${s.pill}</span></header>
 <main>
 ${p.body}
 </main>

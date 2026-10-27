@@ -4,7 +4,7 @@
 import type { Lang } from '../types.js';
 import { html, raw } from '../util/html.js';
 import type { RawHtml } from '../util/html.js';
-import { CONTACT_URL, PORTAL_URL, STRINGS } from './strings.js';
+import { CONTACT_URL, LOGO_URL, PORTAL_URL, STRINGS } from './strings.js';
 import { formatFullDate } from '../util/time.js';
 
 /** `html` that returns RawHtml so fragments nest without double escaping. */
@@ -15,18 +15,18 @@ function h(strings: TemplateStringsArray, ...values: unknown[]): RawHtml {
 const GTM_ID_RE = /^GTM-[A-Z0-9]{4,12}$/;
 
 const CSS = `
-:root{--blue:#004dff;--blue2:#102ea2;--cyan:#00b2c7;--ink:#071329;--muted:#53617c;--border:#dfe7f4;--gold:#f0b429;--bg:#f4f7fc}
+:root{--blue:#004dff;--blue2:#003fd1;--cyan:#00b2c7;--ink:#071329;--muted:#53617c;--border:#dfe7f4;--gold:#f0b429;--bg:#f4f7fc}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Kufi Arabic","Noto Sans Arabic",Tahoma,Arial,sans-serif}
 a{color:var(--blue)}
 .top{background:#fff;border-bottom:1px solid var(--border)}
 .top .in{max-width:720px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}
-.brand{font-weight:800;color:var(--blue2);text-decoration:none;font-size:16px;letter-spacing:-.01em}
-.brand b{color:var(--cyan);font-weight:800}
-.lang{font-size:14px;font-weight:600;text-decoration:none;border:1px solid var(--border);border-radius:999px;padding:6px 12px;color:var(--blue2);background:#fff;white-space:nowrap}
+.brand{display:block;line-height:0}
+.brand img{display:block;height:40px;width:auto}
+.lang{font-size:14px;font-weight:600;text-decoration:none;border:1px solid var(--border);border-radius:999px;padding:6px 12px;color:var(--blue);background:#fff;white-space:nowrap}
 main{max-width:720px;margin:0 auto;padding:20px 16px 36px}
-h1{font-size:clamp(22px,5.5vw,30px);line-height:1.2;margin:6px 0 6px;color:var(--blue2)}
+h1{font-size:clamp(22px,5.5vw,30px);line-height:1.2;margin:6px 0 6px;color:var(--ink)}
 .lead{margin:0 0 18px;color:var(--muted)}
 .card{position:relative;background:#fff;border:1px solid var(--border);border-radius:14px;padding:12px;display:flex;justify-content:center;box-shadow:0 8px 24px rgba(7,19,41,.06);overflow:hidden}
 .card img{display:block;max-width:100%;max-height:72vh;height:auto;width:auto;border-radius:8px;background:#eef2fa}
@@ -35,11 +35,11 @@ h1{font-size:clamp(22px,5.5vw,30px);line-height:1.2;margin:6px 0 6px;color:var(-
 .sizes{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:16px 0 12px}
 .sizes button{appearance:none;border:1px solid var(--border);background:#fff;border-radius:10px;padding:10px 4px;font:inherit;font-size:13px;color:var(--ink);cursor:pointer;line-height:1.25}
 .sizes button small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
-.sizes button.on{border-color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue);color:var(--blue2)}
+.sizes button.on{border-color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue);color:var(--blue)}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:10px;padding:12px 18px;font-weight:700;text-decoration:none;font-size:15px;border:0;cursor:pointer;font-family:inherit}
 .btn-primary{background:var(--blue);color:#fff;width:100%}
 .btn-primary:hover{background:var(--blue2)}
-.btn-ghost{background:#fff;border:1px solid var(--blue);color:var(--blue2);margin-top:8px}
+.btn-ghost{background:#fff;border:1px solid var(--blue);color:var(--blue);margin-top:8px}
 h2{font-size:17px;margin:26px 0 10px}
 .share{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 @media (min-width:480px){.share{grid-template-columns:repeat(4,1fr)}}
@@ -100,7 +100,7 @@ ${o.gtmContainer ? gtmSnippet(o.gtmContainer, o.nonce) : raw('')}
 </head>
 <body>
 <header class="top"><div class="in">
-<a class="brand" href="https://www.spcfz.ae/">SPC <b>Free Zone</b></a>
+<a class="brand" href="https://www.spcfz.ae/"><img src="${LOGO_URL}" alt="SPC Free Zone" width="98" height="40"></a>
 <a class="lang" href="${o.langToggleHref}" lang="${s.otherLang}" hreflang="${s.otherLang}" aria-label="${s.switchLanguage}" data-lang="${s.otherLang}">${s.otherLangLabel}</a>
 </div></header>
 <main id="app">

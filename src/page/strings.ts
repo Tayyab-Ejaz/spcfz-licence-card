@@ -154,5 +154,7 @@ export function fill(template: string, vars: Record<string, string>): string {
 }
 
 export const CONTACT_URL = 'https://www.spcfz.ae/contact-us/';
+/** SPC's colour logo (the card's, served by the studio's static route). Every page header uses it: never the name typed out. */
+export const LOGO_URL = '/static/studio/a/a18673349b740aa2.png';
 export const PORTAL_URL = 'https://portal.spcfz.ae/frontend/login/';
 export const WHATSAPP_URL = 'https://wa.me/971502387267';

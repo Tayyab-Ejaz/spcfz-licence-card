@@ -252,6 +252,9 @@ describe('unsubscribe', () => {
     expect(page.headers.get('Content-Security-Policy')).toContain("form-action 'self'");
     const html = await page.text();
     expect(html).toContain('Unsubscribe from these emails?');
+    // SPC's logo in the header, never the name typed out in colours.
+    expect(html).toContain('<img src="/static/studio/a/a18673349b740aa2.png" alt="SPC Free Zone"');
+    expect(html).not.toContain('<b>Free Zone</b>');
     expect(html).toContain('la•••@nimbus.example');
     expect(html).not.toContain('layla@nimbus.example');
     expect(await suppression(env.DB, 'layla@nimbus.example')).toBeNull();
