@@ -105,7 +105,7 @@ describe('the welcome email', () => {
   it('ends with Contact Us, the copyright and the social links, every icon served', async () => {
     const card = await seedCard();
     const m = renderWelcome({ card, lang: 'en', baseUrl: 'https://licensed.test', linkedin: false });
-    expect(m.html).toContain('>CONTACT US</p>');
+    expect(m.html).not.toContain('CONTACT US');
     expect(m.html).toContain('>Toll Free Number</span>');
     expect(m.html).toMatch(/<a href="tel:80077239" dir="ltr"[^>]*>800 77239<\/a>/);
     expect(m.html).toContain('href="mailto:marketing@spcfz.ae"');

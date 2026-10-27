@@ -53,8 +53,6 @@ export const COPY = {
     welcome: 'Welcome to the SPC Free Zone business community!',
     regards: 'Best regards,',
     team: 'Team SPC Free Zone',
-    why: (co: string) => `You're receiving this email because SPC Free Zone issued a business license to ${co}.`,
-    contactTitle: 'CONTACT US',
     tollFree: 'Toll Free Number',
     emailLabel: 'Email',
     copyright: (year: string) => `© ${year} Sharjah Publishing City (SPC) Free Zone`,
@@ -86,8 +84,6 @@ export const COPY = {
     welcome: 'أهلاً بك في مجتمع الأعمال في المنطقة الحرة لمدينة الشارقة للنشر!',
     regards: 'مع أطيب التحيات،',
     team: 'فريق المنطقة الحرة لمدينة الشارقة للنشر',
-    why: (co: string) => `وصلتك هذه الرسالة لأن المنطقة الحرة لمدينة الشارقة للنشر أصدرت رخصة تجارية لشركة ${co}.`,
-    contactTitle: 'تواصل معنا',
     tollFree: 'الرقم المجاني',
     emailLabel: 'البريد الإلكتروني',
     copyright: (year: string) => `© ${year} المنطقة الحرة لمدينة الشارقة للنشر`,
@@ -125,7 +121,7 @@ export function renderWelcome(i: WelcomeInput): WelcomeEmail {
   const header = `${base}/static/email/${EMAIL_HEADER}`;
   const year = todayInDubai().slice(0, 4);
   const logo = `${base}/static/email/${FOOTER_LOGO}`;
-  const social = SOCIAL.map((n, k) => html`<a href="${n.href}" target="_blank" style="display:inline-block;${k ? (ar ? 'margin-right:6px;' : 'margin-left:6px;') : ''}"><img src="${base}/static/email/${n.icon}" width="32" height="32" alt="${n.name}" style="display:inline-block;width:32px;height:32px;"></a>`).join('');
+  const social = SOCIAL.map((n, k) => html`<a href="${n.href}" target="_blank" style="display:inline-block;${k ? (ar ? 'margin-right:8px;' : 'margin-left:8px;') : ''}"><img class="ft-icon" src="${base}/static/email/${n.icon}" width="38" height="38" alt="${n.name}" style="display:inline-block;width:38px;height:38px;"></a>`).join('');
   // The card sits in a small editor window (a bar with "Draft" and "Customise", then chips under it), so it reads as
   // a draft to make their own before posting rather than a finished picture (SPC, 27 October 2026).
   const out = html`<!doctype html>
@@ -156,6 +152,8 @@ a{text-decoration:none}
   .ft-sep{display:none!important}
   .ft-pair{display:block!important}
   .bar-title{display:none!important}
+  .ft-logo{width:128px!important}
+  .ft-icon{width:32px!important;height:32px!important}
   .chip{padding:6px 10px!important;font-size:12.5px!important}
 }
 @media (prefers-color-scheme:dark){
@@ -234,12 +232,11 @@ ${i.linkedin ? raw(html`<td class="btn-cell" style="padding:0;">${raw(button({ h
 <tr><td class="pad foot" style="padding:26px 32px 24px;background:#000000;text-align:${align};">
 
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-<td valign="middle" style="text-align:${align};"><a href="https://www.spcfz.ae/" target="_blank"><img src="${logo}" width="132" alt="SPC Free Zone" style="width:132px;height:auto;${ar ? 'margin-left:auto;' : ''}"></a></td>
+<td valign="middle" style="text-align:${align};"><a href="https://www.spcfz.ae/" target="_blank"><img class="ft-logo" src="${logo}" width="160" alt="SPC Free Zone" style="width:160px;height:auto;${ar ? 'margin-left:auto;' : ''}"></a></td>
 <td valign="middle" style="text-align:${ar ? 'left' : 'right'};white-space:nowrap;">${raw(social)}</td>
 </tr></table>
 
-<p style="margin:22px 0 6px;color:#7fa6ff;font-size:11px;line-height:14px;font-weight:800;letter-spacing:${ar ? '0' : '.16em'};">${t.contactTitle}</p>
-<p style="margin:0;color:#ffffff;font-size:14px;line-height:22px;"><span class="ft-pair" style="white-space:nowrap;"><span style="color:#8b919c;">${t.tollFree}</span>&nbsp; <a href="${PHONE.href}" dir="ltr" style="color:#ffffff;font-weight:600;text-decoration:none;">${PHONE.label}</a></span><span class="ft-sep" style="color:#3f434b;">&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;</span><span class="ft-pair" style="white-space:nowrap;"><span style="color:#8b919c;">${t.emailLabel}</span>&nbsp; <a href="mailto:${CONTACT_EMAIL}" style="color:#ffffff;font-weight:600;text-decoration:none;">${CONTACT_EMAIL}</a></span></p>
+<p style="margin:22px 0 0;color:#ffffff;font-size:14px;line-height:22px;"><span class="ft-pair" style="white-space:nowrap;"><span style="color:#8b919c;">${t.tollFree}</span>&nbsp; <a href="${PHONE.href}" dir="ltr" style="color:#ffffff;font-weight:600;text-decoration:none;">${PHONE.label}</a></span><span class="ft-sep" style="color:#3f434b;">&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;</span><span class="ft-pair" style="white-space:nowrap;"><span style="color:#8b919c;">${t.emailLabel}</span>&nbsp; <a href="mailto:${CONTACT_EMAIL}" style="color:#ffffff;font-weight:600;text-decoration:none;">${CONTACT_EMAIL}</a></span></p>
 
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding:20px 0 16px;"><div style="height:1px;line-height:1px;font-size:0;background:#202329;">&nbsp;</div></td></tr></table>
 
@@ -251,7 +248,6 @@ ${i.linkedin ? raw(html`<td class="btn-cell" style="padding:0;">${raw(button({ h
 <a href="${unsubscribeUrl}" target="_blank" style="display:inline-block;border:1px solid #33373e;border-radius:6px;padding:5px 12px;background:#000000;color:#c9ced6;font-size:12px;line-height:16px;font-weight:600;text-decoration:none;">${t.unsubscribe}</a>
 </td>
 </tr></table>
-<p style="margin:12px 0 0;color:#666c77;font-size:11px;line-height:16px;">${t.why(company)}</p>
 </td></tr>
 
 </table>
@@ -287,7 +283,6 @@ ${i.linkedin ? raw(html`<td class="btn-cell" style="padding:0;">${raw(button({ h
     t.regards,
     t.team,
     '',
-    t.contactTitle,
     `${t.tollFree}: ${PHONE.label}`,
     `${t.emailLabel}: ${CONTACT_EMAIL}`,
     t.copyright(year),
@@ -295,7 +290,6 @@ ${i.linkedin ? raw(html`<td class="btn-cell" style="padding:0;">${raw(button({ h
     '',
     SOCIAL.map((n) => `${n.name}: ${n.href}`).join('\n'),
     '',
-    t.why(company),
     `${t.unsubscribe}: ${unsubscribeUrl}`,
   ];
   return { subject: t.subject, html: out, text: lines.join('\n'), unsubscribeUrl };
