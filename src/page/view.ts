@@ -162,3 +162,54 @@ export function renderNotFoundPage(lang: Lang, nonce: string): string {
     langToggleHref: `?lang=${s.otherLang}`,
   });
 }
+
+/** "layla.haddad@example.com" -> "la•••@example.com": enough to recognise, not to read off a forwarded link. */
+export function maskEmail(email: string): string {
+  const at = email.lastIndexOf('@');
+  if (at < 1) return '•••';
+  return `${email.slice(0, Math.min(2, at))}•••${email.slice(at)}`;
+}
+
+export interface UnsubscribeView {
+  email: string | null;
+  done: boolean;
+  cardUrl: string;
+  /** Where the form posts (this page's own address). */
+  action: string;
+}
+
+export function renderUnsubscribePage(lang: Lang, nonce: string, v: UnsubscribeView): string {
+  const s = STRINGS[lang];
+  const shown = v.email ? maskEmail(v.email) : '';
+  const body = !v.email
+    ? h`
+<div class="state">
+<h1>${s.unsubDoneTitle}</h1>
+<p>${s.unsubNoEmail}</p>
+<p><a class="btn btn-ghost" href="${v.cardUrl}">${s.openCard}</a></p>
+</div>`
+    : v.done
+      ? h`
+<div class="state">
+<h1>${s.unsubDoneTitle}</h1>
+<p>${s.unsubDoneBody.replace('{email}', shown)}</p>
+<p><a class="btn btn-ghost" href="${v.cardUrl}">${s.openCard}</a></p>
+</div>`
+      : h`
+<div class="state">
+<h1>${s.unsubTitle}</h1>
+<p>${s.unsubBody.replace('{email}', shown)}</p>
+<form method="post" action="${v.action}"><button class="btn btn-primary" type="submit">${s.unsubButton}</button></form>
+<p><a class="btn btn-ghost" href="${v.cardUrl}">${s.openCard}</a></p>
+</div>`;
+  return shell({
+    lang,
+    nonce,
+    title: `${v.done ? s.unsubDoneTitle : s.unsubTitle} · ${s.siteName}`,
+    body,
+    gtmContainer: null,
+    isTest: false,
+    langToggleHref: `?lang=${s.otherLang}`,
+  });
+}
+

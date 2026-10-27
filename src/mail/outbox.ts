@@ -5,7 +5,7 @@
 import type { CardRow, Env } from '../types.js';
 import { getCardById } from '../db/cards.js';
 import {
-  dueEmails, hasActiveEmail, insertEmail, markEmailRetry, markEmailSent, markEmailSkipped,
+  dueEmails, hasActiveEmail, insertEmail, markEmailRetry, markEmailSent, markEmailSkipped, suppression,
 } from '../db/emails.js';
 import type { EmailKind } from '../db/emails.js';
 import { isPast, nowIso } from '../util/time.js';
@@ -22,7 +22,7 @@ export function testRecipientAllowed(env: Pick<Env, 'MAIL_TEST_ALLOWLIST'>, emai
   return list.some((entry) => (entry.includes('@') ? e === entry : e.endsWith(`@${entry.replace(/^@/, '')}`)));
 }
 
-export type QueueResult = 'queued' | 'no-email' | 'already-sent' | 'expired' | 'skipped-test';
+export type QueueResult = 'queued' | 'no-email' | 'already-sent' | 'expired' | 'skipped-test' | 'unsubscribed';
 
 let kick: (() => void) | null = null;
 /** src/server.ts registers the worker so a newly queued email goes out within seconds. */
@@ -38,6 +38,10 @@ export async function queueWelcome(env: Env, card: CardRow, o: { actor: string |
   const kind: EmailKind = 'welcome';
   if (!o.force && (await hasActiveEmail(env.DB, card.id, kind))) return 'already-sent';
   const base = { card_id: card.id, kind, to_email: card.customer_email, cc_email: card.cc_email, lang: card.preferred_language, actor: o.actor, now };
+  if (await suppression(env.DB, card.customer_email)) {
+    await insertEmail(env.DB, { ...base, status: 'skipped', last_error: 'unsubscribed: the customer asked for no more emails' });
+    return 'unsubscribed';
+  }
   if (card.is_test && !testRecipientAllowed(env, card.customer_email)) {
     await insertEmail(env.DB, { ...base, status: 'skipped', last_error: 'test card: recipient is not on MAIL_TEST_ALLOWLIST' });
     return 'skipped-test';
@@ -58,12 +62,13 @@ export async function processOutbox(env: Env, transport: MailTransport | null, n
     const card = await getCardById(env.DB, e.card_id);
     if (!card) { await markEmailSkipped(env.DB, e.id, 'card no longer exists'); summary.skipped++; continue; }
     if (card.status === 'expired' || isPast(card.expires_at)) { await markEmailSkipped(env.DB, e.id, 'card expired before sending'); summary.skipped++; continue; }
+    if (await suppression(env.DB, e.to_email)) { await markEmailSkipped(env.DB, e.id, 'unsubscribed before sending'); summary.skipped++; continue; }
     const lang = e.lang === 'ar' ? 'ar' : 'en';
     let subject: string | null = null;
     try {
       const mail = renderWelcome({ card, lang, baseUrl: env.BASE_URL, linkedin: linkedinEnabled(env) });
       subject = mail.subject;
-      const sent = await transport.send({ to: e.to_email, cc: e.cc_email, subject: mail.subject, html: mail.html, text: mail.text });
+      const sent = await transport.send({ to: e.to_email, cc: e.cc_email, subject: mail.subject, html: mail.html, text: mail.text, unsubscribeUrl: mail.unsubscribeUrl });
       await markEmailSent(env.DB, e.id, mail.subject, sent.id, nowIso());
       console.log('email sent', { kind: e.kind, card_id: e.card_id, mode: transport.mode });
       summary.sent++;

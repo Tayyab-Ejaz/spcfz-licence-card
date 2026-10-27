@@ -12,6 +12,12 @@ export interface OutgoingEmail {
   subject: string;
   html: string;
   text: string;
+  /** Sent as List-Unsubscribe with List-Unsubscribe-Post (RFC 8058), so Gmail and others show their own button. */
+  unsubscribeUrl?: string;
+}
+
+function unsubscribeHeaders(url: string | undefined): Record<string, string> {
+  return url ? { 'List-Unsubscribe': `<${url}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' } : {};
 }
 
 export interface MailTransport {
@@ -33,7 +39,7 @@ export function transportFromEnv(env: Env): MailTransport | null {
       async send(m) {
         const info = await smtp.sendMail({
           from, to: m.to, cc: m.cc || undefined, bcc: env.MAIL_BCC || undefined, replyTo: env.MAIL_REPLY_TO || undefined,
-          subject: m.subject, html: m.html, text: m.text, headers,
+          subject: m.subject, html: m.html, text: m.text, headers: { ...headers, ...unsubscribeHeaders(m.unsubscribeUrl) },
         });
         return { id: String(info.messageId ?? '') };
       },
@@ -47,7 +53,7 @@ export function transportFromEnv(env: Env): MailTransport | null {
         mkdirSync(dir, { recursive: true });
         const id = `${new Date().toISOString().replace(/[:.]/g, '-')}-${m.to.replace(/[^a-z0-9@._-]/gi, '_')}`;
         writeFileSync(path.join(dir, `${id}.html`), m.html);
-        writeFileSync(path.join(dir, `${id}.txt`), `From: ${from}\nTo: ${m.to}\n${m.cc ? `Cc: ${m.cc}\n` : ''}Subject: ${m.subject}\n\n${m.text}\n`);
+        writeFileSync(path.join(dir, `${id}.txt`), `From: ${from}\nTo: ${m.to}\n${m.cc ? `Cc: ${m.cc}\n` : ''}Subject: ${m.subject}\n${m.unsubscribeUrl ? `List-Unsubscribe: <${m.unsubscribeUrl}>\n` : ''}\n${m.text}\n`);
         return { id: `file:${id}` };
       },
     };

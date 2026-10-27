@@ -7,8 +7,9 @@ import { bumpMetric, getCardByToken, getSettings } from '../db/cards.js';
 import type { MetricKey } from '../db/cards.js';
 import { background } from '../util/background.js';
 import { TOKEN_RE, bytesToBase64 } from '../util/crypto.js';
-import { isPast, todayInDubai } from '../util/time.js';
-import { renderExpiredPage, renderNotFoundPage } from './view.js';
+import { isPast, nowIso, todayInDubai } from '../util/time.js';
+import { renderExpiredPage, renderNotFoundPage, renderUnsubscribePage } from './view.js';
+import { suppress, suppression } from '../db/emails.js';
 import { genericPreviewFile, renderStudioShell, studioCsp } from './studio.js';
 import { cachedPreview } from './preview-image.js';
 import { cachedCardImage, cardImageInput } from './card-image.js';
@@ -23,7 +24,7 @@ function makeNonce(): string {
   return bytesToBase64(crypto.getRandomValues(new Uint8Array(16)));
 }
 
-function buildCsp(nonce: string, gtm: boolean): string {
+function buildCsp(nonce: string, gtm: boolean, formSelf = false): string {
   const script = [`'nonce-${nonce}'`];
   const connect = ["'self'"];
   const img = ["'self'", 'data:'];
@@ -38,16 +39,16 @@ function buildCsp(nonce: string, gtm: boolean): string {
     `style-src 'nonce-${nonce}'`,
     `script-src ${script.join(' ')}`,
     `connect-src ${connect.join(' ')}`,
-    "form-action 'none'",
+    formSelf ? "form-action 'self'" : "form-action 'none'",
     "base-uri 'none'",
     "frame-ancestors 'none'",
   ].join('; ');
 }
 
-function pageHeaders(c: Context<AppEnv>, nonce: string, gtm: boolean, studio = false): void {
+function pageHeaders(c: Context<AppEnv>, nonce: string, gtm: boolean, studio = false, formSelf = false): void {
   c.header('Cache-Control', 'private, no-store');
   c.header('X-Robots-Tag', 'noindex, nofollow');
-  c.header('Content-Security-Policy', studio ? studioCsp(nonce, gtm) : buildCsp(nonce, gtm));
+  c.header('Content-Security-Policy', studio ? studioCsp(nonce, gtm) : buildCsp(nonce, gtm, formSelf));
   c.header('Referrer-Policy', 'strict-origin-when-cross-origin');
   c.header('X-Content-Type-Options', 'nosniff');
   c.header('X-Frame-Options', 'DENY');
@@ -172,6 +173,45 @@ pageRoutes.get('/c/:token/card/:file', async (c) => {
     console.error('card image failed', { token_prefix: token.slice(0, 4), message: err instanceof Error ? err.message : String(err) });
     return c.text('Not available', 503);
   }
+});
+
+// ------------------------------------------------------------------ unsubscribe
+
+/**
+ * The welcome email's Unsubscribe. GET asks (link checkers in mailboxes open links, so a GET must not
+ * unsubscribe); the page's button POSTs. Mail apps' own Unsubscribe POSTs "List-Unsubscribe=One-Click" here
+ * directly (RFC 8058) and gets a plain 200. Works for expired cards too.
+ */
+pageRoutes.get('/c/:token/unsubscribe', async (c) => {
+  const token = c.req.param('token');
+  const langQ = c.req.query('lang');
+  const nonce = makeNonce();
+  c.set('nonce', nonce);
+  const card = TOKEN_RE.test(token) ? await getCardByToken(c.env.DB, token) : null;
+  const lang: Lang = isLang(langQ) ? langQ : card?.preferred_language ?? 'en';
+  pageHeaders(c, nonce, false, false, true);
+  if (!card) return c.html(renderNotFoundPage(lang, nonce), 404);
+  const email = card.customer_email;
+  const done = email ? (await suppression(c.env.DB, email)) !== null : true;
+  return c.html(renderUnsubscribePage(lang, nonce, { email, done, cardUrl: `/c/${token}?lang=${lang}`, action: `/c/${token}/unsubscribe?lang=${lang}` }));
+});
+
+pageRoutes.post('/c/:token/unsubscribe', async (c) => {
+  const token = c.req.param('token');
+  const langQ = c.req.query('lang');
+  const declared = Number(c.req.header('Content-Length') ?? '0');
+  if (!TOKEN_RE.test(token) || (Number.isFinite(declared) && declared > BEACON_LIMIT)) return c.text('Not found', 404);
+  const text = await c.req.text().catch(() => '');
+  const oneClick = /(^|&)List-Unsubscribe=One-Click(&|$)/.test(text.trim());
+  const card = await getCardByToken(c.env.DB, token);
+  if (!card) return c.text('Not found', 404);
+  if (card.customer_email) {
+    await suppress(c.env.DB, { email: card.customer_email, card_id: card.id, source: oneClick ? 'one-click' : 'page', created_at: nowIso() });
+    console.log('unsubscribed', { card_id: card.id, source: oneClick ? 'one-click' : 'page' });
+  }
+  if (oneClick) return c.text('Unsubscribed', 200, { 'Cache-Control': 'no-store' });
+  const lang: Lang = isLang(langQ) ? langQ : card.preferred_language;
+  return c.redirect(`/c/${token}/unsubscribe?lang=${lang}`, 303);
 });
 
 pageRoutes.post('/c/:token/m', async (c) => {

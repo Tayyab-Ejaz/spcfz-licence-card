@@ -498,8 +498,15 @@ What the customer gets, in their preferred language (English or Arabic, right to
   linked to their studio.
 - "Share Your Milestone" (the studio, `?via=email`, counted as a view from email) and, when LinkedIn is set up,
   "Post on LinkedIn" (section 17, with the server's card and the default caption).
-- The closing lines, "Best regards, Team SPC Free Zone", and a footer: why they got it, the address, a contact link,
-  the other language.
+- The closing lines, "Best regards, Team SPC Free Zone", and a footer: why they got it, "SPC Free Zone · Sharjah, UAE",
+  a contact link and an **Unsubscribe** button. No link to the other language (removed at SPC's request, 27 October
+  2026); the card page has its own switch.
+- Unsubscribe: the button opens `/c/<token>/unsubscribe`, which asks first (mailbox link checkers open links, so
+  opening it changes nothing) and unsubscribes on its button. Every email also carries `List-Unsubscribe` and
+  `List-Unsubscribe-Post: List-Unsubscribe=One-Click` (RFC 8058), so Gmail and others show their own Unsubscribe,
+  which posts to the same address. Unsubscribed addresses (table `email_suppressions`, migration 0008) get
+  nothing more: checked when an email is queued and again before it is sent, on every card with that address.
+  The admin card page says when and how an address unsubscribed.
 - Built for real inboxes: tables and inline styles, a preheader, Outlook buttons, dark mode, alt text, and a
   plain-text part. Headers `Auto-Submitted: auto-generated` and `X-Auto-Response-Suppress`.
 

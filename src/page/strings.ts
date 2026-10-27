@@ -43,6 +43,14 @@ export interface PageStrings {
   testRibbon: string;
   testNote: string;
   footerLine: string;
+  /** The welcome email's Unsubscribe (27 October 2026). "{email}" is filled in, partly hidden. */
+  unsubTitle: string;
+  unsubBody: string;
+  unsubButton: string;
+  unsubDoneTitle: string;
+  unsubDoneBody: string;
+  unsubNoEmail: string;
+  openCard: string;
 }
 
 export const STRINGS: Record<Lang, PageStrings> = {
@@ -84,6 +92,13 @@ export const STRINGS: Record<Lang, PageStrings> = {
     testRibbon: 'TEST',
     testNote: 'This is a test card, not a real licence.',
     footerLine: 'SPC Free Zone · Sharjah Publishing City',
+    unsubTitle: 'Unsubscribe from these emails?',
+    unsubBody: 'We will stop sending emails about your licence announcement to {email}.',
+    unsubButton: 'Unsubscribe',
+    unsubDoneTitle: 'You are unsubscribed',
+    unsubDoneBody: 'We will not email {email} about your licence announcement again. Your card still works at the same link.',
+    unsubNoEmail: 'There is no email address on this card, so there is nothing to unsubscribe.',
+    openCard: 'Open my card',
   },
   ar: {
     dir: 'rtl',
@@ -123,6 +138,13 @@ export const STRINGS: Record<Lang, PageStrings> = {
     testRibbon: 'تجريبي',
     testNote: 'هذه بطاقة تجريبية وليست رخصة فعلية.',
     footerLine: 'المنطقة الحرة لمدينة الشارقة للنشر',
+    unsubTitle: 'إلغاء الاشتراك في هذه الرسائل؟',
+    unsubBody: 'سنتوقف عن إرسال الرسائل الخاصة بإعلان رخصتك إلى {email}.',
+    unsubButton: 'إلغاء الاشتراك',
+    unsubDoneTitle: 'تم إلغاء اشتراكك',
+    unsubDoneBody: 'لن نرسل إلى {email} أي رسائل أخرى بخصوص إعلان رخصتك. لا تزال بطاقتك متاحة على الرابط نفسه.',
+    unsubNoEmail: 'لا يوجد بريد إلكتروني مسجّل لهذه البطاقة، لذلك لا يوجد ما يُلغى.',
+    openCard: 'افتح بطاقتي',
   },
 };
 

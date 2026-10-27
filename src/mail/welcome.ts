@@ -11,6 +11,8 @@ export interface WelcomeEmail {
   subject: string;
   html: string;
   text: string;
+  /** The footer's Unsubscribe, also sent as the List-Unsubscribe header (src/mail/transport.ts). */
+  unsubscribeUrl: string;
 }
 
 export interface WelcomeInput {
@@ -45,10 +47,10 @@ export const COPY = {
     welcome: 'Welcome to the SPC Free Zone business community!',
     regards: 'Best regards,',
     team: 'Team SPC Free Zone',
-    other: 'Prefer Arabic?', otherLink: 'Open your card in Arabic',
-    address: 'SPC Free Zone · Sharjah Publishing City · Sharjah, UAE',
+    address: 'SPC Free Zone · Sharjah, UAE',
     why: (co: string) => `You're receiving this email because SPC Free Zone issued a business license to ${co}.`,
     help: 'Questions? Contact us',
+    unsubscribe: 'Unsubscribe',
   },
   ar: {
     subject: 'أعمالك أصبحت رسمية. شارك الخبر مع العالم!',
@@ -70,10 +72,10 @@ export const COPY = {
     welcome: 'أهلاً بك في مجتمع الأعمال في المنطقة الحرة لمدينة الشارقة للنشر!',
     regards: 'مع أطيب التحيات،',
     team: 'فريق المنطقة الحرة لمدينة الشارقة للنشر',
-    other: 'تفضّل الإنجليزية؟', otherLink: 'افتح بطاقتك بالإنجليزية',
     address: 'المنطقة الحرة لمدينة الشارقة للنشر · الشارقة، الإمارات العربية المتحدة',
     why: (co: string) => `وصلتك هذه الرسالة لأن المنطقة الحرة لمدينة الشارقة للنشر أصدرت رخصة تجارية لشركة ${co}.`,
     help: 'لديك سؤال؟ تواصل معنا',
+    unsubscribe: 'إلغاء الاشتراك',
   },
 } as const;
 
@@ -100,8 +102,8 @@ export function renderWelcome(i: WelcomeInput): WelcomeEmail {
   const font = ar ? "'Noto Kufi Arabic',Tahoma,Arial,sans-serif" : "Inter,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif";
   const langQ = ar ? 'ar' : 'en';
   const studio = `${base}/c/${c.token}?lang=${langQ}&via=email`;
-  const otherStudio = `${base}/c/${c.token}?lang=${ar ? 'en' : 'ar'}&via=email`;
   const linkedinUrl = `${base}/c/${c.token}/linkedin?lang=${langQ}&via=email`;
+  const unsubscribeUrl = `${base}/c/${c.token}/unsubscribe?lang=${langQ}`;
   const cardImg = `${base}${cardImagePath(c, i.lang)}`;
   const logo = `${base}/static/studio/a/a18673349b740aa2.png`;
   const out = html`<!doctype html>
@@ -133,6 +135,7 @@ a{text-decoration:none}
   .text,.h1{color:#e8edf7!important}
   .muted{color:#9aa7c0!important}
   .accent{color:#8fb0ff!important}
+  .unsub{color:#9aa7c0!important;border-color:#3a4863!important}
   .chip{background:#1b2a4d!important;color:#8fb0ff!important}
   .eyebrow{background:#16244a!important;color:#8fb0ff!important}
   .panel{background:#16213a!important}
@@ -190,10 +193,10 @@ ${i.linkedin ? raw(html`<td class="btn-cell" style="padding:0 6px;">${raw(button
 </td></tr>
 
 <tr><td class="pad" style="padding:22px 16px 0;text-align:center;">
-<p class="muted" style="margin:0 0 8px;color:#53617c;font-size:14px;line-height:20px;">${t.other} <a href="${otherStudio}" target="_blank" style="color:#004dff;font-weight:700;">${t.otherLink}</a></p>
 <p class="muted" style="margin:0 0 6px;color:#7c879d;font-size:12px;line-height:18px;">${t.why(company)}</p>
 <p class="muted" style="margin:0 0 6px;color:#7c879d;font-size:12px;line-height:18px;">${t.address}</p>
-<p style="margin:0;font-size:12px;line-height:18px;"><a href="${CONTACT_URL}" target="_blank" style="color:#004dff;font-weight:600;">${t.help}</a></p>
+<p style="margin:0 0 14px;font-size:12px;line-height:18px;"><a href="${CONTACT_URL}" target="_blank" style="color:#004dff;font-weight:600;">${t.help}</a></p>
+<p style="margin:0;font-size:12px;line-height:18px;"><a class="unsub" href="${unsubscribeUrl}" target="_blank" style="display:inline-block;border:1px solid #c9d4ea;border-radius:999px;padding:6px 16px;color:#53617c;font-size:12px;line-height:16px;font-weight:600;text-decoration:none;">${t.unsubscribe}</a></p>
 </td></tr>
 
 </table>
@@ -229,11 +232,10 @@ ${i.linkedin ? raw(html`<td class="btn-cell" style="padding:0 6px;">${raw(button
     t.regards,
     t.team,
     '',
-    `${t.other} ${otherStudio}`,
-    '',
     t.why(company),
     t.address,
     `${t.help}: ${CONTACT_URL}`,
+    `${t.unsubscribe}: ${unsubscribeUrl}`,
   ];
-  return { subject: t.subject, html: out, text: lines.join('\n') };
+  return { subject: t.subject, html: out, text: lines.join('\n'), unsubscribeUrl };
 }

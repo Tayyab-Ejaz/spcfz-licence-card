@@ -71,3 +71,23 @@ export async function emailCounts(db: D1Database): Promise<Record<EmailStatus, n
   for (const r of rows) out[r.status] = r.n;
   return out;
 }
+
+// ------------------------------------------------------------------ unsubscribed addresses (migration 0008)
+
+export interface SuppressionRow {
+  email: string;
+  card_id: string | null;
+  /** page: the unsubscribe page's button; one-click: the mail app's own Unsubscribe (RFC 8058). */
+  source: 'page' | 'one-click';
+  created_at: string;
+}
+
+export async function suppression(db: D1Database, email: string): Promise<SuppressionRow | null> {
+  return (await db.prepare('SELECT * FROM email_suppressions WHERE email = ?1').bind(email.toLowerCase()).first<SuppressionRow>()) ?? null;
+}
+
+/** First request wins; asking twice changes nothing. */
+export async function suppress(db: D1Database, s: SuppressionRow): Promise<void> {
+  await db.prepare('INSERT OR IGNORE INTO email_suppressions (email, card_id, source, created_at) VALUES (?1, ?2, ?3, ?4)')
+    .bind(s.email.toLowerCase(), s.card_id, s.source, s.created_at).run();
+}

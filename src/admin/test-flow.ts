@@ -399,7 +399,7 @@ ${kv([
     : !latest ? ['off', 'Not queued (the box was unticked)']
       : latest.status === 'sent' ? ['ok', `Sent ${fmtDateTime(latest.sent_at)}`]
         : latest.status === 'queued' ? ['wait', i.status.mail === 'off' ? 'Queued: email is off on this server' : 'Queued: sending…']
-          : latest.status === 'skipped' ? ['off', 'Skipped']
+          : latest.status === 'skipped' ? ['off', latest.last_error?.startsWith('unsubscribed') ? 'Unsubscribed: not sent' : 'Skipped']
             : ['bad', 'Failed'];
   const s3 = step(3, 'The welcome email', mailState[0], mailState[1], h`
 ${card.customer_email ? h`<p>To <b>${card.customer_email}</b>${card.cc_email ? h`, copy to <b>${card.cc_email}</b>` : EMPTY}, in ${card.preferred_language === 'ar' ? 'Arabic' : 'English'}.</p>` : h`<p class="muted">Add customer_email to the payload to test the email.</p>`}

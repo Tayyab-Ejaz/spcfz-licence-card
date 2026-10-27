@@ -196,7 +196,9 @@ not sent (Settings shows "off").
    shows sent, or the provider's error.
 
 The admin's card page has Preview links that show the email in both
-languages without sending anything.
+languages without sending anything. If a customer unsubscribed, the card page
+says so and Send again sends nothing; undoing an unsubscribe is only on the
+customer's request, by deleting their row from `email_suppressions`.
 
 ## Post to LinkedIn: turn it on
 

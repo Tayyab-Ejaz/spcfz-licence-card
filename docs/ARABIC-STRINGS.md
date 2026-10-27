@@ -72,6 +72,13 @@ numbers use Latin digits in both languages.
 | testRibbon | تجريبي | TEST |
 | testNote | هذه بطاقة تجريبية وليست رخصة فعلية. | This is a test card, not a real licence. |
 | footerLine | المنطقة الحرة لمدينة الشارقة للنشر | SPC Free Zone · Sharjah Publishing City |
+| unsubTitle | إلغاء الاشتراك في هذه الرسائل؟ | Unsubscribe from these emails? |
+| unsubBody | سنتوقف عن إرسال الرسائل الخاصة بإعلان رخصتك إلى {email}. | We will stop sending emails about your licence announcement to {email}. |
+| unsubButton | إلغاء الاشتراك | Unsubscribe |
+| unsubDoneTitle | تم إلغاء اشتراكك | You are unsubscribed |
+| unsubDoneBody | لن نرسل إلى {email} أي رسائل أخرى بخصوص إعلان رخصتك. لا تزال بطاقتك متاحة على الرابط نفسه. | We will not email {email} about your licence announcement again. Your card still works at the same link. |
+| unsubNoEmail | لا يوجد بريد إلكتروني مسجّل لهذه البطاقة، لذلك لا يوجد ما يُلغى. | There is no email address on this card, so there is nothing to unsubscribe. |
+| openCard | افتح بطاقتي | Open my card |
 
 Added 27 October 2026, drafted by Claude, not yet reviewed: the welcome email, the Post to LinkedIn pages and
 the LinkedIn caption. Generated from the source; `{company}` and `{first name}` are filled in per card.
@@ -99,11 +106,10 @@ the LinkedIn caption. Generated from the source; `{company}` and `{first name}` 
 | welcome | أهلاً بك في مجتمع الأعمال في المنطقة الحرة لمدينة الشارقة للنشر! | Welcome to the SPC Free Zone business community! |
 | regards | مع أطيب التحيات، | Best regards, |
 | team | فريق المنطقة الحرة لمدينة الشارقة للنشر | Team SPC Free Zone |
-| other | تفضّل الإنجليزية؟ | Prefer Arabic? |
-| otherLink | افتح بطاقتك بالإنجليزية | Open your card in Arabic |
-| address | المنطقة الحرة لمدينة الشارقة للنشر · الشارقة، الإمارات العربية المتحدة | SPC Free Zone · Sharjah Publishing City · Sharjah, UAE |
+| address | المنطقة الحرة لمدينة الشارقة للنشر · الشارقة، الإمارات العربية المتحدة | SPC Free Zone · Sharjah, UAE |
 | why | وصلتك هذه الرسالة لأن المنطقة الحرة لمدينة الشارقة للنشر أصدرت رخصة تجارية لشركة {company}. | You're receiving this email because SPC Free Zone issued a business license to {company}. |
 | help | لديك سؤال؟ تواصل معنا | Questions? Contact us |
+| unsubscribe | إلغاء الاشتراك | Unsubscribe |
 
 ## Post to LinkedIn pages (src/linkedin/view.ts, LI_STRINGS)
 

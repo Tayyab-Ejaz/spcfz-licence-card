@@ -22,7 +22,7 @@ import { hashFields, upsertFromCanonical } from '../intake/upsert.js';
 import type { AdminVerifier, AuthHandlers } from './auth.js';
 import { createAuthHandlers, sessionVerifier } from './auth.js';
 import { csrfFailure, csrfToken, ensureCsrf } from './csrf.js';
-import { emailCounts, emailsForCard } from '../db/emails.js';
+import { emailCounts, emailsForCard, suppression } from '../db/emails.js';
 import type { EmailRow } from '../db/emails.js';
 import { queueWelcome, testRecipientAllowed } from '../mail/outbox.js';
 import { renderWelcome } from '../mail/welcome.js';
@@ -59,6 +59,7 @@ const FLASH: Record<string, string> = {
   'email-none': 'This card has no customer email. Add one with Create (same licence number) or the next ERP update.',
   'email-expired': 'This card has expired, so no email was sent.',
   'email-test': 'Test card: the recipient is not on MAIL_TEST_ALLOWLIST, so the email was skipped.',
+  'email-unsub': 'This customer unsubscribed, so no email was sent.',
   deleted: 'Card deleted.',
   created: 'Card created; the page is ready now.',
   updated: 'Card updated; the page shows the new details now.',
@@ -450,7 +451,11 @@ ${pager('/admin/cards', query, page, total, PER_PAGE)}`;
       metricsForCard(c.env.DB, card.id),
       listEvents(c.env.DB, { card_id: card.id, limit: 20 }),
     ]);
-    const [emails, posts] = await Promise.all([emailsForCard(c.env.DB, card.id), linkedinPostsForCard(c.env.DB, card.id)]);
+    const [emails, posts, unsub] = await Promise.all([
+      emailsForCard(c.env.DB, card.id),
+      linkedinPostsForCard(c.env.DB, card.id),
+      card.customer_email ? suppression(c.env.DB, card.customer_email) : Promise.resolve(null),
+    ]);
     const token = csrfToken(c);
     const url = pageUrl(c.env, card.token);
     const licencePast = isPast(card.expires_at);
@@ -493,6 +498,7 @@ ${licencePast
 </form>
 <p class="muted">The card is built in the customer's browser: open the page to see it.</p>
 <h2>Welcome email</h2>
+${unsub ? h`<div class="error">${unsub.email} unsubscribed on ${fmtDateTime(unsub.created_at)} (${unsub.source === 'one-click' ? 'with their mail app\'s Unsubscribe' : 'with the email\'s Unsubscribe button'}). No more emails go to this address.</div>` : EMPTY}
 ${emailsTable(emails)}
 <div class="actions">
 ${card.customer_email
@@ -564,7 +570,7 @@ ${eventsTable(events.rows)}`;
     if (!card) return notFoundPage(c, 'card');
     const r = await queueWelcome(c.env, card, { actor: c.get('actor') ?? null, force: true });
     if (r === 'queued') await audit(c, 'emailed', card.id);
-    const m = r === 'queued' ? 'emailed' : r === 'no-email' ? 'email-none' : r === 'expired' ? 'email-expired' : 'email-test';
+    const m = r === 'queued' ? 'emailed' : r === 'no-email' ? 'email-none' : r === 'expired' ? 'email-expired' : r === 'unsubscribed' ? 'email-unsub' : 'email-test';
     const back = field(form, 'back');
     if (/^\/admin\/test-flow\/runs\/[0-9A-Z]{26}$/.test(back)) return c.redirect(`${back}?m=${m}`, 303);
     return c.redirect(`/admin/cards/${card.id}?m=${m}`, 303);

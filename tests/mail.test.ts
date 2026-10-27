@@ -1,9 +1,11 @@
 // The welcome email (ARCHITECTURE section 16): what it says and links to, who it may go to, and the outbox's
 // sending and retries, against a fake transport.
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { CanonicalFields, CardRow } from '../src/types.js';
+import { Hono } from 'hono';
+import type { AppEnv, CanonicalFields, CardRow } from '../src/types.js';
+import { pageRoutes } from '../src/page/routes.js';
 import { getCardById, insertCard, setCardStatus } from '../src/db/cards.js';
-import { emailsForCard } from '../src/db/emails.js';
+import { emailsForCard, suppression } from '../src/db/emails.js';
 import { randomToken } from '../src/util/crypto.js';
 import { renderWelcome } from '../src/mail/welcome.js';
 import { processOutbox, queueWelcome, testRecipientAllowed } from '../src/mail/outbox.js';
@@ -63,7 +65,7 @@ function fakeTransport(fail = 0): MailTransport & { sent: OutgoingEmail[] } {
 }
 
 beforeEach(async () => {
-  await env.DB.batch([env.DB.prepare('DELETE FROM emails'), env.DB.prepare('DELETE FROM cards')]);
+  await env.DB.batch([env.DB.prepare('DELETE FROM emails'), env.DB.prepare('DELETE FROM email_suppressions'), env.DB.prepare('DELETE FROM cards')]);
 });
 
 describe('the welcome email', () => {
@@ -75,6 +77,8 @@ describe('the welcome email', () => {
     expect(m.html).toContain('Congratulations on receiving your business license with <strong style="white-space:nowrap;">SPC Free Zone!</strong>');
     expect(m.html).toContain('Share Your Milestone');
     expect(m.html).toContain('Team SPC Free Zone');
+    expect(m.html).toContain('SPC Free Zone · Sharjah, UAE');
+    expect(m.html).not.toContain('Prefer Arabic?');
     expect(m.text).toContain('Your announcement is ready to share!');
     expect(m.html).toContain(`https://licensed.test/c/${card.token}/card/${card.content_hash.slice(0, 10)}-v${CARD_DESIGN}.jpg`);
     expect(m.html).toContain(`https://licensed.test/c/${card.token}?lang=en&amp;via=email`);
@@ -183,3 +187,68 @@ describe('sending', () => {
     expect((await emailsForCard(env.DB, card.id))[0]?.status).toBe('queued');
   });
 });
+
+describe('unsubscribe', () => {
+  const app = new Hono<AppEnv>().route('/', pageRoutes);
+  const call = (path: string, init?: RequestInit): Promise<Response> => Promise.resolve(app.request(path, init, env));
+
+  it('the email has an Unsubscribe button, and mail apps get the one-click header', async () => {
+    const card = await seedCard();
+    const m = renderWelcome({ card, lang: 'en', baseUrl: 'https://licensed.test', linkedin: false });
+    expect(m.unsubscribeUrl).toBe(`https://licensed.test/c/${card.token}/unsubscribe?lang=en`);
+    expect(m.html).toContain(`href="https://licensed.test/c/${card.token}/unsubscribe?lang=en"`);
+    expect(m.html).toContain('>Unsubscribe</a>');
+    expect(m.text).toContain(`Unsubscribe: https://licensed.test/c/${card.token}/unsubscribe?lang=en`);
+    await queueWelcome(env, card, { actor: null });
+    const t = fakeTransport();
+    await processOutbox(env, t);
+    expect(t.sent[0]?.unsubscribeUrl).toBe(m.unsubscribeUrl);
+  });
+
+  it('opening the link only asks; the button unsubscribes', async () => {
+    const card = await seedCard();
+    const page = await call(`/c/${card.token}/unsubscribe?lang=en`);
+    expect(page.status).toBe(200);
+    expect(page.headers.get('Content-Security-Policy')).toContain("form-action 'self'");
+    const html = await page.text();
+    expect(html).toContain('Unsubscribe from these emails?');
+    expect(html).toContain('la•••@nimbus.example');
+    expect(html).not.toContain('layla@nimbus.example');
+    expect(await suppression(env.DB, 'layla@nimbus.example')).toBeNull();
+
+    const res = await call(`/c/${card.token}/unsubscribe?lang=en`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: '' });
+    expect(res.status).toBe(303);
+    expect(res.headers.get('Location')).toBe(`/c/${card.token}/unsubscribe?lang=en`);
+    expect(await suppression(env.DB, 'layla@nimbus.example')).toMatchObject({ card_id: card.id, source: 'page' });
+    expect(await (await call(`/c/${card.token}/unsubscribe`)).text()).toContain('You are unsubscribed');
+  });
+
+  it('a mail app\'s one-click Unsubscribe works without the page', async () => {
+    const card = await seedCard();
+    const res = await call(`/c/${card.token}/unsubscribe`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'List-Unsubscribe=One-Click' });
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe('Unsubscribed');
+    expect((await suppression(env.DB, 'layla@nimbus.example'))?.source).toBe('one-click');
+  });
+
+  it('no email is queued or sent to an address that unsubscribed', async () => {
+    const card = await seedCard();
+    await queueWelcome(env, card, { actor: null }); // queued before the customer unsubscribed
+    await call(`/c/${card.token}/unsubscribe`, { method: 'POST', body: 'List-Unsubscribe=One-Click' });
+    const t = fakeTransport();
+    expect(await processOutbox(env, t)).toMatchObject({ sent: 0, skipped: 1 });
+    expect(await queueWelcome(env, card, { actor: 'staff@spcfz.ae', force: true })).toBe('unsubscribed');
+    const other = await seedCard({ fields: { customer_email: 'LAYLA@nimbus.example' } }); // the same address on another card
+    expect(await queueWelcome(env, other, { actor: null })).toBe('unsubscribed');
+    expect(t.sent).toHaveLength(0);
+  });
+
+  it('works on expired cards, says when there is no address, and 404s for unknown links', async () => {
+    const old = await seedCard({ expires_at: '2025-01-01T00:00:00.000Z' });
+    expect((await call(`/c/${old.token}/unsubscribe`)).status).toBe(200);
+    const none = await seedCard({ fields: { customer_email: null } });
+    expect(await (await call(`/c/${none.token}/unsubscribe`)).text()).toContain('nothing to unsubscribe');
+    expect((await call('/c/0000000000000000000000/unsubscribe')).status).toBe(404);
+  });
+});
+
