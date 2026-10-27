@@ -6,6 +6,7 @@ import type { CardRow, Lang } from '../types.js';
 import { html, raw } from '../util/html.js';
 import { CONTACT_URL } from '../page/strings.js';
 import { cardImagePath } from '../page/studio.js';
+import { EMAIL_HEADER } from './assets.js';
 
 export interface WelcomeEmail {
   subject: string;
@@ -105,7 +106,7 @@ export function renderWelcome(i: WelcomeInput): WelcomeEmail {
   const linkedinUrl = `${base}/c/${c.token}/linkedin?lang=${langQ}&via=email`;
   const unsubscribeUrl = `${base}/c/${c.token}/unsubscribe?lang=${langQ}`;
   const cardImg = `${base}${cardImagePath(c, i.lang)}`;
-  const logo = `${base}/static/studio/a/a18673349b740aa2.png`;
+  const header = `${base}/static/email/${EMAIL_HEADER}`;
   const out = html`<!doctype html>
 <html lang="${langQ}" dir="${dir}" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
@@ -139,7 +140,6 @@ a{text-decoration:none}
   .shot{border-color:#22304d!important}
   .unsub{color:#9aa7c0!important;border-color:#3a4863!important}
   .btn-secondary{background:#0b1220!important;color:#8fb0ff!important;border-color:#3b5bb0!important}
-  .logo{background:#ffffff!important;padding:6px 10px!important;border-radius:8px!important}
 }
 [data-ogsc] .text,[data-ogsc] .h1{color:#e8edf7!important}
 [data-ogsc] .muted{color:#9aa7c0!important}
@@ -151,10 +151,8 @@ a{text-decoration:none}
 <tr><td align="center" style="padding:0;">
 <table role="presentation" class="wrap" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:600px;background:#ffffff;font-family:${font};" dir="${dir}">
 
-<tr><td style="height:4px;line-height:4px;font-size:0;background:#004dff;">&nbsp;</td></tr>
-
-<tr><td class="pad rule" style="padding:26px 32px 22px;text-align:${align};border-bottom:1px solid #e6ebf5;">
-<a href="https://www.spcfz.ae/" target="_blank"><img class="logo" src="${logo}" width="128" alt="SPC Free Zone" style="width:128px;height:auto;${ar ? 'margin-left:auto;' : ''}"></a>
+<tr><td style="padding:0;background:#015afe;">
+<a href="https://www.spcfz.ae/" target="_blank" style="display:block;"><img src="${header}" width="600" alt="SPC Free Zone · Where more is possible" style="width:100%;max-width:600px;height:auto;background:#015afe;color:#ffffff;font-size:18px;font-weight:700;"></a>
 </td></tr>
 
 <tr><td class="pad" style="padding:34px 32px 0;text-align:${align};">

@@ -492,6 +492,8 @@ Layout and deployment are in docs/DEV.md and docs/RUNBOOK.md.
 
 What the customer gets, in their preferred language (English or Arabic, right to left), from `MAIL_FROM`:
 
+- A plain white email under SPC's header banner (white logo on brand blue, `assets/email/spc-header-<hash>.jpg`,
+  served at `/static/email/` and cached for good; a new banner gets a new file name).
 - SPC's copy (27 October 2026), English verbatim: subject and headline "Your Business Is Official. Let the World
   Know!", "A milestone worth celebrating. A story worth sharing.", "Hi <first name>," and the congratulations.
 - Their own card as a picture (the Day One style, 1080x1080, drawn by the server: `/c/<token>/card/<hash>-v<n>[-ar].jpg`),

@@ -9,6 +9,7 @@ import { adminRoutes } from './admin/routes.js';
 import { createLinkedinRoutes } from './linkedin/routes.js';
 import type { LinkedinRouteOptions } from './linkedin/routes.js';
 import { fakeSigninRoutes } from './linkedin/fake.js';
+import { emailAssetRoutes } from './mail/assets.js';
 import { studioStaticRoutes } from './page/studio.js';
 import { ipAllowed, parseAllowlist, rateKeyForIp } from './util/ip.js';
 import { FixedWindowLimiter, rateLimit } from './util/rate-limit.js';
@@ -83,6 +84,7 @@ export function createApp(o: AppOptions = {}): Hono<AppEnv> {
   app.get('/favicon.ico', () => new Response(null, { status: 204, headers: { 'Cache-Control': 'public, max-age=86400' } }));
 
   app.route('/', studioStaticRoutes);
+  app.route('/', emailAssetRoutes);
   app.route('/', intakeRoutes);
   app.route('/', createLinkedinRoutes(o.linkedin));
   app.route('/', fakeSigninRoutes);

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { Hono } from 'hono';
 import type { AppEnv, CanonicalFields, CardRow } from '../src/types.js';
 import { pageRoutes } from '../src/page/routes.js';
+import { EMAIL_HEADER, emailAssetRoutes } from '../src/mail/assets.js';
 import { getCardById, insertCard, setCardStatus } from '../src/db/cards.js';
 import { emailsForCard, suppression } from '../src/db/emails.js';
 import { randomToken } from '../src/util/crypto.js';
@@ -85,6 +86,18 @@ describe('the welcome email', () => {
     expect(m.html).toContain(`https://licensed.test/c/${card.token}/linkedin?lang=en&amp;via=email`);
     expect(m.html).toContain('dir="ltr"');
     expect(m.text).toContain(`https://licensed.test/c/${card.token}?lang=en&via=email`);
+  });
+
+  it('opens with the SPC banner, served from this service and cached for good', async () => {
+    const card = await seedCard();
+    const m = renderWelcome({ card, lang: 'en', baseUrl: 'https://licensed.test', linkedin: false });
+    expect(m.html).toContain(`src="https://licensed.test/static/email/${EMAIL_HEADER}"`);
+    const app = new Hono<AppEnv>().route('/', emailAssetRoutes);
+    const res = await app.request(`/static/email/${EMAIL_HEADER}`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('Content-Type')).toBe('image/jpeg');
+    expect(res.headers.get('Cache-Control')).toContain('immutable');
+    expect((await app.request('/static/email/..%2Fsecret.jpg')).status).toBe(404);
   });
 
   it('has no LinkedIn button until LinkedIn is set up', async () => {
