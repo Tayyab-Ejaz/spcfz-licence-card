@@ -23,9 +23,9 @@ export const SOCIAL: ReadonlyArray<{ name: string; href: string; icon: string }>
 /** The SPC logo in white, for the footer's black band (tools/email-icons.mjs). */
 export const FOOTER_LOGO = 'spc-logo-white-adf4090152.png';
 
-/** SPC's phone and WhatsApp, as on www.spcfz.ae. */
-export const PHONE = { href: 'tel:80077239', label: '800 SPCFZ (77239)' };
-export const WHATSAPP = 'https://wa.me/971502387267';
+/** The footer's Contact Us details (SPC, 27 October 2026). */
+export const PHONE = { href: 'tel:80077239', label: '800 77239' };
+export const CONTACT_EMAIL = 'marketing@spcfz.ae';
 
 const FILE_RE = /^[a-z0-9-]{1,80}\.(jpg|png)$/;
 

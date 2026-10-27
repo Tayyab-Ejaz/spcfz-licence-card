@@ -4,9 +4,9 @@
 // palette for clients that honour it, right-to-left Arabic, alt text on every image and a plain-text part.
 import type { CardRow, Lang } from '../types.js';
 import { html, raw } from '../util/html.js';
-import { CONTACT_URL } from '../page/strings.js';
+import { todayInDubai } from '../util/time.js';
 import { cardImagePath } from '../page/studio.js';
-import { EMAIL_HEADER, FOOTER_LOGO, PHONE, SOCIAL, WHATSAPP } from './assets.js';
+import { CONTACT_EMAIL, EMAIL_HEADER, FOOTER_LOGO, PHONE, SOCIAL } from './assets.js';
 
 export interface WelcomeEmail {
   subject: string;
@@ -48,12 +48,11 @@ export const COPY = {
     welcome: 'Welcome to the SPC Free Zone business community!',
     regards: 'Best regards,',
     team: 'Team SPC Free Zone',
-    address: 'SPC Free Zone · Sharjah, UAE',
     why: (co: string) => `You're receiving this email because SPC Free Zone issued a business license to ${co}.`,
-    helpTitle: "Questions about your license or your card? We're here to help.",
-    call: 'Call 800 SPCFZ (77239)',
-    whatsapp: 'WhatsApp us',
-    contact: 'Contact us',
+    contactTitle: 'CONTACT US',
+    tollFree: 'Toll Free Number:',
+    copyright: (year: string) => `© ${year} Sharjah Publishing City (SPC) Free Zone`,
+    location: 'Sharjah, United Arab Emirates.',
     unsubscribe: 'Unsubscribe',
   },
   ar: {
@@ -76,12 +75,11 @@ export const COPY = {
     welcome: 'أهلاً بك في مجتمع الأعمال في المنطقة الحرة لمدينة الشارقة للنشر!',
     regards: 'مع أطيب التحيات،',
     team: 'فريق المنطقة الحرة لمدينة الشارقة للنشر',
-    address: 'المنطقة الحرة لمدينة الشارقة للنشر · الشارقة، الإمارات العربية المتحدة',
     why: (co: string) => `وصلتك هذه الرسالة لأن المنطقة الحرة لمدينة الشارقة للنشر أصدرت رخصة تجارية لشركة ${co}.`,
-    helpTitle: 'لديك سؤال عن رخصتك أو بطاقتك؟ نحن هنا لمساعدتك.',
-    call: 'اتصل على \u200e800 SPCFZ (77239)\u200e',
-    whatsapp: 'راسلنا عبر واتساب',
-    contact: 'تواصل معنا',
+    contactTitle: 'تواصل معنا',
+    tollFree: 'الرقم المجاني:',
+    copyright: (year: string) => `© ${year} المنطقة الحرة لمدينة الشارقة للنشر`,
+    location: 'الشارقة، الإمارات العربية المتحدة.',
     unsubscribe: 'إلغاء الاشتراك',
   },
 } as const;
@@ -113,6 +111,7 @@ export function renderWelcome(i: WelcomeInput): WelcomeEmail {
   const unsubscribeUrl = `${base}/c/${c.token}/unsubscribe?lang=${langQ}`;
   const cardImg = `${base}${cardImagePath(c, i.lang)}`;
   const header = `${base}/static/email/${EMAIL_HEADER}`;
+  const year = todayInDubai().slice(0, 4);
   const logo = `${base}/static/email/${FOOTER_LOGO}`;
   const social = SOCIAL.map((n, k) => html`<a href="${n.href}" target="_blank" style="display:inline-block;${k ? (ar ? 'margin-right:8px;' : 'margin-left:8px;') : ''}"><img src="${base}/static/email/${n.icon}" width="36" height="36" alt="${n.name}" style="display:inline-block;width:36px;height:36px;"></a>`).join('');
   const out = html`<!doctype html>
@@ -140,6 +139,8 @@ a{text-decoration:none}
   .btn-cell a{display:block!important;text-align:center!important}
   .stack-m{display:block!important;width:100%!important;text-align:${align}!important}
   .social{padding-top:18px!important}
+  .ft-sep{display:none!important}
+  .ft-mail{display:block!important}
 }
 @media (prefers-color-scheme:dark){
   .page,.outer,.wrap{background:#0b1220!important}
@@ -200,15 +201,15 @@ ${i.linkedin ? raw(html`<td class="btn-cell" style="padding:0;">${raw(button({ h
 
 <tr><td class="pad foot" style="padding:32px 32px 36px;background:#000000;text-align:${align};">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-<td class="stack-m" valign="middle" style="text-align:${align};"><a href="https://www.spcfz.ae/" target="_blank"><img src="${logo}" width="112" alt="SPC Free Zone" style="width:112px;height:auto;${ar ? 'margin-left:auto;' : ''}"></a></td>
+<td class="stack-m" valign="middle" style="text-align:${align};"><a href="https://www.spcfz.ae/" target="_blank"><img src="${logo}" width="148" alt="SPC Free Zone" style="width:148px;height:auto;${ar ? 'margin-left:auto;' : ''}"></a></td>
 <td class="stack-m social" valign="middle" style="text-align:${ar ? 'left' : 'right'};white-space:nowrap;">${raw(social)}</td>
 </tr></table>
-<p class="ft-head" style="margin:26px 0 8px;color:#ffffff;font-size:15px;line-height:22px;font-weight:600;">${t.helpTitle}</p>
-<p style="margin:0 0 26px;font-size:14px;line-height:24px;"><a class="ft-link" href="${PHONE.href}" style="color:#7fa6ff;font-weight:600;white-space:nowrap;">${t.call}</a> <span style="color:#5d636e;">&nbsp;·&nbsp;</span> <a class="ft-link" href="${WHATSAPP}" target="_blank" style="color:#7fa6ff;font-weight:600;white-space:nowrap;">${t.whatsapp}</a> <span style="color:#5d636e;">&nbsp;·&nbsp;</span> <a class="ft-link" href="${CONTACT_URL}" target="_blank" style="color:#7fa6ff;font-weight:600;white-space:nowrap;">${t.contact}</a></p>
+<p style="margin:28px 0 12px;color:#ffffff;font-size:17px;line-height:22px;font-weight:800;letter-spacing:${ar ? '0' : '.04em'};">${t.contactTitle}</p>
+<p style="margin:0 0 10px;color:#ffffff;font-size:14px;line-height:24px;"><span style="white-space:nowrap;">${t.tollFree} <a href="${PHONE.href}" style="color:#ffffff;text-decoration:none;white-space:nowrap;" dir="ltr">${PHONE.label}</a></span> <span class="ft-sep" style="color:#5d636e;">&nbsp;&nbsp;|&nbsp;&nbsp;</span> <a class="ft-mail" href="mailto:${CONTACT_EMAIL}" style="color:#ffffff;text-decoration:none;white-space:nowrap;">${CONTACT_EMAIL}</a></p>
+<p style="margin:0 0 26px;color:#ffffff;font-size:14px;line-height:24px;">${t.copyright(year)}<br>${t.location}</p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
 <td style="border-top:1px solid #2a2d33;padding-top:20px;text-align:${align};">
-<p class="ft-small" style="margin:0 0 6px;color:#9aa0aa;font-size:12px;line-height:18px;">${t.why(company)}</p>
-<p class="ft-small" style="margin:0 0 16px;color:#9aa0aa;font-size:12px;line-height:18px;">${t.address}</p>
+<p class="ft-small" style="margin:0 0 16px;color:#9aa0aa;font-size:12px;line-height:18px;">${t.why(company)}</p>
 <a class="ft-unsub" href="${unsubscribeUrl}" target="_blank" style="display:inline-block;border:1px solid #3a3e46;border-radius:6px;padding:6px 14px;background:#000000;color:#d0d4db;font-size:12px;line-height:16px;font-weight:600;text-decoration:none;">${t.unsubscribe}</a>
 </td></tr></table>
 </td></tr>
@@ -246,14 +247,14 @@ ${i.linkedin ? raw(html`<td class="btn-cell" style="padding:0;">${raw(button({ h
     t.regards,
     t.team,
     '',
-    t.why(company),
-    t.address,
-    t.helpTitle,
-    `${t.call}: ${PHONE.href.replace('tel:', '')}`,
-    `${t.whatsapp}: ${WHATSAPP}`,
-    `${t.contact}: ${CONTACT_URL}`,
+    t.contactTitle,
+    `${t.tollFree} ${PHONE.label} | ${CONTACT_EMAIL}`,
+    t.copyright(year),
+    t.location,
+    '',
     SOCIAL.map((n) => `${n.name}: ${n.href}`).join('\n'),
     '',
+    t.why(company),
     `${t.unsubscribe}: ${unsubscribeUrl}`,
   ];
   return { subject: t.subject, html: out, text: lines.join('\n'), unsubscribeUrl };

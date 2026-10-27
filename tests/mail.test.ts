@@ -80,7 +80,7 @@ describe('the welcome email', () => {
     expect(m.html).toContain('Congratulations on receiving your business license with <strong style="white-space:nowrap;">SPC Free Zone!</strong>');
     expect(m.html).toContain('Share Your Milestone');
     expect(m.html).toContain('Team SPC Free Zone');
-    expect(m.html).toContain('SPC Free Zone · Sharjah, UAE');
+    expect(m.html).toContain('Sharjah, United Arab Emirates.');
     expect(m.html).not.toContain('Prefer Arabic?');
     expect(m.text).toContain('Your announcement is ready to share!');
     expect(m.html).toContain(`https://licensed.test/c/${card.token}/card/${card.content_hash.slice(0, 10)}-v${CARD_DESIGN}.jpg`);
@@ -102,19 +102,22 @@ describe('the welcome email', () => {
     expect((await app.request('/static/email/..%2Fsecret.jpg')).status).toBe(404);
   });
 
-  it('ends with the help line, the SPC phone, WhatsApp and social links, every icon served', async () => {
+  it('ends with Contact Us, the copyright and the social links, every icon served', async () => {
     const card = await seedCard();
     const m = renderWelcome({ card, lang: 'en', baseUrl: 'https://licensed.test', linkedin: false });
-    expect(m.html).toContain("Questions about your license or your card? We're here to help.".replace("'", '&#39;'));
-    expect(m.html).toContain('href="tel:80077239"');
-    expect(m.html).toContain('href="https://wa.me/971502387267"');
+    expect(m.html).toContain('>CONTACT US</p>');
+    expect(m.html).toContain('Toll Free Number: <a href="tel:80077239"');
+    expect(m.html).toContain('>800 77239</a>');
+    expect(m.html).toContain('href="mailto:marketing@spcfz.ae"');
+    expect(m.html).toContain(`© ${new Date().getFullYear()} Sharjah Publishing City (SPC) Free Zone<br>Sharjah, United Arab Emirates.`);
+    expect(m.text).toContain('Toll Free Number: 800 77239 | marketing@spcfz.ae');
     const app = new Hono<AppEnv>().route('/', emailAssetRoutes);
     for (const n of SOCIAL) {
       expect(m.html).toContain(`href="${n.href}"`);
       expect((await app.request(`/static/email/${n.icon}`)).status).toBe(200);
     }
     const ar = renderWelcome({ card, lang: 'ar', baseUrl: 'https://licensed.test', linkedin: false });
-    expect(ar.html).toContain('\u200e800 SPCFZ (77239)\u200e'); // the number stays in order inside Arabic
+    expect(ar.html).toContain('الرقم المجاني: <a href="tel:80077239" style="color:#ffffff;text-decoration:none;white-space:nowrap;" dir="ltr">800 77239</a>'); // the number stays in order inside Arabic
   });
 
   it('pictures the card in the Daylight style, square', async () => {
