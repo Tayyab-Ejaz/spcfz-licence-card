@@ -213,8 +213,9 @@ customer's request, by deleting their row from `email_suppressions`.
 
 ## Post to LinkedIn: turn it on
 
-Until `LINKEDIN_CLIENT_ID` and `LINKEDIN_CLIENT_SECRET` are set, the buttons
-are hidden in the studio and the email.
+Until `LINKEDIN_CLIENT_ID` and `LINKEDIN_CLIENT_SECRET` are set, the button
+is hidden in the studio. (The email has no LinkedIn button: a post should carry
+the customer's own photo and edits, so it starts from the studio.)
 
 1. At https://www.linkedin.com/developers/apps create an app: name "SPC Free
    Zone", the SPC Free Zone company page, the SPC logo. A page admin of
@@ -228,11 +229,12 @@ are hidden in the studio and the email.
    ```
    LINKEDIN_CLIENT_ID=<client id>
    LINKEDIN_CLIENT_SECRET=<client secret>
-   LINKEDIN_ORG_URN=<SPC page id, the number in the page admin URL linkedin.com/company/<id>/admin>
+   LINKEDIN_ORG_URN=urn:li:organization:30196206
    ```
 
-   With `LINKEDIN_ORG_URN`, "@SPC Free Zone" in the caption becomes a real
-   mention of the page. `LINKEDIN_API_VERSION` (YYYYMM) is optional; the
+   30196206 is SPC's page ("Sharjah Publishing City - SPC Free Zone",
+   linkedin.com/company/spcfreezone). With `LINKEDIN_ORG_URN`, "@SPC Free
+   Zone" in the caption becomes a real mention of the page. `LINKEDIN_API_VERSION` (YYYYMM) is optional; the
    built-in one is 202606, and LinkedIn retires a version after about a year,
    so set a newer one by mid-2027.
 5. Apply the env-file change (see Secrets) and post from a TEST card to your
