@@ -12,7 +12,7 @@ import { createLinkedinRoutes } from '../src/linkedin/routes.js';
 import { DraftStore, DRAFT_TTL_MS } from '../src/linkedin/drafts.js';
 import { LinkedinError, linkedinClient } from '../src/linkedin/client.js';
 import type { LinkedinClient } from '../src/linkedin/client.js';
-import { defaultCaption, orgUrn, toLittleText } from '../src/linkedin/caption.js';
+import { defaultCaption, orgUrn, REFER_LINE, toLittleText } from '../src/linkedin/caption.js';
 import { createTestEnv } from './env.js';
 
 const env = createTestEnv({ LINKEDIN_ORG_URN: '1234567' });
@@ -395,6 +395,16 @@ describe('caption as LinkedIn little text', () => {
   it('escapes reserved characters and keeps Arabic hashtags', () => {
     expect(toLittleText('a_b (c) [d] *e* ~f~ <g> {h} |i| \\j', null)).toBe('a\\_b \\(c\\) \\[d\\] \\*e\\* \\~f\\~ \\<g\\> \\{h\\} \\|i\\| \\\\j');
     expect(toLittleText('#مشروع_جديد #SPCFreeZone', null)).toBe('{hashtag|\\#|مشروع\\_جديد} {hashtag|\\#|SPCFreeZone}');
+  });
+
+  it('names the Refer a Friend page before the hashtags, as a plain link', () => {
+    const card = { company_name_en: 'Bluefin Publishing FZE', company_name_ar: null, activity_category: 'Publishing', activity_category_ar: null, founder_name_en: 'Layla' };
+    for (const lang of ['en', 'ar'] as const) {
+      const caption = defaultCaption(card, lang);
+      const url = lang === 'en' ? 'https://www.spcfz.ae/refer-a-friend/' : 'https://www.spcfz.ae/ar/refer-a-friend/';
+      expect(caption).toContain(`${REFER_LINE[lang]}\n\n#`);
+      expect(toLittleText(caption, 'urn:li:organization:1')).toContain(`\n${url}\n`);
+    }
   });
 
   it('accepts the page id in either form', () => {

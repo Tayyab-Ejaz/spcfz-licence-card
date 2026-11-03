@@ -5,6 +5,12 @@ import type { CardRow, Lang } from '../types.js';
 
 const lowerFirst = (s: string): string => (s ? s.charAt(0).toLowerCase() + s.slice(1) : s);
 
+/** SPC's Refer a Friend page, before the hashtags (3 November 2026). The studio's are in tools/build-studio.mjs, REFER. */
+export const REFER_LINE: Record<Lang, string> = {
+  en: 'Know someone planning to start a business in the UAE? Refer them to SPC Free Zone and earn up to AED 1,500:\nhttps://www.spcfz.ae/refer-a-friend/',
+  ar: 'هل تعرف شخصاً يخطط لتأسيس عمله في دولة الإمارات؟ رشّحه للمنطقة الحرة لمدينة الشارقة للنشر واكسب ما يصل إلى 1500 درهم إماراتي:\nhttps://www.spcfz.ae/ar/refer-a-friend/',
+};
+
 /** The caption the studio writes by default (tone "warm"; "you and your company", or "the company" without a founder). */
 export function defaultCaption(card: Pick<CardRow, 'company_name_en' | 'company_name_ar' | 'activity_category' | 'activity_category_ar' | 'founder_name_en'>, lang: Lang): string {
   const person = Boolean(card.founder_name_en);
@@ -14,14 +20,14 @@ export function defaultCaption(card: Pick<CardRow, 'company_name_en' | 'company_
     const body = person
       ? `خبر سعيد: أصبحت ${co} شركة مرخّصة رسمياً.\n\n${a ? `سنركّز على ${a}، وأشكر كل من ساعدنا على الوصول إلى اليوم الأول.` : 'أشكر كل من ساعدنا على الوصول إلى اليوم الأول.'}`
       : `أصبحنا شركة مرخّصة رسمياً. ${co} تفتح أبوابها للأعمال${a ? `، مع التركيز على ${a}` : ''}.\n\nشكراً لكل من ساعدنا على الوصول إلى اليوم الأول.`;
-    return `${body}\n\nبترخيص من @SPC Free Zone في الشارقة.\n\n#مشروع_جديد #SPCFreeZone`;
+    return `${body}\n\nبترخيص من @SPC Free Zone في الشارقة.\n\n${REFER_LINE.ar}\n\n#مشروع_جديد #SPCFreeZone`;
   }
   const co = card.company_name_en;
   const a = lowerFirst(card.activity_category ?? '');
   const body = person
     ? `Some personal news: ${co} is now officially licensed.\n\n${a ? `We'll be focusing on ${a}, and I'm grateful to everyone who helped us reach day one.` : "I'm grateful to everyone who helped us reach day one."}`
     : `We're now officially licensed. ${co} is open for business${a ? `, focusing on ${a}` : ''}.\n\nThank you to everyone who helped us reach day one.`;
-  return `${body}\n\nLicensed with @SPC Free Zone, Sharjah.\n\n#NewBusiness #SPCFreeZone`;
+  return `${body}\n\nLicensed with @SPC Free Zone, Sharjah.\n\n${REFER_LINE.en}\n\n#NewBusiness #SPCFreeZone`;
 }
 
 /** LinkedIn's reserved characters in little text; each is escaped with a backslash. */

@@ -163,6 +163,15 @@ the LinkedIn caption. Generated from the source; `{company}` and `{first name}` 
 | With a founder | خبر سعيد: أصبحت {company} شركة مرخّصة رسمياً.<br><br>سنركّز على {activity}، وأشكر كل من ساعدنا على الوصول إلى اليوم الأول.<br><br>بترخيص من @SPC Free Zone في الشارقة.<br><br>#مشروع_جديد #SPCFreeZone | Some personal news: {company} is now officially licensed.<br><br>We'll be focusing on {activity}, and I'm grateful to everyone who helped us reach day one.<br><br>Licensed with @SPC Free Zone, Sharjah.<br><br>#NewBusiness #SPCFreeZone |
 | Without a founder | أصبحنا شركة مرخّصة رسمياً. {company} تفتح أبوابها للأعمال، مع التركيز على {activity}.<br><br>شكراً لكل من ساعدنا على الوصول إلى اليوم الأول.<br><br>بترخيص من @SPC Free Zone في الشارقة.<br><br>#مشروع_جديد #SPCFreeZone | We're now officially licensed. {company} is open for business, focusing on {activity}.<br><br>Thank you to everyone who helped us reach day one.<br><br>Licensed with @SPC Free Zone, Sharjah.<br><br>#NewBusiness #SPCFreeZone |
 
+Added 3 November 2026, drafted by Claude, not yet reviewed: the Refer a Friend line. It goes before the hashtags
+in every suggested caption (the default above and the studio's three tones); Short uses the short form. The
+English and Arabic pages differ, so each links its own.
+
+| | Arabic | English |
+|---|---|---|
+| Warm, Professional | هل تعرف شخصاً يخطط لتأسيس عمله في دولة الإمارات؟ رشّحه للمنطقة الحرة لمدينة الشارقة للنشر واكسب ما يصل إلى 1500 درهم إماراتي:<br>https://www.spcfz.ae/ar/refer-a-friend/ | Know someone planning to start a business in the UAE? Refer them to SPC Free Zone and earn up to AED 1,500:<br>https://www.spcfz.ae/refer-a-friend/ |
+| Short | رشّح صديقاً واكسب ما يصل إلى 1500 درهم إماراتي:<br>https://www.spcfz.ae/ar/refer-a-friend/ | Refer a friend and earn up to AED 1,500:<br>https://www.spcfz.ae/refer-a-friend/ |
+
 ## Open wording questions
 
 1. The official Arabic name of SPC Free Zone as used on the live site should

@@ -154,12 +154,31 @@ const SHARE_PATCHES = [
   ['await navigator.share({ files: [file], text: caption });',
     "await navigator.share({ files: [file] }); copied.then((ok) => this.showToast(ok ? 'Caption copied. Paste it into your post.' : 'Copy the caption from Caption, then paste it into your post.'));"],
 ];
+// Refer a Friend (SPC, 3 November 2026): every suggested caption names SPC's referral page, before the hashtags.
+// The Warm lines are also in src/linkedin/caption.ts (the server's default caption); change both together.
+const REFER = {
+  en: 'Know someone planning to start a business in the UAE? Refer them to SPC Free Zone and earn up to AED 1,500:\\nhttps://www.spcfz.ae/refer-a-friend/',
+  enShort: 'Refer a friend and earn up to AED 1,500:\\nhttps://www.spcfz.ae/refer-a-friend/',
+  ar: 'هل تعرف شخصاً يخطط لتأسيس عمله في دولة الإمارات؟ رشّحه للمنطقة الحرة لمدينة الشارقة للنشر واكسب ما يصل إلى 1500 درهم إماراتي:\\nhttps://www.spcfz.ae/ar/refer-a-friend/',
+  arShort: 'رشّح صديقاً واكسب ما يصل إلى 1500 درهم إماراتي:\\nhttps://www.spcfz.ae/ar/refer-a-friend/',
+};
+const REFER_PATCHES = [
+  ["`\\n\\nLicensed with @SPC Free Zone, Sharjah.\\n\\n${tags}`",
+    "`\\n\\nLicensed with @SPC Free Zone, Sharjah.\\n\\n" + REFER.en + "\\n\\n${tags}`"],
+  ["`\\n\\n@SPC Free Zone ${exp ? '#UAE' : '#NewBusiness'}`",
+    "`\\n\\n" + REFER.enShort + "\\n\\n@SPC Free Zone ${exp ? '#UAE' : '#NewBusiness'}`"],
+  ["`\\n\\nبترخيص من @SPC Free Zone في الشارقة.\\n\\n${tags}`",
+    "`\\n\\nبترخيص من @SPC Free Zone في الشارقة.\\n\\n" + REFER.ar + "\\n\\n${tags}`"],
+  ["`\\n\\n@SPC Free Zone ${exp ? '#الإمارات' : '#مشروع_جديد'}`",
+    "`\\n\\n" + REFER.arShort + "\\n\\n@SPC Free Zone ${exp ? '#الإمارات' : '#مشروع_جديد'}`"],
+];
 const LOGIC_PATCHES = {
-  studio: [...SHARE_PATCHES],
+  studio: [...SHARE_PATCHES, ...REFER_PATCHES],
   mobile: [
     ['const availH = sheet ? Math.max(90, vh - 56 - sheetH - 28) : Math.max(200, vh - 420);',
       'const availH = sheet ? Math.max(90, vh - 56 - sheetH - 28) : Math.max(180, vh - (s.chromeH || 440) - 8);'],
     ...SHARE_PATCHES,
+    ...REFER_PATCHES,
   ],
 };
 
