@@ -40,6 +40,7 @@ COPY migrations ./migrations
 # Fonts for the link-preview pictures (src/page/preview-image.ts): Inter and Noto Kufi Arabic, SIL OFL.
 COPY assets/fonts ./assets/fonts
 COPY assets/email ./assets/email
+COPY assets/favicon ./assets/favicon
 USER app
 EXPOSE 8787
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \

@@ -9,6 +9,7 @@ import { Hono } from 'hono';
 import type { AppEnv, CardRow, Lang } from '../types.js';
 import { formatFullDate } from '../util/time.js';
 import { html, raw } from '../util/html.js';
+import { FAVICON_LINKS } from './favicon.js';
 
 /** public/studio, resolved from this file so it works from src/ (tests, tsx) and dist/ alike. */
 export const STUDIO_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../public/studio');
@@ -161,6 +162,7 @@ export function renderStudioShell(i: ShellInput): string {
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <title>${i.card.is_test ? '[TEST] ' : ''}${title}</title>
+${raw(FAVICON_LINKS)}
 ${raw(previewTags(i, m, i.lang ?? i.card.preferred_language))}
 <link rel="stylesheet" href="${m.css}">
 ${i.gtmContainer ? raw(gtmSnippet(i.gtmContainer, i.nonce)) : ''}

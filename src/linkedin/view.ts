@@ -5,6 +5,7 @@ import { html, raw } from '../util/html.js';
 import type { RawHtml } from '../util/html.js';
 import { MAX_COMMENTARY } from './client.js';
 import { LOGO_URL } from '../page/strings.js';
+import { FAVICON_LINKS } from '../page/favicon.js';
 
 function h(strings: TemplateStringsArray, ...values: unknown[]): RawHtml {
   return raw(html(strings, ...values));
@@ -186,6 +187,7 @@ function page(p: Page): string {
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#f4f7fc">
 <title>${s.title}</title>
+${raw(FAVICON_LINKS)}
 <style nonce="${p.nonce}">${raw(CSS)}</style>
 </head>
 <body>

@@ -62,6 +62,16 @@ describe('server (TRUST_PROXY=local-proxy, the production mode)', () => {
     expect(await res.json()).toEqual({ ok: true });
   });
 
+  it('serves SPC\'s site icon for the browser tab and the home screen', async () => {
+    const ico = await fetch(`http://127.0.0.1:${server.port}/favicon.ico`);
+    expect(ico.status).toBe(200);
+    expect(ico.headers.get('Content-Type')).toBe('image/x-icon');
+    expect(Buffer.from(await ico.arrayBuffer()).subarray(0, 4)).toEqual(Buffer.from([0, 0, 1, 0]));
+    const touch = await fetch(`http://127.0.0.1:${server.port}/apple-touch-icon.png`);
+    expect(touch.headers.get('Content-Type')).toBe('image/png');
+    expect((await touch.arrayBuffer()).byteLength).toBeGreaterThan(1000);
+  });
+
   it('answers a 404 page for an unknown path and the generic card 404 for a bad token', async () => {
     const res = await fetch(`http://127.0.0.1:${server.port}/no/such/path`);
     expect(res.status).toBe(404);

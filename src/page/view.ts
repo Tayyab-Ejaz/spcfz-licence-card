@@ -3,6 +3,7 @@
 // No style attributes anywhere: the CSP allows only the nonced <style> block.
 import type { Lang } from '../types.js';
 import { html, raw } from '../util/html.js';
+import { FAVICON_LINKS } from './favicon.js';
 import type { RawHtml } from '../util/html.js';
 import { CONTACT_URL, LOGO_URL, PORTAL_URL, STRINGS } from './strings.js';
 import { formatFullDate } from '../util/time.js';
@@ -92,6 +93,7 @@ function shell(o: ShellOptions): string {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${title}</title>
+${raw(FAVICON_LINKS)}
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#004dff">
 ${o.head ?? raw('')}

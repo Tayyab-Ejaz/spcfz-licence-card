@@ -2,6 +2,7 @@
 import type { Context } from 'hono';
 import type { AppEnv, CardStatus } from '../types.js';
 import { html, raw } from '../util/html.js';
+import { FAVICON_LINKS } from '../page/favicon.js';
 import type { RawHtml } from '../util/html.js';
 import { CSRF_FIELD, csrfToken } from './csrf.js';
 
@@ -117,6 +118,7 @@ export function adminLayout(o: LayoutOptions): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>${o.title} · SPC licence cards</title>
+${raw(FAVICON_LINKS)}
 ${o.refresh ? h`<meta http-equiv="refresh" content="${String(o.refresh)}">` : EMPTY}
 <style>${raw(CSS)}</style>
 </head>

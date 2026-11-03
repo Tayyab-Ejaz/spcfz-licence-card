@@ -11,6 +11,7 @@ import type { LinkedinRouteOptions } from './linkedin/routes.js';
 import { fakeSigninRoutes } from './linkedin/fake.js';
 import { emailAssetRoutes } from './mail/assets.js';
 import { studioStaticRoutes } from './page/studio.js';
+import { faviconRoutes } from './page/favicon.js';
 import { ipAllowed, parseAllowlist, rateKeyForIp } from './util/ip.js';
 import { FixedWindowLimiter, rateLimit } from './util/rate-limit.js';
 import type { RateDecision, RateRule } from './util/rate-limit.js';
@@ -81,8 +82,8 @@ export function createApp(o: AppOptions = {}): Hono<AppEnv> {
   app.get('/', (c) => c.redirect('https://www.spcfz.ae/', 302));
   app.get('/healthz', (c) => c.json({ ok: true }));
   app.get('/robots.txt', (c) => c.text('User-agent: *\nDisallow: /\n'));
-  app.get('/favicon.ico', () => new Response(null, { status: 204, headers: { 'Cache-Control': 'public, max-age=86400' } }));
 
+  app.route('/', faviconRoutes);
   app.route('/', studioStaticRoutes);
   app.route('/', emailAssetRoutes);
   app.route('/', intakeRoutes);

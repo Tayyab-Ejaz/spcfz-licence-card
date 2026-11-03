@@ -21,6 +21,7 @@ import type { RateRule } from '../util/rate-limit.js';
 import { html, raw } from '../util/html.js';
 import { CSRF_FIELD, csrfFailure, ensureCsrf } from './csrf.js';
 import { LOGO_URL } from '../page/strings.js';
+import { FAVICON_LINKS } from '../page/favicon.js';
 import { burnPasswordCheck, verifyPassword } from './password.js';
 
 export type AdminVerifier = (c: Context<AppEnv>) => Promise<{ email: string } | null>;
@@ -103,6 +104,7 @@ function page(title: string, body: string): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>${title} · SPC licence cards</title>
+${raw(FAVICON_LINKS)}
 <style>${raw(PAGE_CSS)}</style>
 </head>
 <body><main>

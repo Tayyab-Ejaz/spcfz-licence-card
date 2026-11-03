@@ -167,7 +167,7 @@ describe('cards', () => {
     expect(body).toContain('مريم فوزي');
     expect(body).toContain(`https://licensed.test/c/${card.token}`);
     expect(body).not.toContain('/regenerate');
-    expect(body).not.toContain('.png');
+    expect(body.slice(body.indexOf('</head>'))).not.toContain('.png');
     expect(body).toContain(`/admin/cards/${card.id}/expire`);
     expect(body).toContain(`/admin/cards/${card.id}/delete`);
     expect(body).toContain(`name="_csrf" value="${CSRF}"`);
