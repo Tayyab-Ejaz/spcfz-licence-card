@@ -240,6 +240,14 @@ the customer's own photo and edits, so it starts from the studio.)
 5. Apply the env-file change (see Secrets) and post from a TEST card to your
    own LinkedIn. The admin card page lists the post with a link.
 
+**Post alert (3 November 2026).** After each post, the service emails
+`tayyab@spcfz.ae` with a link to it, so SPC's page can like, comment on and
+repost it while it is new. It goes through the same email sending as the
+welcome email (so it needs that on), retries the same way, and is listed under
+LinkedIn posts on the admin card page. Test cards send it too, marked [TEST].
+To change who gets it, set `LINKEDIN_ALERT_TO` (comma separated, or `off`) and
+apply the env-file change.
+
 ## Rate limits
 
 The app limits each visitor per minute, counting an IPv4 address or an IPv6 /64 block as one visitor: 300 page, status and image

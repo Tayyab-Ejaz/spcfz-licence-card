@@ -3,7 +3,8 @@ import type { D1Database } from '../types.js';
 import { ulid } from '../util/crypto.js';
 
 export type EmailStatus = 'queued' | 'sent' | 'failed' | 'skipped';
-export type EmailKind = 'welcome';
+/** welcome: to the customer. post_alert: to SPC staff after a customer posts with Post to LinkedIn (migration 0009). */
+export type EmailKind = 'welcome' | 'post_alert';
 
 export interface EmailRow {
   id: string;
@@ -21,17 +22,19 @@ export interface EmailRow {
   actor: string | null;
   created_at: string;
   sent_at: string | null;
+  /** post_alert: the linkedin_posts id it is about. */
+  ref: string | null;
 }
 
 export async function insertEmail(
   db: D1Database,
-  e: { card_id: string; kind: EmailKind; to_email: string; cc_email: string | null; lang: string; status: EmailStatus; last_error?: string | null; actor: string | null; now: string },
+  e: { card_id: string; kind: EmailKind; to_email: string; cc_email: string | null; lang: string; status: EmailStatus; last_error?: string | null; actor: string | null; ref?: string | null; now: string },
 ): Promise<string> {
   const id = ulid();
   await db.prepare(
-    `INSERT INTO emails (id, card_id, kind, to_email, cc_email, lang, status, attempts, next_attempt_at, last_error, actor, created_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0, ?8, ?9, ?10, ?8)`,
-  ).bind(id, e.card_id, e.kind, e.to_email, e.cc_email, e.lang, e.status, e.now, e.last_error ?? null, e.actor).run();
+    `INSERT INTO emails (id, card_id, kind, to_email, cc_email, lang, status, attempts, next_attempt_at, last_error, actor, created_at, ref)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0, ?8, ?9, ?10, ?8, ?11)`,
+  ).bind(id, e.card_id, e.kind, e.to_email, e.cc_email, e.lang, e.status, e.now, e.last_error ?? null, e.actor, e.ref ?? null).run();
   return id;
 }
 

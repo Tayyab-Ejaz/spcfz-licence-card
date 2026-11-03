@@ -12,6 +12,7 @@ import type { AppEnv, CardRow, Env, Lang } from '../types.js';
 import { isLang } from '../types.js';
 import { bumpMetric, getCardByToken } from '../db/cards.js';
 import { insertLinkedinPost } from '../db/linkedin.js';
+import { queuePostAlert } from '../mail/outbox.js';
 import { background } from '../util/background.js';
 import { TOKEN_RE, bytesToBase64 } from '../util/crypto.js';
 import { isPast, nowIso, todayInDubai } from '../util/time.js';
@@ -346,8 +347,10 @@ export function createLinkedinRoutes(o: LinkedinRouteOptions = {}): Hono<AppEnv>
     if (posted) {
       d.accessToken = null; // posted once; the token is not needed again
       const urn = posted.urn;
-      await insertLinkedinPost(c.env.DB, { card_id: d.cardId, status: 'posted', post_urn: urn, error: null, lang: d.lang, created_at: nowIso() })
-        .catch((err: unknown) => logFailure('record', d, err));
+      const postId = await insertLinkedinPost(c.env.DB, { card_id: d.cardId, status: 'posted', post_urn: urn, error: null, lang: d.lang, created_at: nowIso() })
+        .catch((err: unknown) => { logFailure('record', d, err); return null; });
+      // SPC hears about it while the post is new (src/mail/post-alert.ts).
+      if (postId) await queuePostAlert(c.env, { cardId: d.cardId, postId }).catch((err: unknown) => logFailure('post alert', d, err));
       if (!d.isTest) {
         background(bumpMetric(c.env.DB, { card_id: d.cardId, kind: 'share', lang: d.lang, network: 'linkedin' }, todayInDubai())
           .catch((err: unknown) => logFailure('metric', d, err)), 'metric');

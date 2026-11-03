@@ -101,6 +101,8 @@ export interface Env {
   LINKEDIN_API_VERSION?: string;
   /** '1' on the local copy only: a pretend LinkedIn (src/linkedin/fake.ts). Refused unless BASE_URL is localhost. */
   LINKEDIN_FAKE?: string;
+  /** Who is emailed after each post (src/mail/post-alert.ts): addresses, comma separated; off for nobody. Default tayyab@spcfz.ae. */
+  LINKEDIN_ALERT_TO?: string;
 }
 
 export type MailTransportMode = 'smtp' | 'file' | 'off';

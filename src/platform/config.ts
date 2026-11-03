@@ -146,6 +146,12 @@ export function readConfig(source: ConfigSource, envFile: string | null = null):
   if (liFake && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(baseUrl ?? '')) errors.push('LINKEDIN_FAKE=1 is for the local copy only (BASE_URL must be http://localhost)');
   if (!liId && !liFake) warnings.push('LINKEDIN_CLIENT_ID is not set: the "Post to LinkedIn" button is hidden');
   if (liFake) warnings.push('LINKEDIN_FAKE=1: "Post to LinkedIn" uses a pretend LinkedIn and writes posts to DATA_DIR/linkedin-outbox');
+  const alertTo = text(source, 'LINKEDIN_ALERT_TO');
+  if (alertTo && alertTo.toLowerCase() !== 'off') {
+    for (const a of alertTo.split(/[\s,;]+/).filter(Boolean)) {
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(a)) errors.push(`LINKEDIN_ALERT_TO: ${JSON.stringify(a)} is not an email address (comma separated, or off)`);
+    }
+  }
   const liVersion = text(source, 'LINKEDIN_API_VERSION');
   if (liVersion !== undefined && !/^20\d{4}$/.test(liVersion)) errors.push('LINKEDIN_API_VERSION must look like 202606 (YYYYMM)');
 
@@ -182,6 +188,7 @@ export function readConfig(source: ConfigSource, envFile: string | null = null):
     LINKEDIN_ORG_URN: text(source, 'LINKEDIN_ORG_URN'),
     LINKEDIN_API_VERSION: liVersion,
     LINKEDIN_FAKE: liFake,
+    LINKEDIN_ALERT_TO: alertTo,
   };
   return { ok: true, config: { vars, host, port, dataDir, trustProxy, envFile, warnings } };
 }

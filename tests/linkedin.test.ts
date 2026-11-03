@@ -6,6 +6,7 @@ import sharp from 'sharp';
 import type { AppEnv, CanonicalFields, CardRow } from '../src/types.js';
 import { getCardById, insertCard, metricsForCard, setCardStatus } from '../src/db/cards.js';
 import { linkedinPostsForCard } from '../src/db/linkedin.js';
+import { emailsForCard } from '../src/db/emails.js';
 import { randomToken } from '../src/util/crypto.js';
 import { flushBackground } from '../src/util/background.js';
 import { createLinkedinRoutes } from '../src/linkedin/routes.js';
@@ -209,9 +210,16 @@ describe('sign-in, review and post', () => {
     const done = await (await app.request('/linkedin/done', { headers: { Cookie: cookie } }, env)).text();
     expect(done).toContain('https://www.linkedin.com/feed/update/urn:li:share:7001/');
 
+    // SPC is told about the post (src/mail/post-alert.ts).
+    const [post] = await linkedinPostsForCard(env.DB, card.id);
+    const alerts = (await emailsForCard(env.DB, card.id)).filter((e) => e.kind === 'post_alert');
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]).toMatchObject({ to_email: 'tayyab@spcfz.ae', status: 'queued', ref: post?.id });
+
     // Pressing again, or reloading, does not post twice.
     expect((await publish(cookie, { k: key, caption: 'again' })).headers.get('Location')).toBe('/linkedin/done');
     expect(fake.posts).toHaveLength(1);
+    expect((await emailsForCard(env.DB, card.id)).filter((e) => e.kind === 'post_alert')).toHaveLength(1);
 
     const rows = await linkedinPostsForCard(env.DB, card.id);
     expect(rows.map((r) => [r.status, r.post_urn, r.lang])).toEqual([['posted', 'urn:li:share:7001', 'en']]);

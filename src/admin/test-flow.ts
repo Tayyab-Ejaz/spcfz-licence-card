@@ -393,7 +393,7 @@ ${kv([
 </div>`);
 
   // 3. The welcome email
-  const latest = i.emails[0] ?? null;
+  const latest = i.emails.find((e) => e.kind === 'welcome') ?? null;
   const mailState: ['ok' | 'bad' | 'wait' | 'off', string] = !card.customer_email
     ? ['off', 'No email address: none sent']
     : !latest ? ['off', 'Not queued (the box was unticked)']
@@ -411,6 +411,7 @@ ${card.customer_email ? h`<form method="post" action="/admin/cards/${card.id}/em
 
   // 4. LinkedIn
   const posted = i.posts.find((p) => p.status === 'posted') ?? null;
+  const alert = i.emails.find((e) => e.kind === 'post_alert') ?? null;
   const liState: ['ok' | 'bad' | 'wait' | 'off', string] = i.status.linkedin === 'off'
     ? ['off', 'Off on this server']
     : posted ? ['ok', 'Posted'] : i.posts.length ? ['bad', 'Last try failed'] : ['wait', 'Not tried yet'];
@@ -423,7 +424,8 @@ ${i.posts.length ? table(['When', 'Result', ''], i.posts.map((p) => [
     h`${fmtDateTime(p.created_at)}`,
     h`${p.status}`,
     p.post_urn ? h`<a href="https://www.linkedin.com/feed/update/${p.post_urn}/" target="_blank" rel="noopener">View the post</a>` : h`<span class="muted">${p.error ?? ''}</span>`,
-  ])) : EMPTY}`);
+  ])) : EMPTY}
+${alert ? h`<p>Alert to SPC, <b>${alert.to_email}</b>: ${alert.status === 'sent' ? `sent ${fmtDateTime(alert.sent_at)}` : alert.status}.</p>${alert.last_error ? h`<div class="tf-warn">${alert.last_error}</div>` : EMPTY}` : EMPTY}`);
 
   // 5. What the ERP does next
   const s5 = step(5, 'What the ERP does next', 'off', 'Try each one', h`

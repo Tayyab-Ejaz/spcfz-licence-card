@@ -8,10 +8,12 @@ import { EMAIL_HEADER, SOCIAL, emailAssetRoutes } from '../src/mail/assets.js';
 import { renderDaylight } from '../src/page/card-image.js';
 import sharp from 'sharp';
 import { getCardById, insertCard, setCardStatus } from '../src/db/cards.js';
-import { emailsForCard, suppression } from '../src/db/emails.js';
+import { emailsForCard, suppress, suppression } from '../src/db/emails.js';
+import { insertLinkedinPost } from '../src/db/linkedin.js';
+import { alertRecipients } from '../src/mail/post-alert.js';
 import { randomToken } from '../src/util/crypto.js';
 import { renderWelcome } from '../src/mail/welcome.js';
-import { processOutbox, queueWelcome, testRecipientAllowed } from '../src/mail/outbox.js';
+import { processOutbox, queuePostAlert, queueWelcome, testRecipientAllowed } from '../src/mail/outbox.js';
 import type { MailTransport, OutgoingEmail } from '../src/mail/transport.js';
 import { CARD_DESIGN } from '../src/page/studio.js';
 import { createTestEnv } from './env.js';
@@ -298,3 +300,40 @@ describe('unsubscribe', () => {
   });
 });
 
+
+describe('post alert', () => {
+  async function posted(card: CardRow): Promise<string> {
+    return insertLinkedinPost(env.DB, { card_id: card.id, status: 'posted', post_urn: 'urn:li:share:7001', error: null, lang: 'en', created_at: '2026-11-03T08:30:00.000Z' });
+  }
+
+  it('goes to tayyab@spcfz.ae unless LINKEDIN_ALERT_TO says otherwise', () => {
+    expect(alertRecipients({})).toEqual(['tayyab@spcfz.ae']);
+    expect(alertRecipients({ LINKEDIN_ALERT_TO: 'A@spcfz.ae, b@spcfz.ae,a@spcfz.ae' })).toEqual(['a@spcfz.ae', 'b@spcfz.ae']);
+    expect(alertRecipients({ LINKEDIN_ALERT_TO: 'off' })).toEqual([]);
+  });
+
+  it('links the post and the admin card, and sends even when the customer unsubscribed', async () => {
+    const card = await seedCard({ is_test: true });
+    await suppress(env.DB, { email: 'tayyab@spcfz.ae', card_id: card.id, source: 'page', created_at: '2026-11-01T00:00:00.000Z' });
+    expect(await queuePostAlert(env, { cardId: card.id, postId: await posted(card) })).toBe(1);
+    const t = fakeTransport();
+    expect(await processOutbox(env, t)).toMatchObject({ sent: 1 });
+    const m = t.sent[0];
+    expect(m).toMatchObject({ to: 'tayyab@spcfz.ae', subject: '[TEST] Nimbus Publishing FZE posted their licence card on LinkedIn' });
+    expect(m?.unsubscribeUrl).toBeUndefined();
+    for (const body of [m?.html, m?.text]) {
+      expect(body).toContain('https://www.linkedin.com/feed/update/urn:li:share:7001/');
+      expect(body).toContain(`/admin/cards/${card.id}`);
+      expect(body).toContain('3 Nov 2026, 12:30, Dubai time');
+    }
+    const [row] = (await emailsForCard(env.DB, card.id)).filter((e) => e.kind === 'post_alert');
+    expect(row).toMatchObject({ status: 'sent', lang: 'en' });
+  });
+
+  it('queues nothing when switched off', async () => {
+    const card = await seedCard();
+    const off = { ...env, LINKEDIN_ALERT_TO: 'off' };
+    expect(await queuePostAlert(off, { cardId: card.id, postId: await posted(card) })).toBe(0);
+    expect(await emailsForCard(env.DB, card.id)).toEqual([]);
+  });
+});

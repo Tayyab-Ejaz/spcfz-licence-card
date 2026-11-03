@@ -12,9 +12,16 @@ export interface LinkedinPostRow {
   created_at: string;
 }
 
-export async function insertLinkedinPost(db: D1Database, p: Omit<LinkedinPostRow, 'id'>): Promise<void> {
+/** Records a post or a failed try; returns its id. */
+export async function insertLinkedinPost(db: D1Database, p: Omit<LinkedinPostRow, 'id'>): Promise<string> {
+  const id = ulid();
   await db.prepare('INSERT INTO linkedin_posts (id, card_id, status, post_urn, error, lang, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)')
-    .bind(ulid(), p.card_id, p.status, p.post_urn, p.error ? p.error.slice(0, 500) : null, p.lang, p.created_at).run();
+    .bind(id, p.card_id, p.status, p.post_urn, p.error ? p.error.slice(0, 500) : null, p.lang, p.created_at).run();
+  return id;
+}
+
+export async function getLinkedinPost(db: D1Database, id: string): Promise<LinkedinPostRow | null> {
+  return (await db.prepare('SELECT * FROM linkedin_posts WHERE id = ?1').bind(id).first<LinkedinPostRow>()) ?? null;
 }
 
 export async function linkedinPostsForCard(db: D1Database, cardId: string): Promise<LinkedinPostRow[]> {

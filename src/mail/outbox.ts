@@ -2,14 +2,17 @@
 // or when an email first arrives for an existing card; staff can send it again from the admin. A worker in
 // src/server.ts sends what is due every 30 seconds (and straight after something is queued), retrying failures
 // after 1, 5, 30, 120 and 720 minutes before giving up. Test cards only email addresses on MAIL_TEST_ALLOWLIST.
+// After each Post to LinkedIn, SPC staff get a post alert (src/mail/post-alert.ts) through the same outbox.
 import type { CardRow, Env } from '../types.js';
 import { getCardById } from '../db/cards.js';
+import { getLinkedinPost } from '../db/linkedin.js';
 import {
   dueEmails, hasActiveEmail, insertEmail, markEmailRetry, markEmailSent, markEmailSkipped, suppression,
 } from '../db/emails.js';
 import type { EmailKind } from '../db/emails.js';
 import { isPast, nowIso } from '../util/time.js';
 import { renderWelcome } from './welcome.js';
+import { alertRecipients, renderPostAlert } from './post-alert.js';
 import type { MailTransport } from './transport.js';
 
 const RETRY_MINUTES = [1, 5, 30, 120, 720];
@@ -50,6 +53,17 @@ export async function queueWelcome(env: Env, card: CardRow, o: { actor: string |
   return 'queued';
 }
 
+/** Queue the post alert for a post just made (linkedin_posts id); returns how many addresses it goes to. */
+export async function queuePostAlert(env: Env, o: { cardId: string; postId: string; now?: string }): Promise<number> {
+  const now = o.now ?? nowIso();
+  const to = alertRecipients(env);
+  for (const address of to) {
+    await insertEmail(env.DB, { card_id: o.cardId, kind: 'post_alert', to_email: address, cc_email: null, lang: 'en', status: 'queued', actor: null, ref: o.postId, now });
+  }
+  if (to.length) kick?.();
+  return to.length;
+}
+
 export interface OutboxSummary { sent: number; retried: number; failed: number; skipped: number }
 
 /** Send what is due. Never throws: each email's outcome is written to its row. */
@@ -60,12 +74,18 @@ export async function processOutbox(env: Env, transport: MailTransport | null, n
   for (const e of await dueEmails(env.DB, nowStr, 10)) {
     const card = await getCardById(env.DB, e.card_id);
     if (!card) { await markEmailSkipped(env.DB, e.id, 'card no longer exists'); summary.skipped++; continue; }
-    if (card.status === 'expired' || isPast(card.expires_at)) { await markEmailSkipped(env.DB, e.id, 'card expired before sending'); summary.skipped++; continue; }
-    if (await suppression(env.DB, e.to_email)) { await markEmailSkipped(env.DB, e.id, 'unsubscribed before sending'); summary.skipped++; continue; }
+    // A post alert goes to SPC staff, so the card's expiry and the customer's unsubscribe do not apply to it.
+    const alert = e.kind === 'post_alert';
+    const post = alert && e.ref ? await getLinkedinPost(env.DB, e.ref) : null;
+    if (alert && !post?.post_urn) { await markEmailSkipped(env.DB, e.id, 'the LinkedIn post is not on record'); summary.skipped++; continue; }
+    if (!alert && (card.status === 'expired' || isPast(card.expires_at))) { await markEmailSkipped(env.DB, e.id, 'card expired before sending'); summary.skipped++; continue; }
+    if (!alert && (await suppression(env.DB, e.to_email))) { await markEmailSkipped(env.DB, e.id, 'unsubscribed before sending'); summary.skipped++; continue; }
     const lang = e.lang === 'ar' ? 'ar' : 'en';
     let subject: string | null = null;
     try {
-      const mail = renderWelcome({ card, lang, baseUrl: env.BASE_URL });
+      const mail: { subject: string; html: string; text: string; unsubscribeUrl?: string } = post
+        ? renderPostAlert({ card, post, baseUrl: env.BASE_URL })
+        : renderWelcome({ card, lang, baseUrl: env.BASE_URL });
       subject = mail.subject;
       const sent = await transport.send({ to: e.to_email, cc: e.cc_email, subject: mail.subject, html: mail.html, text: mail.text, unsubscribeUrl: mail.unsubscribeUrl });
       await markEmailSent(env.DB, e.id, mail.subject, sent.id, nowIso());

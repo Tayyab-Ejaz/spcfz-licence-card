@@ -329,7 +329,7 @@ ${kv([
   return respond(c, { title: 'Settings', active: 'settings', error: errors, flash: flashOf(c), body }, status);
 }
 
-function emailsTable(rows: EmailRow[]): RawHtml {
+function emailsTable(rows: EmailRow[], emptyText = 'No welcome email yet.'): RawHtml {
   return table(
     ['Queued', 'To', 'Status', 'Sent', 'Note'],
     rows.map((e) => [
@@ -339,7 +339,7 @@ function emailsTable(rows: EmailRow[]): RawHtml {
       h`${e.sent_at ? fmtDateTime(e.sent_at) : ''}`,
       h`<span class="muted">${e.last_error ?? (e.attempts > 1 ? `${e.attempts} attempts` : '')}</span>`,
     ]),
-    'No welcome email yet.',
+    emptyText,
   );
 }
 
@@ -451,11 +451,13 @@ ${pager('/admin/cards', query, page, total, PER_PAGE)}`;
       metricsForCard(c.env.DB, card.id),
       listEvents(c.env.DB, { card_id: card.id, limit: 20 }),
     ]);
-    const [emails, posts, unsub] = await Promise.all([
+    const [allEmails, posts, unsub] = await Promise.all([
       emailsForCard(c.env.DB, card.id),
       linkedinPostsForCard(c.env.DB, card.id),
       card.customer_email ? suppression(c.env.DB, card.customer_email) : Promise.resolve(null),
     ]);
+    const emails = allEmails.filter((e) => e.kind === 'welcome');
+    const alerts = allEmails.filter((e) => e.kind === 'post_alert');
     const token = csrfToken(c);
     const url = pageUrl(c.env, card.token);
     const licencePast = isPast(card.expires_at);
@@ -509,6 +511,7 @@ ${card.customer_email
 </div>
 <h2>LinkedIn posts</h2>
 ${table(['When', 'Status', 'Post'], posts.map((p) => [h`${fmtDateTime(p.created_at)}`, h`${p.status}`, p.post_urn ? h`<a href="https://www.linkedin.com/feed/update/${p.post_urn}/" target="_blank" rel="noopener">View on LinkedIn</a>` : h`<span class="muted">${p.error ?? ''}</span>`]), 'No posts through "Post to LinkedIn" yet.')}
+${alerts.length ? h`<p class="muted">Alerts to SPC about these posts:</p>${emailsTable(alerts)}` : EMPTY}
 <h2>Metrics (all time)</h2>
 ${table(
   ['Kind', 'Lang', 'Size', 'Network', 'Count'],
@@ -776,7 +779,7 @@ ${ev.raw_body
       ? await Promise.all([emailsForCard(db, card.id), linkedinPostsForCard(db, card.id), listEvents(db, { card_id: card.id, limit: 50 })])
       : [[], [], { rows: [], total: 0 }];
     const status = testStatus(c);
-    const sending = emails[0]?.status === 'queued' && status.mail !== 'off';
+    const sending = emails.some((e) => e.status === 'queued') && status.mail !== 'off';
     return respond(c, {
       title: card ? `Test run · ${card.company_name_en}` : 'Test run · rejected',
       active: 'test',
