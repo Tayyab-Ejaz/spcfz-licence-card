@@ -211,6 +211,43 @@ languages without sending anything. If a customer unsubscribed, the card page
 says so and Send again sends nothing; undoing an unsubscribe is only on the
 customer's request, by deleting their row from `email_suppressions`.
 
+## Bounces, complaints and the domain check (4 November 2026)
+
+Set up for Amazon SES's sending review; both run without anyone's help.
+
+- **Domain check.** Before each email goes out through SMTP, the service
+  checks that the recipient's domain can receive email. If the domain does
+  not exist or takes no email, the email is not sent and the card's Welcome
+  email table says why ("not sent: … Check the address."). Fix the address on
+  the card and press Send again. A DNS lookup that fails for another reason
+  is retried like a temporary SMTP error.
+- **Bounce and complaint feed.** SES reports bounces and complaints for
+  spcfz.ae and more@spcfz.ae to the SNS topic `ses-bounces-complaints`
+  (Mumbai), which emails tayyab@spcfz.ae and it@spcfz.ae and POSTs to
+  `https://licensed.spcfz.ae/aws/ses-feedback`. A permanent bounce or a
+  complaint adds the address to `email_suppressions` (source `bounce` or
+  `complaint`): the card page says so and no more emails go to it. Only
+  messages signed by Amazon SNS for that topic are accepted.
+  `SES_FEEDBACK_TOPIC` names another topic, or `off`.
+
+  Subscribe the address once, after the version with it is running, in
+  CloudShell (Mumbai):
+
+  ```
+  aws sns subscribe --region ap-south-1 --topic-arn arn:aws:sns:ap-south-1:275472740409:ses-bounces-complaints --protocol https --notification-endpoint https://licensed.spcfz.ae/aws/ses-feedback
+  aws sns list-subscriptions-by-topic --region ap-south-1 --topic-arn arn:aws:sns:ap-south-1:275472740409:ses-bounces-complaints --query "Subscriptions[].[Endpoint,SubscriptionArn]" --output table
+  ```
+
+  The service confirms the subscription itself (the log shows
+  `ses feedback … subscribed`); the second command then shows an ARN, not
+  `PendingConfirmation`, for the https endpoint. If it stays pending, check
+  Cloudflare's security events for a blocked POST to `/aws/ses-feedback`.
+- **Alerts to people.** The same topic emails every bounce, complaint and
+  CloudWatch alarm (bounce rate 2%, complaint rate 0.05%). On a bounce, open
+  the card and fix or clear the address. On an alarm, set
+  `MAIL_TRANSPORT=off` (emails wait in the queue) and find the cause first.
+  With few emails, one bounce can trip the 2% alarm.
+
 ## Post to LinkedIn: turn it on
 
 Until `LINKEDIN_CLIENT_ID` and `LINKEDIN_CLIENT_SECRET` are set, the button

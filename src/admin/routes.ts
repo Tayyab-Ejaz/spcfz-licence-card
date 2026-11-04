@@ -23,7 +23,7 @@ import type { AdminVerifier, AuthHandlers } from './auth.js';
 import { createAuthHandlers, sessionVerifier } from './auth.js';
 import { csrfFailure, csrfToken, ensureCsrf } from './csrf.js';
 import { emailCounts, emailsForCard, suppression } from '../db/emails.js';
-import type { EmailRow } from '../db/emails.js';
+import type { EmailRow, SuppressionRow } from '../db/emails.js';
 import { queueWelcome, testRecipientAllowed } from '../mail/outbox.js';
 import { renderWelcome } from '../mail/welcome.js';
 import { linkedinPostsForCard } from '../db/linkedin.js';
@@ -329,6 +329,14 @@ ${kv([
   return respond(c, { title: 'Settings', active: 'settings', error: errors, flash: flashOf(c), body }, status);
 }
 
+/** What the card page says about a suppressed customer address. */
+function suppressionBanner(s: SuppressionRow): string {
+  const when = fmtDateTime(s.created_at);
+  if (s.source === 'bounce') return `${s.email} bounced on ${when}: Amazon SES reported that it does not accept email. Fix the address on the card if it has a typo.`;
+  if (s.source === 'complaint') return `${s.email} marked an email from us as spam on ${when}.`;
+  return `${s.email} unsubscribed on ${when} (${s.source === 'one-click' ? 'with their mail app\'s Unsubscribe' : 'with the email\'s Unsubscribe button'}).`;
+}
+
 function emailsTable(rows: EmailRow[], emptyText = 'No welcome email yet.'): RawHtml {
   return table(
     ['Queued', 'To', 'Status', 'Sent', 'Note'],
@@ -500,7 +508,7 @@ ${licencePast
 </form>
 <p class="muted">The card is built in the customer's browser: open the page to see it.</p>
 <h2>Welcome email</h2>
-${unsub ? h`<div class="error">${unsub.email} unsubscribed on ${fmtDateTime(unsub.created_at)} (${unsub.source === 'one-click' ? 'with their mail app\'s Unsubscribe' : 'with the email\'s Unsubscribe button'}). No more emails go to this address.</div>` : EMPTY}
+${unsub ? h`<div class="error">${suppressionBanner(unsub)} No more emails go to this address.</div>` : EMPTY}
 ${emailsTable(emails)}
 <div class="actions">
 ${card.customer_email

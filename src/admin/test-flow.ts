@@ -320,6 +320,15 @@ function qr(url: string): RawHtml {
   return raw(renderSVG(url, { border: 2 }));
 }
 
+/** The step's short status for a skipped welcome email, from the reason the outbox wrote. */
+function skippedLabel(note: string | null): string {
+  if (note?.startsWith('unsubscribed')) return 'Unsubscribed: not sent';
+  if (note?.startsWith('bounced')) return 'Bounced before: not sent';
+  if (note?.startsWith('complained')) return 'Marked as spam before: not sent';
+  if (note?.startsWith('not sent:')) return 'Domain takes no email: not sent';
+  return 'Skipped';
+}
+
 export interface RunPageInput {
   env: Env;
   token: string;
@@ -399,7 +408,7 @@ ${kv([
     : !latest ? ['off', 'Not queued (the box was unticked)']
       : latest.status === 'sent' ? ['ok', `Sent ${fmtDateTime(latest.sent_at)}`]
         : latest.status === 'queued' ? ['wait', i.status.mail === 'off' ? 'Queued: email is off on this server' : 'Queued: sending…']
-          : latest.status === 'skipped' ? ['off', latest.last_error?.startsWith('unsubscribed') ? 'Unsubscribed: not sent' : 'Skipped']
+          : latest.status === 'skipped' ? ['off', skippedLabel(latest.last_error)]
             : ['bad', 'Failed'];
   const s3 = step(3, 'The welcome email', mailState[0], mailState[1], h`
 ${card.customer_email ? h`<p>To <b>${card.customer_email}</b>${card.cc_email ? h`, copy to <b>${card.cc_email}</b>` : EMPTY}, in ${card.preferred_language === 'ar' ? 'Arabic' : 'English'}.</p>` : h`<p class="muted">Add customer_email to the payload to test the email.</p>`}

@@ -103,6 +103,8 @@ export interface Env {
   LINKEDIN_FAKE?: string;
   /** Who is emailed after each post (src/mail/post-alert.ts): addresses, comma separated; off for nobody. Default tayyab@spcfz.ae. */
   LINKEDIN_ALERT_TO?: string;
+  /** The SNS topic whose SES bounces and complaints POST /aws/ses-feedback accepts (src/mail/ses-feedback.ts); off turns it off. */
+  SES_FEEDBACK_TOPIC?: string;
 }
 
 export type MailTransportMode = 'smtp' | 'file' | 'off';

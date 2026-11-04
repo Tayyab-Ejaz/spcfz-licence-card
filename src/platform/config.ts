@@ -152,6 +152,10 @@ export function readConfig(source: ConfigSource, envFile: string | null = null):
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(a)) errors.push(`LINKEDIN_ALERT_TO: ${JSON.stringify(a)} is not an email address (comma separated, or off)`);
     }
   }
+  const feedbackTopic = text(source, 'SES_FEEDBACK_TOPIC');
+  if (feedbackTopic && feedbackTopic.toLowerCase() !== 'off' && !/^arn:aws:sns:[a-z0-9-]+:\d{12}:[A-Za-z0-9_-]{1,256}$/.test(feedbackTopic)) {
+    errors.push('SES_FEEDBACK_TOPIC must be an SNS topic ARN (arn:aws:sns:<region>:<account>:<name>) or off');
+  }
   const liVersion = text(source, 'LINKEDIN_API_VERSION');
   if (liVersion !== undefined && !/^20\d{4}$/.test(liVersion)) errors.push('LINKEDIN_API_VERSION must look like 202606 (YYYYMM)');
 
@@ -189,6 +193,7 @@ export function readConfig(source: ConfigSource, envFile: string | null = null):
     LINKEDIN_API_VERSION: liVersion,
     LINKEDIN_FAKE: liFake,
     LINKEDIN_ALERT_TO: alertTo,
+    SES_FEEDBACK_TOPIC: feedbackTopic,
   };
   return { ok: true, config: { vars, host, port, dataDir, trustProxy, envFile, warnings } };
 }

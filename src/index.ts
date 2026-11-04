@@ -10,6 +10,8 @@ import { createLinkedinRoutes } from './linkedin/routes.js';
 import type { LinkedinRouteOptions } from './linkedin/routes.js';
 import { fakeSigninRoutes } from './linkedin/fake.js';
 import { emailAssetRoutes } from './mail/assets.js';
+import { FEEDBACK_PATH, createSesFeedbackRoutes } from './mail/ses-feedback.js';
+import type { FeedbackOptions } from './mail/ses-feedback.js';
 import { studioStaticRoutes } from './page/studio.js';
 import { faviconRoutes } from './page/favicon.js';
 import { ipAllowed, parseAllowlist, rateKeyForIp } from './util/ip.js';
@@ -26,6 +28,8 @@ export interface RateLimits {
   intakeUnlisted: RateRule;
   /** "Post to LinkedIn": starting a post (POST /c/:token/linkedin, GET from the email) and the /linkedin/ pages. */
   linkedin: RateRule;
+  /** Amazon SES bounce and complaint feedback from SNS (src/mail/ses-feedback.ts); SNS retries anything refused. */
+  sesFeedback: RateRule;
 }
 
 export const DEFAULT_RATE_LIMITS: RateLimits = {
@@ -33,12 +37,14 @@ export const DEFAULT_RATE_LIMITS: RateLimits = {
   beacon: { limit: 60, windowMs: 60_000 },
   intakeUnlisted: { limit: 20, windowMs: 60_000 },
   linkedin: { limit: 60, windowMs: 10 * 60_000 },
+  sesFeedback: { limit: 120, windowMs: 60_000 },
 };
 
 export interface AppOptions {
   limits?: Partial<RateLimits>;
   now?: () => number;
   linkedin?: LinkedinRouteOptions;
+  sesFeedback?: FeedbackOptions;
 }
 
 /** IPv4 address, or the /64 of an IPv6 address (see rateKeyForIp). */
@@ -60,6 +66,7 @@ export function createApp(o: AppOptions = {}): Hono<AppEnv> {
   const beacon = new FixedWindowLimiter(limits.beacon, lo);
   const intake = new FixedWindowLimiter(limits.intakeUnlisted, lo);
   const linkedin = new FixedWindowLimiter(limits.linkedin, lo);
+  const feedback = new FixedWindowLimiter(limits.sesFeedback, lo);
 
   const app = new Hono<AppEnv>();
 
@@ -67,6 +74,7 @@ export function createApp(o: AppOptions = {}): Hono<AppEnv> {
   app.use('/c/*', rateLimit(beacon, { applies: (c) => c.req.method === 'POST', key: clientKey, onLimit: tooManyText }));
   const isLinkedin = (c: Context<AppEnv>): boolean => c.req.path.startsWith('/linkedin/') || /^\/c\/[^/]+\/linkedin$/.test(c.req.path);
   app.use('*', rateLimit(linkedin, { applies: isLinkedin, key: clientKey, onLimit: tooManyText }));
+  app.use(FEEDBACK_PATH, rateLimit(feedback, { applies: () => true, key: clientKey, onLimit: tooManyText }));
   app.use('/v1/*', rateLimit(intake, {
     applies: () => true,
     key: (c) => {
@@ -86,6 +94,7 @@ export function createApp(o: AppOptions = {}): Hono<AppEnv> {
   app.route('/', faviconRoutes);
   app.route('/', studioStaticRoutes);
   app.route('/', emailAssetRoutes);
+  app.route('/', createSesFeedbackRoutes(o.sesFeedback));
   app.route('/', intakeRoutes);
   app.route('/', createLinkedinRoutes(o.linkedin));
   app.route('/', fakeSigninRoutes);

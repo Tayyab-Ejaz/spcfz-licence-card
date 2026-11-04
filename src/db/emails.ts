@@ -80,9 +80,25 @@ export async function emailCounts(db: D1Database): Promise<Record<EmailStatus, n
 export interface SuppressionRow {
   email: string;
   card_id: string | null;
-  /** page: the unsubscribe page's button; one-click: the mail app's own Unsubscribe (RFC 8058). */
-  source: 'page' | 'one-click';
+  /**
+   * page: the unsubscribe page's button; one-click: the mail app's own Unsubscribe (RFC 8058); bounce: Amazon SES
+   * reported a permanent bounce; complaint: the recipient marked an email as spam (both src/mail/ses-feedback.ts).
+   */
+  source: 'page' | 'one-click' | 'bounce' | 'complaint';
   created_at: string;
+}
+
+/** Why an email to a suppressed address is not sent, for the email log. Starts with unsubscribed, bounced or complained. */
+export function suppressionNote(s: Pick<SuppressionRow, 'source'>): string {
+  if (s.source === 'bounce') return 'bounced: Amazon SES reported that this address does not accept email';
+  if (s.source === 'complaint') return 'complained: the recipient marked an earlier email as spam';
+  return 'unsubscribed: the customer asked for no more emails';
+}
+
+/** The card whose emails last went to this address, for linking a bounce or complaint to a card. */
+export async function cardIdForAddress(db: D1Database, email: string): Promise<string | null> {
+  const r = await db.prepare('SELECT card_id FROM emails WHERE to_email = ?1 ORDER BY created_at DESC LIMIT 1').bind(email.toLowerCase()).first<{ card_id: string }>();
+  return r?.card_id ?? null;
 }
 
 export async function suppression(db: D1Database, email: string): Promise<SuppressionRow | null> {

@@ -11,6 +11,8 @@ import { getCardById, insertCard, setCardStatus } from '../src/db/cards.js';
 import { emailsForCard, suppress, suppression } from '../src/db/emails.js';
 import { insertLinkedinPost } from '../src/db/linkedin.js';
 import { alertRecipients } from '../src/mail/post-alert.js';
+import { domainChecker } from '../src/mail/domain-check.js';
+import type { DomainChecker, MailDns } from '../src/mail/domain-check.js';
 import { randomToken } from '../src/util/crypto.js';
 import { renderWelcome } from '../src/mail/welcome.js';
 import { processOutbox, queuePostAlert, queueWelcome, testRecipientAllowed } from '../src/mail/outbox.js';
@@ -335,5 +337,53 @@ describe('post alert', () => {
     const off = { ...env, LINKEDIN_ALERT_TO: 'off' };
     expect(await queuePostAlert(off, { cardId: card.id, postId: await posted(card) })).toBe(0);
     expect(await emailsForCard(env.DB, card.id)).toEqual([]);
+  });
+});
+
+describe('recipient domain check', () => {
+  const fail = (code: string) => Object.assign(new Error(code), { code });
+  function dns(o: { mx?: Array<{ exchange: string; priority: number }> | string; a?: string[] | string }): MailDns {
+    const run = <T>(v: T | string | undefined, empty: T) => async (): Promise<T> => {
+      if (typeof v === 'string') throw fail(v);
+      return v ?? empty;
+    };
+    return { resolveMx: run(o.mx, []), resolve4: run(o.a, []), resolve6: run(undefined as string[] | undefined, []) };
+  }
+
+  it('accepts a mail server, or an address record when there is no MX; refuses the rest', async () => {
+    expect(await domainChecker(dns({ mx: [{ exchange: 'mx.harbour.example', priority: 10 }] }))('harbour.example')).toEqual({ ok: true });
+    expect(await domainChecker(dns({ mx: 'ENODATA', a: ['192.0.2.1'] }))('harbour.example')).toEqual({ ok: true });
+    expect(await domainChecker(dns({ mx: 'ENOTFOUND' }))('gmial.com')).toEqual({ ok: false, reason: 'gmial.com does not exist' });
+    expect(await domainChecker(dns({ mx: [{ exchange: '', priority: 0 }] }))('nomail.example')).toEqual({ ok: false, reason: 'nomail.example says it accepts no email' });
+    expect(await domainChecker(dns({ mx: 'ENODATA', a: 'ENODATA' }))('bare.example')).toEqual({ ok: false, reason: 'bare.example has no mail server' });
+    expect(await domainChecker(dns({ mx: 'ETIMEOUT' }))('slow.example')).toMatchObject({ ok: null });
+  });
+
+  function smtpTransport(): MailTransport & { sent: OutgoingEmail[] } {
+    const t = { mode: 'smtp' as const, sent: [] as OutgoingEmail[], async send(m: OutgoingEmail) { t.sent.push(m); return { id: 'smtp-1' }; } };
+    return t;
+  }
+  const verdict = (v: Awaited<ReturnType<DomainChecker>>): DomainChecker => async () => v;
+
+  it('does not send to a domain that takes no email, and says so on the card', async () => {
+    const card = await seedCard({ fields: { customer_email: 'layla@gmial.com' } });
+    await queueWelcome(env, card, { actor: null });
+    const t = smtpTransport();
+    expect(await processOutbox(env, t, new Date(), { checkDomain: verdict({ ok: false, reason: 'gmial.com does not exist' }) })).toMatchObject({ skipped: 1 });
+    expect(t.sent).toEqual([]);
+    const [row] = await emailsForCard(env.DB, card.id);
+    expect(row).toMatchObject({ status: 'skipped', last_error: 'not sent: gmial.com does not exist. Check the address.' });
+  });
+
+  it('tries again later when the domain cannot be checked, and sends when it can', async () => {
+    const card = await seedCard();
+    await queueWelcome(env, card, { actor: null });
+    const t = smtpTransport();
+    const now = new Date();
+    expect(await processOutbox(env, t, now, { checkDomain: verdict({ ok: null, reason: 'could not check nimbus.example (ETIMEOUT)' }) })).toMatchObject({ retried: 1 });
+    expect(t.sent).toEqual([]);
+    const later = new Date(now.getTime() + 2 * 60_000);
+    expect(await processOutbox(env, t, later, { checkDomain: verdict({ ok: true }) })).toMatchObject({ sent: 1 });
+    expect(t.sent[0]?.to).toBe('layla@nimbus.example');
   });
 });

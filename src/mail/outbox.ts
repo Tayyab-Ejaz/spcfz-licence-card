@@ -3,16 +3,19 @@
 // src/server.ts sends what is due every 30 seconds (and straight after something is queued), retrying failures
 // after 1, 5, 30, 120 and 720 minutes before giving up. Test cards only email addresses on MAIL_TEST_ALLOWLIST.
 // After each Post to LinkedIn, SPC staff get a post alert (src/mail/post-alert.ts) through the same outbox.
+// Before an SMTP send, the recipient's domain must be able to receive email (src/mail/domain-check.ts).
 import type { CardRow, Env } from '../types.js';
 import { getCardById } from '../db/cards.js';
 import { getLinkedinPost } from '../db/linkedin.js';
 import {
-  dueEmails, hasActiveEmail, insertEmail, markEmailRetry, markEmailSent, markEmailSkipped, suppression,
+  dueEmails, hasActiveEmail, insertEmail, markEmailRetry, markEmailSent, markEmailSkipped, suppression, suppressionNote,
 } from '../db/emails.js';
 import type { EmailKind } from '../db/emails.js';
 import { isPast, nowIso } from '../util/time.js';
 import { renderWelcome } from './welcome.js';
 import { alertRecipients, renderPostAlert } from './post-alert.js';
+import { domainChecker, domainOf } from './domain-check.js';
+import type { DomainChecker } from './domain-check.js';
 import type { MailTransport } from './transport.js';
 
 const RETRY_MINUTES = [1, 5, 30, 120, 720];
@@ -40,8 +43,9 @@ export async function queueWelcome(env: Env, card: CardRow, o: { actor: string |
   const kind: EmailKind = 'welcome';
   if (!o.force && (await hasActiveEmail(env.DB, card.id, kind))) return 'already-sent';
   const base = { card_id: card.id, kind, to_email: card.customer_email, cc_email: card.cc_email, lang: card.preferred_language, actor: o.actor, now };
-  if (await suppression(env.DB, card.customer_email)) {
-    await insertEmail(env.DB, { ...base, status: 'skipped', last_error: 'unsubscribed: the customer asked for no more emails' });
+  const suppressed = await suppression(env.DB, card.customer_email);
+  if (suppressed) {
+    await insertEmail(env.DB, { ...base, status: 'skipped', last_error: suppressionNote(suppressed) });
     return 'unsubscribed';
   }
   if (card.is_test && !testRecipientAllowed(env, card.customer_email)) {
@@ -66,11 +70,17 @@ export async function queuePostAlert(env: Env, o: { cardId: string; postId: stri
 
 export interface OutboxSummary { sent: number; retried: number; failed: number; skipped: number }
 
-/** Send what is due. Never throws: each email's outcome is written to its row. */
-export async function processOutbox(env: Env, transport: MailTransport | null, now: Date = new Date()): Promise<OutboxSummary> {
+let realDomainCheck: DomainChecker | null = null;
+
+/**
+ * Send what is due. Never throws: each email's outcome is written to its row. `checkDomain` stands in for DNS in
+ * tests; the check runs for SMTP only (the local copy's file transport sends nothing).
+ */
+export async function processOutbox(env: Env, transport: MailTransport | null, now: Date = new Date(), o: { checkDomain?: DomainChecker } = {}): Promise<OutboxSummary> {
   const summary: OutboxSummary = { sent: 0, retried: 0, failed: 0, skipped: 0 };
   if (!transport) return summary;
   const nowStr = nowIso(now);
+  const checkDomain = transport.mode === 'smtp' ? (o.checkDomain ?? (realDomainCheck ??= domainChecker())) : null;
   for (const e of await dueEmails(env.DB, nowStr, 10)) {
     const card = await getCardById(env.DB, e.card_id);
     if (!card) { await markEmailSkipped(env.DB, e.id, 'card no longer exists'); summary.skipped++; continue; }
@@ -79,10 +89,19 @@ export async function processOutbox(env: Env, transport: MailTransport | null, n
     const post = alert && e.ref ? await getLinkedinPost(env.DB, e.ref) : null;
     if (alert && !post?.post_urn) { await markEmailSkipped(env.DB, e.id, 'the LinkedIn post is not on record'); summary.skipped++; continue; }
     if (!alert && (card.status === 'expired' || isPast(card.expires_at))) { await markEmailSkipped(env.DB, e.id, 'card expired before sending'); summary.skipped++; continue; }
-    if (!alert && (await suppression(env.DB, e.to_email))) { await markEmailSkipped(env.DB, e.id, 'unsubscribed before sending'); summary.skipped++; continue; }
+    const suppressed = alert ? null : await suppression(env.DB, e.to_email);
+    if (suppressed) { await markEmailSkipped(env.DB, e.id, suppressionNote(suppressed)); summary.skipped++; continue; }
     const lang = e.lang === 'ar' ? 'ar' : 'en';
     let subject: string | null = null;
     try {
+      const domain = checkDomain ? await checkDomain(domainOf(e.to_email)) : { ok: true as const };
+      if (domain.ok === false) {
+        await markEmailSkipped(env.DB, e.id, `not sent: ${domain.reason}. Check the address.`);
+        console.warn('email skipped', { kind: e.kind, card_id: e.card_id, reason: domain.reason });
+        summary.skipped++;
+        continue;
+      }
+      if (domain.ok === null) throw new Error(`${domain.reason}; will try again`);
       const mail: { subject: string; html: string; text: string; unsubscribeUrl?: string } = post
         ? renderPostAlert({ card, post, baseUrl: env.BASE_URL })
         : renderWelcome({ card, lang, baseUrl: env.BASE_URL });
