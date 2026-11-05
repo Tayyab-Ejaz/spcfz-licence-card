@@ -47,6 +47,17 @@ export interface AppOptions {
   sesFeedback?: FeedbackOptions;
 }
 
+/**
+ * Link-preview bots may read card pages and their preview pictures (all under /c/), so a shared link shows the
+ * company's picture on LinkedIn, WhatsApp, Facebook, X, Slack, Telegram and Teams; LinkedInBot shows nothing while
+ * robots.txt shuts it out. Everyone else, search engines included, stays out, and the pages still say noindex.
+ */
+const PREVIEW_BOTS = [
+  'LinkedInBot', 'facebookexternalhit', 'Facebot', 'Twitterbot', 'WhatsApp',
+  'Slackbot-LinkExpanding', 'TelegramBot', 'Discordbot', 'SkypeUriPreview',
+];
+const ROBOTS_TXT = `${PREVIEW_BOTS.map((b) => `User-agent: ${b}`).join('\n')}\nAllow: /c/\nDisallow: /\n\nUser-agent: *\nDisallow: /\n`;
+
 /** IPv4 address, or the /64 of an IPv6 address (see rateKeyForIp). */
 const clientKey = (c: Context<AppEnv>): string => {
   const ip = c.req.header('CF-Connecting-IP');
@@ -89,7 +100,7 @@ export function createApp(o: AppOptions = {}): Hono<AppEnv> {
 
   app.get('/', (c) => c.redirect('https://www.spcfz.ae/', 302));
   app.get('/healthz', (c) => c.json({ ok: true }));
-  app.get('/robots.txt', (c) => c.text('User-agent: *\nDisallow: /\n'));
+  app.get('/robots.txt', (c) => c.text(ROBOTS_TXT, 200, { 'Cache-Control': 'public, max-age=3600' }));
 
   app.route('/', faviconRoutes);
   app.route('/', studioStaticRoutes);

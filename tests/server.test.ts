@@ -62,6 +62,17 @@ describe('server (TRUST_PROXY=local-proxy, the production mode)', () => {
     expect(await res.json()).toEqual({ ok: true });
   });
 
+  it('robots.txt: link-preview bots may read card pages only; everyone else is kept out', async () => {
+    const res = await fetch(`http://127.0.0.1:${server.port}/robots.txt`);
+    expect(res.status).toBe(200);
+    const groups = (await res.text()).trim().split('\n\n');
+    expect(groups).toHaveLength(2);
+    expect(groups[0]).toContain('User-agent: LinkedInBot\n');
+    expect(groups[0]).toContain('User-agent: facebookexternalhit\n');
+    expect(groups[0]).toMatch(/\nAllow: \/c\/\nDisallow: \/$/);
+    expect(groups[1]).toBe('User-agent: *\nDisallow: /');
+  });
+
   it('serves SPC\'s site icon for the browser tab and the home screen', async () => {
     const ico = await fetch(`http://127.0.0.1:${server.port}/favicon.ico`);
     expect(ico.status).toBe(200);
