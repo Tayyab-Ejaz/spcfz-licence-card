@@ -14,6 +14,7 @@ import { DraftStore, DRAFT_TTL_MS } from '../src/linkedin/drafts.js';
 import { LinkedinError, linkedinClient } from '../src/linkedin/client.js';
 import type { LinkedinClient } from '../src/linkedin/client.js';
 import { defaultCaption, orgUrn, REFER_LINE, toLittleText } from '../src/linkedin/caption.js';
+import { renderPostedPage, renderProblemPage, renderReviewPage } from '../src/linkedin/view.js';
 import { createTestEnv } from './env.js';
 
 const env = createTestEnv({ LINKEDIN_ORG_URN: '1234567' });
@@ -439,5 +440,31 @@ describe('caption as LinkedIn little text', () => {
     expect(orgUrn('1234')).toBe('urn:li:organization:1234');
     expect(orgUrn('urn:li:organization:1234')).toBe('urn:li:organization:1234');
     expect(orgUrn('spc-free-zone')).toBeNull();
+  });
+});
+
+describe('the header pill', () => {
+  const review = renderReviewPage({ lang: 'en', nonce: 'n', name: 'Layla Haddad', picture: null, company: 'Cedar & Quill', caption: 'Hi', formKey: 'k', imageUrl: '/i.png', cardUrl: '/c/x' });
+  const posted = renderPostedPage({ lang: 'ar', nonce: 'n', company: 'Cedar & Quill', postUrl: 'https://www.linkedin.com/feed/update/urn:li:share:1', imageUrl: null, cardUrl: '/c/x' });
+
+  it('takes you to the main button: Post now on review, View your post once posted', () => {
+    for (const page of [review, posted]) {
+      expect(page).toContain('<a class="pill" href="#go">');
+      expect(page.match(/id="go"/g)).toHaveLength(1);
+      expect(page).toContain("getElementById('go')");
+    }
+    expect(review).toMatch(/<button class="btn primary" id="go" type="submit"/);
+    expect(posted).toMatch(/<a class="btn primary" id="go" href="https:\/\/www\.linkedin\.com\/feed/);
+    expect(review).toMatch(/<script nonce="n">[^]*getElementById\('caption'\)/); // the review script still runs
+  });
+
+  it('stays a plain label when the page has no main button', () => {
+    const none = renderProblemPage({ lang: 'en', nonce: 'n', title: 'Gone', message: 'Gone.', primary: null });
+    expect(none).toContain('<span class="pill">');
+    expect(none).not.toContain('href="#go"');
+    expect(none).not.toContain('<script');
+    const one = renderProblemPage({ lang: 'en', nonce: 'n', title: 'Gone', message: 'Gone.', primary: { href: '/c/x', label: 'Open your card' } });
+    expect(one).toContain('<a class="pill" href="#go">');
+    expect(one).toContain('<a class="btn primary" id="go" href="/c/x">');
   });
 });

@@ -133,7 +133,7 @@ the LinkedIn caption. Generated from the source; `{company}` and `{first name}` 
 | postNow | انشر الآن | Post now |
 | posting | جارٍ النشر… | Posting… |
 | backToCard | العودة إلى بطاقتي | Back to my card |
-| fine | لا يُنشر شيء قبل أن تضغط «انشر الآن»، ويُنشر مرة واحدة فقط. لا تحتفظ المنطقة الحرة بأي صلاحية على حسابك في لينكدإن. | Nothing is posted until you press Post now, and it is posted once. SPC Free Zone does not keep access to your LinkedIn account. |
+| fine | لا يُنشر شيء قبل أن تضغط «انشر الآن»، ويُنشر مرة واحدة فقط. يتم تسجيل دخولك بأمان عبر لينكدإن نفسه: لا تطّلع المنطقة الحرة على كلمة مرورك، وينتهي وصولنا إلى حسابك فور النشر. | Nothing is posted until you press Post now, and it is posted once. Your sign-in is handled securely by LinkedIn: SPC Free Zone never sees your password, and our access ends once you post. |
 | tooLong | يسمح لينكدإن بـ 3,000 حرف كحد أقصى. يرجى اختصار النص. | LinkedIn allows up to 3,000 characters. Please shorten the text. |
 | postedTitle | إعلانك منشور الآن | Your announcement is live |
 | postedLead | {company} الآن على صفحتك في لينكدإن. | {company} is now on your LinkedIn feed. |

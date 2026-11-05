@@ -31,7 +31,7 @@ export const LI_STRINGS = {
     postNow: 'Post now',
     posting: 'Posting…',
     backToCard: 'Back to my card',
-    fine: 'Nothing is posted until you press Post now, and it is posted once. SPC Free Zone does not keep access to your LinkedIn account.',
+    fine: 'Nothing is posted until you press Post now, and it is posted once. Your sign-in is handled securely by LinkedIn: SPC Free Zone never sees your password, and our access ends once you post.',
     tooLong: 'LinkedIn allows up to 3,000 characters. Please shorten the text.',
     postedTitle: 'Your announcement is live',
     postedLead: '{company} is now on your LinkedIn feed.',
@@ -70,7 +70,7 @@ export const LI_STRINGS = {
     postNow: 'انشر الآن',
     posting: 'جارٍ النشر…',
     backToCard: 'العودة إلى بطاقتي',
-    fine: 'لا يُنشر شيء قبل أن تضغط «انشر الآن»، ويُنشر مرة واحدة فقط. لا تحتفظ المنطقة الحرة بأي صلاحية على حسابك في لينكدإن.',
+    fine: 'لا يُنشر شيء قبل أن تضغط «انشر الآن»، ويُنشر مرة واحدة فقط. يتم تسجيل دخولك بأمان عبر لينكدإن نفسه: لا تطّلع المنطقة الحرة على كلمة مرورك، وينتهي وصولنا إلى حسابك فور النشر.',
     tooLong: 'يسمح لينكدإن بـ 3,000 حرف كحد أقصى. يرجى اختصار النص.',
     postedTitle: 'إعلانك منشور الآن',
     postedLead: '{company} الآن على صفحتك في لينكدإن.',
@@ -107,12 +107,14 @@ a{color:var(--blue)}
 .top{max-width:640px;margin:0 auto;padding:18px 16px 6px;display:flex;align-items:center;justify-content:space-between;gap:12px}
 .top img{height:40px;width:auto;display:block}
 .pill{display:inline-flex;align-items:center;gap:7px;padding:6px 12px 6px 9px;border-radius:999px;background:#fff;border:1px solid var(--line);font-size:13px;font-weight:700;color:var(--li);white-space:nowrap}
+a.pill{text-decoration:none;transition:border-color .15s,box-shadow .15s}
+a.pill:hover{border-color:#bfcbe3;box-shadow:0 4px 12px -6px rgba(10,102,194,.45)}
 .in{width:16px;height:16px;flex:none}
 main{max-width:640px;margin:0 auto;padding:10px 16px 40px}
-.steps{display:flex;align-items:center;gap:8px;margin:10px 0 18px;font-size:12.5px;font-weight:600;color:var(--muted);list-style:none;padding:0}
-.steps li{display:flex;align-items:center;gap:6px}
-.steps li+li::before{content:"";width:22px;height:1.5px;background:var(--line);margin-inline-end:2px}
-.steps b{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#fff;border:1.5px solid var(--line);font-size:11px;color:var(--muted)}
+.steps{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px 10px;margin:12px 0 24px;font-size:14.5px;font-weight:600;color:var(--muted);list-style:none;padding:0}
+.steps li{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.steps li+li::before{content:"";width:32px;height:2px;border-radius:2px;background:var(--line);margin-inline-end:2px}
+.steps b{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#fff;border:2px solid var(--line);font-size:13.5px;color:var(--muted)}
 .steps .done b{background:var(--blue);border-color:var(--blue);color:#fff}
 .steps .now{color:var(--ink)}
 .steps .now b{border-color:var(--blue);color:var(--blue)}
@@ -139,6 +141,8 @@ textarea{display:block;width:100%;min-height:150px;border:0;padding:8px 16px 4px
 .primary{flex:1;background:var(--blue);color:#fff;box-shadow:0 6px 16px -6px rgba(0,77,255,.6)}
 .primary:hover{background:var(--blue2)}
 .primary[disabled]{opacity:.7;cursor:progress}
+.nudge{animation:nudge 1.1s ease-out}
+@keyframes nudge{0%{box-shadow:0 0 0 0 rgba(0,77,255,.55)}100%{box-shadow:0 0 0 16px rgba(0,77,255,0)}}
 .ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
 .ghost:hover{border-color:#bfcbe3}
 .spin{width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,.45);border-top-color:#fff;animation:spin .8s linear infinite;display:none}
@@ -164,6 +168,9 @@ footer{max-width:640px;margin:0 auto;padding:0 16px 28px;font-size:12px;color:va
 footer a{color:var(--muted)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.tick path{stroke-dashoffset:0}}
 @media (max-width:420px){.bar{flex-direction:column-reverse}.bar .btn{width:100%}}
+@media (max-width:440px){.steps{column-gap:6px;font-size:13.5px}.steps li{gap:6px}.steps b{width:26px;height:26px;font-size:12.5px}.steps li+li::before{width:16px}
+[dir=rtl] .steps{column-gap:5px;font-size:min(13px,3.5vw)}[dir=rtl] .steps li{gap:5px}[dir=rtl] .steps b{width:24px;height:24px;font-size:12px}[dir=rtl] .steps li+li::before{width:10px}}
+@media (max-width:340px){.steps,[dir=rtl] .steps{column-gap:4px;font-size:12px}.steps li,[dir=rtl] .steps li{gap:4px}.steps b,[dir=rtl] .steps b{width:22px;height:22px;font-size:11px}.steps li+li::before,[dir=rtl] .steps li+li::before{width:8px;margin-inline-end:0}[dir=rtl] .steps{font-size:11px}}
 `;
 
 const SHIELD = h`<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5l-8-3zm-1.2 14.2-3.5-3.5 1.4-1.4 2.1 2.1 4.9-4.9 1.4 1.4-6.3 6.3z"/></svg>`;
@@ -175,10 +182,22 @@ interface Page {
   nonce: string;
   body: RawHtml;
   script?: string;
+  /** The body has a main button with id="go"; the header's pill then scrolls to it. */
+  action?: boolean;
 }
+
+// The header's pill looks like a button, so it takes you to the one that does the job: a smooth scroll to
+// #go, focus on it, and a short ring so the eye finds it. Without script it is a plain #go link.
+const PILL_JS = `(function(){var p=document.querySelector('a.pill'),g=document.getElementById('go');if(!p||!g)return;
+p.addEventListener('click',function(e){e.preventDefault();var still=matchMedia('(prefers-reduced-motion: reduce)').matches;
+g.scrollIntoView({behavior:still?'auto':'smooth',block:'center'});g.focus({preventScroll:true});
+g.classList.remove('nudge');void g.offsetWidth;g.classList.add('nudge')});
+g.addEventListener('animationend',function(){g.classList.remove('nudge')})})();`;
 
 function page(p: Page): string {
   const s = LI_STRINGS[p.lang];
+  const script = (p.action ? PILL_JS : '') + (p.script ?? '');
+  const pill = p.action ? h`<a class="pill" href="#go">${IN_MARK}${s.pill}</a>` : h`<span class="pill">${IN_MARK}${s.pill}</span>`;
   return html`<!doctype html>
 <html lang="${p.lang}" dir="${s.dir}">
 <head>
@@ -191,12 +210,12 @@ ${raw(FAVICON_LINKS)}
 <style nonce="${p.nonce}">${raw(CSS)}</style>
 </head>
 <body>
-<header class="top"><a href="https://www.spcfz.ae/"><img src="${LOGO_URL}" alt="SPC Free Zone" width="98" height="40"></a><span class="pill">${IN_MARK}${s.pill}</span></header>
+<header class="top"><a href="https://www.spcfz.ae/"><img src="${LOGO_URL}" alt="SPC Free Zone" width="98" height="40"></a>${pill}</header>
 <main>
 ${p.body}
 </main>
 <footer>${s.footer} · <a href="https://www.spcfz.ae/">spcfz.ae</a></footer>
-${p.script ? h`<script nonce="${p.nonce}">${raw(p.script)}</script>` : ''}
+${script ? h`<script nonce="${p.nonce}">${raw(script)}</script>` : ''}
 </body>
 </html>`;
 }
@@ -257,7 +276,7 @@ ${i.error ? h`<div class="alert" role="alert">${WARN}<div>${i.error}${i.signInAg
 <div class="bar"><a class="btn ghost" href="${i.cardUrl}">${s.backToCard}</a><button class="btn primary" id="go" type="submit" data-busy="${s.posting}">${IN_MARK}<span>${s.postNow}</span><i class="spin" aria-hidden="true"></i></button></div>
 </form>
 <p class="fine">${SHIELD}<span>${s.fine}</span></p>`;
-  return page({ lang: i.lang, nonce: i.nonce, body, script: REVIEW_JS });
+  return page({ lang: i.lang, nonce: i.nonce, body, script: REVIEW_JS, action: true });
 }
 
 export interface PostedInput {
@@ -279,12 +298,12 @@ ${steps(s, 3)}
 <p class="lead">${s.postedLead.replace('{company}', i.company)}</p>
 ${i.imageUrl ? h`<img class="thumb" src="${i.imageUrl}" alt="">` : ''}
 <div class="stack">
-<a class="btn primary" href="${i.postUrl}" target="_blank" rel="noopener">${IN_MARK}<span>${s.viewPost}</span></a>
+<a class="btn primary" id="go" href="${i.postUrl}" target="_blank" rel="noopener">${IN_MARK}<span>${s.viewPost}</span></a>
 <a class="btn ghost" href="${i.cardUrl}">${s.backToCard}</a>
 </div>
 <p class="tip">${s.postedTip}</p>
 </div>`;
-  return page({ lang: i.lang, nonce: i.nonce, body });
+  return page({ lang: i.lang, nonce: i.nonce, body, action: true });
 }
 
 export interface ProblemInput {
@@ -303,11 +322,11 @@ export function renderProblemPage(i: ProblemInput): string {
 <h1>${i.title}</h1>
 <p class="lead">${i.message}</p>
 <div class="stack">
-${i.primary ? h`<a class="btn primary" href="${i.primary.href}">${i.primary.label}</a>` : ''}
+${i.primary ? h`<a class="btn primary" id="go" href="${i.primary.href}">${i.primary.label}</a>` : ''}
 ${i.secondary ? h`<a class="btn ghost" href="${i.secondary.href}">${i.secondary.label}</a>` : ''}
 </div>
 </div>`;
-  return page({ lang: i.lang, nonce: i.nonce, body });
+  return page({ lang: i.lang, nonce: i.nonce, body, action: !!i.primary });
 }
 
 /** Images the LinkedIn pages load: ours, and the member's photo from LinkedIn's media host. */
