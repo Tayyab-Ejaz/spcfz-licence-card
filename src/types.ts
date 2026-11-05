@@ -201,10 +201,16 @@ export interface EventRow {
  * pressed, signed in, cancelled at LinkedIn, posted, failed. Once each per press; test cards are not counted.
  */
 export type LinkedinStep = 'li_start' | 'li_signin' | 'li_cancel' | 'li_post' | 'li_fail';
-export type MetricKind = 'view' | 'download' | 'share' | 'caption' | LinkedinStep;
+/** The Google review request (src/page/review.ts): shown in the studio, and a press of its button. */
+export type ReviewStep = 'review_ask' | 'review_click';
+export type MetricKind = 'view' | 'download' | 'share' | 'caption' | LinkedinStep | ReviewStep;
 
 /** What `upsertFromCanonical` reports back. */
 export type UpsertOutcome = 'created' | 'unchanged' | 'updated';
 
-export const SETTING_KEYS = ['gtm_enabled', 'retention_days', 'test_retention_days', 'raw_body_days'] as const;
+export const SETTING_KEYS = [
+  'gtm_enabled', 'retention_days', 'test_retention_days', 'raw_body_days',
+  // 5 November 2026: who gets the LinkedIn post alert, the Google review request, who gets the monthly report.
+  'post_alert_to', 'review_enabled', 'review_url', 'report_to',
+] as const;
 export type SettingKey = (typeof SETTING_KEYS)[number];

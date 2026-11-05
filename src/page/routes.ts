@@ -15,6 +15,7 @@ import { cachedPreview } from './preview-image.js';
 import { cachedCardImage, cardImageInput } from './card-image.js';
 import { readFile } from 'node:fs/promises';
 import { linkedinEnabled } from '../linkedin/client.js';
+import { reviewLink } from './review.js';
 
 const GTM_ID_RE = /^GTM-[A-Z0-9]{4,12}$/;
 const BEACON_LIMIT = 1024;
@@ -65,7 +66,7 @@ function safeMetric(c: Context<AppEnv>, m: MetricKey): void {
 }
 
 function isMetricKind(v: unknown): v is MetricKind {
-  return v === 'view' || v === 'download' || v === 'share' || v === 'caption';
+  return v === 'view' || v === 'download' || v === 'share' || v === 'caption' || v === 'review_ask';
 }
 
 function noContent(): Response {
@@ -111,7 +112,26 @@ pageRoutes.get('/c/:token', async (c) => {
   // Opened from the welcome email (?via=email): counted apart, so the admin can see how many came that way.
   if (!card.is_test) safeMetric(c, { card_id: card.id, kind: 'view', lang, network: c.req.query('via') === 'email' ? 'email' : null });
   const linkedin = linkedinEnabled(c.env);
-  return c.html(renderStudioShell({ card, lang, nonce, gtmContainer, baseUrl: c.env.BASE_URL, linkedin }), 200);
+  const review = reviewLink(settings) !== null;
+  return c.html(renderStudioShell({ card, lang, nonce, gtmContainer, baseUrl: c.env.BASE_URL, linkedin, review }), 200);
+});
+
+// ------------------------------------------------------------------ Google review button (./review.ts)
+
+// Counts the press (not for test cards) and sends the customer to SPC's review link. ?from=linkedin: from the page
+// after a LinkedIn post, counted apart from the studio's.
+pageRoutes.get('/c/:token/review', async (c) => {
+  const token = c.req.param('token');
+  if (!TOKEN_RE.test(token)) return c.text('Not found', 404);
+  const card = await getCardByToken(c.env.DB, token);
+  if (!card) return c.text('Not found', 404);
+  const headers = { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' };
+  const url = reviewLink(await getSettings(c.env.DB));
+  if (!url) return c.redirect(`/c/${token}`, 302);
+  const network = c.req.query('from') === 'linkedin' ? 'linkedin' : null;
+  if (!card.is_test) safeMetric(c, { card_id: card.id, kind: 'review_click', lang: card.preferred_language, network });
+  for (const [k, v] of Object.entries(headers)) c.header(k, v);
+  return c.redirect(url, 302);
 });
 
 // ------------------------------------------------------------------ beacon

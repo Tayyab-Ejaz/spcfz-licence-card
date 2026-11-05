@@ -10,7 +10,7 @@ import { getCookie, setCookie } from 'hono/cookie';
 import sharp from 'sharp';
 import type { AppEnv, CardRow, Env, Lang, LinkedinStep } from '../types.js';
 import { isLang } from '../types.js';
-import { bumpMetric, getCardByToken } from '../db/cards.js';
+import { bumpMetric, getCardByToken, getSettings } from '../db/cards.js';
 import { insertLinkedinPost } from '../db/linkedin.js';
 import { queuePostAlert } from '../mail/outbox.js';
 import { background } from '../util/background.js';
@@ -18,6 +18,7 @@ import { TOKEN_RE, bytesToBase64 } from '../util/crypto.js';
 import { isPast, nowIso, todayInDubai } from '../util/time.js';
 import { cachedCardImage, cardImageInput } from '../page/card-image.js';
 import { PORTAL_URL } from '../page/strings.js';
+import { reviewLink } from '../page/review.js';
 import { defaultCaption, orgUrn, toLittleText } from './caption.js';
 import { LinkedinError, MAX_COMMENTARY, linkedinClient } from './client.js';
 import type { LinkedinClient, LinkedinErrorKind } from './client.js';
@@ -393,12 +394,19 @@ export function createLinkedinRoutes(o: LinkedinRouteOptions = {}): Hono<AppEnv>
     return review(c, d, errorText(d.lang, kind), false, 502);
   });
 
-  app.get('/linkedin/done', (c) => {
+  app.get('/linkedin/done', async (c) => {
     const d = draftOf(c);
     if (!d) return expired(c, 'en');
     if (!d.posted) return c.redirect('/linkedin/review', 303);
     const nonce = makeNonce();
     pageHeaders(c, nonce);
+    // The Google review request (src/page/review.ts), once per draft: counted as asked (test cards excepted).
+    const askReview = reviewLink(await getSettings(c.env.DB)) !== null;
+    if (askReview && !d.isTest && !d.counted.includes('review_ask')) {
+      d.counted.push('review_ask');
+      background(bumpMetric(c.env.DB, { card_id: d.cardId, kind: 'review_ask', lang: d.lang, network: 'linkedin' }, todayInDubai())
+        .catch((err: unknown) => logFailure('metric', d, err)), 'metric');
+    }
     return c.html(renderPostedPage({
       lang: d.lang,
       nonce,
@@ -406,6 +414,7 @@ export function createLinkedinRoutes(o: LinkedinRouteOptions = {}): Hono<AppEnv>
       postUrl: `https://www.linkedin.com/feed/update/${d.posted.urn}/`,
       imageUrl: '/linkedin/image',
       cardUrl: cardUrl(d),
+      review: askReview ? { href: `/c/${d.token}/review?from=linkedin`, key: d.token } : null,
     }));
   });
 

@@ -4,7 +4,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { Hono } from 'hono';
 import type { AppEnv, CanonicalFields, CardRow, CardStatus } from '../src/types.js';
 import { pageRoutes } from '../src/page/routes.js';
-import { getCardById, insertCard, metricsForCard, setCardStatus } from '../src/db/cards.js';
+import { getCardById, insertCard, metricsForCard, setCardStatus, setSetting } from '../src/db/cards.js';
+import { DEFAULT_REVIEW_URL } from '../src/page/review.js';
 import { randomToken } from '../src/util/crypto.js';
 import { flushBackground } from '../src/util/background.js';
 import { createTestEnv } from './env.js';
@@ -114,7 +115,7 @@ describe('GET /c/:token', () => {
     const body = await (await call(`/c/${card.token}`)).res.text();
     expect(embedded(body)).toEqual({
       token: card.token, company_en: 'Nimbus Publishing FZE', company_ar: null, licence_number: card.licence_number,
-      issued_on: '2026-10-01', activity_en: 'Publishing', activity_ar: null, name_en: null, name_ar: null, lang: 'en', is_test: false, linkedin: false,
+      issued_on: '2026-10-01', activity_en: 'Publishing', activity_ar: null, name_en: null, name_ar: null, lang: 'en', is_test: false, linkedin: false, review: true,
     });
   });
 
@@ -341,3 +342,48 @@ describe('founder name in the studio data', () => {
   });
 });
 
+
+describe('GET /c/:token/review (the Google review button)', () => {
+  it('counts the press and goes to SPC on Google Maps until a review link is set', async () => {
+    const card = await seedCard({ status: 'ready' });
+    const { res } = await call(`/c/${card.token}/review`);
+    expect(res.status).toBe(302);
+    expect(res.headers.get('location')).toBe(DEFAULT_REVIEW_URL);
+    expect(res.headers.get('cache-control')).toBe('no-store');
+    await flushBackground();
+    expect((await metricsForCard(env.DB, card.id)).filter((m) => m.kind === 'review_click').map((m) => Number(m.count))).toEqual([1]);
+  });
+
+  it('uses the link in Admin → Settings, counts presses from the LinkedIn page apart, and not for test cards', async () => {
+    await setSetting(env.DB, 'review_url', 'https://g.page/r/spc-example/review');
+    const card = await seedCard({ status: 'ready' });
+    const { res } = await call(`/c/${card.token}/review?from=linkedin`);
+    expect(res.headers.get('location')).toBe('https://g.page/r/spc-example/review');
+    await flushBackground();
+    expect((await metricsForCard(env.DB, card.id)).find((m) => m.kind === 'review_click')).toMatchObject({ network: 'linkedin' });
+    const test = await seedCard({ status: 'ready', is_test: true });
+    await call(`/c/${test.token}/review`);
+    await flushBackground();
+    expect(await metricsForCard(env.DB, test.id)).toEqual([]);
+    await setSetting(env.DB, 'review_url', '');
+  });
+
+  it('switched off: back to the card, and the studio is told not to ask', async () => {
+    await setSetting(env.DB, 'review_enabled', '0');
+    const card = await seedCard({ status: 'ready' });
+    const { res } = await call(`/c/${card.token}/review`);
+    expect(res.status).toBe(302);
+    expect(res.headers.get('location')).toBe(`/c/${card.token}`);
+    const page = await (await call(`/c/${card.token}`)).res.text();
+    expect(page).toContain('"review":false');
+    await setSetting(env.DB, 'review_enabled', '1');
+    expect((await call('/c/not-a-token/review')).res.status).toBe(404);
+  });
+
+  it('the beacon takes "review_ask" (the studio showed the request)', async () => {
+    const card = await seedCard({ status: 'ready' });
+    await call(`/c/${card.token}/m`, { method: 'POST', body: JSON.stringify({ kind: 'review_ask', lang: 'en' }), headers: { 'content-type': 'application/json' } });
+    await flushBackground();
+    expect((await metricsForCard(env.DB, card.id)).map((m) => m.kind)).toEqual(['review_ask']);
+  });
+});

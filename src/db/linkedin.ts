@@ -27,3 +27,32 @@ export async function getLinkedinPost(db: D1Database, id: string): Promise<Linke
 export async function linkedinPostsForCard(db: D1Database, cardId: string): Promise<LinkedinPostRow[]> {
   return (await db.prepare('SELECT * FROM linkedin_posts WHERE card_id = ?1 ORDER BY created_at DESC').bind(cardId).all<LinkedinPostRow>()).results ?? [];
 }
+
+/** A post with the card it is about, for the admin's lists and the monthly report. */
+export interface PostWithCard {
+  id: string;
+  card_id: string;
+  post_urn: string | null;
+  lang: string | null;
+  created_at: string;
+  company_name_en: string;
+  licence_number: string;
+  is_test: boolean;
+}
+
+type RawPostWithCard = Omit<PostWithCard, 'is_test'> & { is_test: number };
+const POST_WITH_CARD = `SELECT p.id, p.card_id, p.post_urn, p.lang, p.created_at, c.company_name_en, c.licence_number, c.is_test
+  FROM linkedin_posts p JOIN cards c ON c.id = p.card_id WHERE p.status = 'posted'`;
+
+/** The latest posts made with Post to LinkedIn, test cards included (they are marked). */
+export async function recentLinkedinPosts(db: D1Database, limit = 10): Promise<PostWithCard[]> {
+  const r = await db.prepare(`${POST_WITH_CARD} ORDER BY p.created_at DESC LIMIT ?1`).bind(limit).all<RawPostWithCard>();
+  return (r.results ?? []).map((x) => ({ ...x, is_test: x.is_test === 1 }));
+}
+
+/** Posts on real cards (not test cards) made in [from, to), ISO times, oldest first. */
+export async function linkedinPostsBetween(db: D1Database, from: string, to: string): Promise<PostWithCard[]> {
+  const r = await db.prepare(`${POST_WITH_CARD} AND c.is_test = 0 AND p.created_at >= ?1 AND p.created_at < ?2 ORDER BY p.created_at`)
+    .bind(from, to).all<RawPostWithCard>();
+  return (r.results ?? []).map((x) => ({ ...x, is_test: x.is_test === 1 }));
+}

@@ -26,7 +26,14 @@ import { emailCounts, emailsForCard, suppression } from '../db/emails.js';
 import type { EmailRow, SuppressionRow } from '../db/emails.js';
 import { queueWelcome, testRecipientAllowed } from '../mail/outbox.js';
 import { renderWelcome } from '../mail/welcome.js';
-import { linkedinPostsForCard } from '../db/linkedin.js';
+import { linkedinPostsForCard, recentLinkedinPosts } from '../db/linkedin.js';
+import type { PostWithCard } from '../db/linkedin.js';
+import { DEFAULT_ALERT_TO, alertRecipients, parseAddressList } from '../mail/post-alert.js';
+import { DEFAULT_REVIEW_URL, isReviewUrl } from '../page/review.js';
+import { HEADLINES, buildReport, change, details, dubaiMonth, isMonth, monthLabel, previousMonth } from '../report/impact.js';
+import type { ImpactReport } from '../report/impact.js';
+import { renderReportEmail } from '../report/email.js';
+import { queueReport, reportRecipients, reportSends } from '../report/send.js';
 import { linkedinEnabled } from '../linkedin/client.js';
 import { acceptPayload } from '../intake/accept.js';
 import { isPlainObject } from '../intake/common.js';
@@ -65,6 +72,8 @@ const FLASH: Record<string, string> = {
   updated: 'Card updated; the page shows the new details now.',
   unchanged: 'No change: a card with these exact details already exists.',
   saved: 'Settings saved.',
+  'report-queued': 'Report queued: it goes out within a minute. The list below shows when it has.',
+  'report-none': 'Nobody to send it to: add addresses under Admin → Settings → Monthly report.',
 };
 
 type Body = Record<string, unknown>;
@@ -301,6 +310,49 @@ function importForm(c: Context<AppEnv>, o: ImportFormOptions): Response | Promis
   return respond(c, { title: 'Import CSV', active: 'import', error: o.errors ?? null, body }, o.status ?? 200);
 }
 
+// ------------------------------------------------------------------ LinkedIn posts and the monthly report
+
+function postsTable(posts: PostWithCard[], withTest: boolean): RawHtml {
+  return table(['Posted', 'Company', ...(withTest ? ['Test'] : []), ''], posts.map((p) => [
+    h`${fmtDateTime(p.created_at)}`,
+    h`<a href="/admin/cards/${p.card_id}">${p.company_name_en}</a>`,
+    ...(withTest ? [testBadge(p.is_test)] : []),
+    h`<a href="https://www.linkedin.com/feed/update/${p.post_urn ?? ''}/" target="_blank" rel="noopener">Open the post</a>`,
+  ]), 'No posts yet.');
+}
+
+/** The last 12 Dubai months up to this one, newest first. */
+function recentMonths(thisMonth: string): string[] {
+  const out = [thisMonth];
+  while (out.length < 12) out.push(previousMonth(out[out.length - 1] as string));
+  return out;
+}
+
+function reportBody(c: Context<AppEnv>, r: ImpactReport, sends: Awaited<ReturnType<typeof reportSends>>, to: string[], thisMonth: string): RawHtml {
+  const token = csrfToken(c);
+  const sofar = r.month === thisMonth;
+  const send = (who: 'list' | 'me', label: string, cls: string): RawHtml => h`<form method="post" action="/admin/report/send" class="inline">${csrfField(token)}<input type="hidden" name="month" value="${r.month}"><input type="hidden" name="to" value="${who}"><button type="submit" class="${cls}">${label}</button></form>`;
+  return h`
+<form method="get" action="/admin/report" class="inline"><label>Month <select name="month">${recentMonths(thisMonth).map((m) => h`<option value="${m}"${m === r.month ? raw(' selected') : EMPTY}>${monthLabel(m)}${m === thisMonth ? ' (so far)' : ''}</option>`)}</select></label> <button class="btn small" type="submit">Show</button></form>
+<h2>${r.label}${sofar ? ' so far' : ''}</h2>
+<p class="muted">What the licence cards did, with the change on ${r.previousLabel}. Test cards are not included. Dubai time.</p>
+<div class="cards">${HEADLINES.map(([k, label]) => {
+    const ch = change(Number(r.current[k]), Number(r.previous[k]));
+    return h`<div class="stat"><b>${r.current[k]}</b><span>${label}</span>${ch ? h`<br><small class="muted">${ch} on ${r.previousLabel}</small>` : EMPTY}</div>`;
+  })}</div>
+<h2>In more detail</h2>
+${kv(details(r.current))}
+<h2>Posts on LinkedIn</h2>
+${postsTable(r.posts, false)}
+<p>Since launch: <b>${r.sinceLaunch.cards}</b> licence cards, <b>${r.sinceLaunch.sharedCards}</b> customers shared theirs, <b>${r.sinceLaunch.posts}</b> posts on LinkedIn.</p>
+<h2>Email this report</h2>
+<p class="muted">Each month on the 1st at 09:00 Dubai time, the month before goes to ${to.length ? to.join(', ') : 'nobody yet'} (<a href="/admin/settings">Settings</a>). <a href="/admin/report/email?month=${r.month}" target="_blank" rel="noopener">See the email</a></p>
+<div class="actions">${to.length ? send('list', 'Send to the report list', 'btn') : EMPTY} ${send('me', 'Send to me', 'btn secondary')}</div>
+${sends.length ? h`<h2>Sent for ${r.label}</h2>${table(['Queued', 'To', 'Status', 'By', 'Note'], sends.map((x) => [
+    h`${fmtDateTime(x.created_at)}`, h`${x.to_email}`, h`${x.status}${x.sent_at ? ` ${fmtDateTime(x.sent_at)}` : ''}`, h`${x.actor ?? 'monthly run'}`, h`${x.last_error ?? ''}`,
+  ]))}` : EMPTY}`;
+}
+
 // ------------------------------------------------------------------ settings
 
 async function settingsForm(c: Context<AppEnv>, values: Record<string, string>, errors: string[] | null, status: AdminStatus = 200): Promise<Response> {
@@ -308,8 +360,18 @@ async function settingsForm(c: Context<AppEnv>, values: Record<string, string>, 
   const v = (k: string): string => values[k] ?? '';
   const mailMode = c.env.MAIL_TRANSPORT ?? (c.env.MAIL_SMTP_URL ? 'smtp' : 'off');
   const counts = await emailCounts(c.env.DB);
+  const alertNow = alertRecipients(c.env, v('post_alert_to'));
+  const alertFallback = c.env.LINKEDIN_ALERT_TO ?? DEFAULT_ALERT_TO;
+  const reviewOn = (values['review_enabled'] ?? '1') === '1';
   const body = h`<form class="form" method="post" action="/admin/settings">${csrfField(token)}
 <label class="check"><input type="checkbox" name="gtm_enabled" value="1"${v('gtm_enabled') === '1' ? raw(' checked') : EMPTY}> Load Google Tag Manager on the personal page <small>(container <code>${c.env.GTM_CONTAINER || 'not set'}</code>)</small></label>
+<h3>LinkedIn post alert</h3>
+<label>Goes to<input type="text" name="post_alert_to" value="${v('post_alert_to')}" placeholder="${alertFallback}" autocomplete="off"><small>When a customer posts with Post to LinkedIn, these addresses get the link and comments ready to paste, to like and comment within the hour. Comma separated; "off" stops it; empty uses ${alertFallback}. Now: ${alertNow.length ? alertNow.join(', ') : 'nobody'}.</small></label>
+<h3>Google review request</h3>
+<label class="check"><input type="checkbox" name="review_enabled" value="1"${reviewOn ? raw(' checked') : EMPTY}> Ask customers for a Google review <small>(once, after they download, share or post their card)</small></label>
+<label>Review link<input type="url" name="review_url" value="${v('review_url')}" placeholder="${DEFAULT_REVIEW_URL}" autocomplete="off"><small>Empty: SPC Free Zone on Google Maps, where "Write a review" is one tap away. For a link that opens the review form straight away, copy "Ask for reviews" from SPC's Google Business Profile and paste it here.</small></label>
+<h3>Monthly report</h3>
+<label>Goes to<input type="text" name="report_to" value="${v('report_to')}" placeholder="manager@spcfz.ae, team@spcfz.ae" autocomplete="off"><small>On the 1st of each month at 09:00 Dubai time, last month's report (<a href="/admin/report">Admin → Report</a>) goes to these addresses. Comma separated; empty: not emailed.</small></label>
 <div><button class="btn" type="submit">Save settings</button></div>
 </form>
 <h2>Keeping data</h2>
@@ -389,10 +451,11 @@ export function createAdminRoutes(verify: AdminVerifier, auth: AuthHandlers = cr
   app.get('/', async (c) => {
     const db = c.env.DB;
     const since = addDays(`${todayInDubai()}T00:00:00.000Z`, -7).slice(0, 10);
-    const [byStatus, totals, rejected] = await Promise.all([
+    const [byStatus, totals, rejected, posts] = await Promise.all([
       countByStatus(db),
       metricsTotals(db, since),
       listEvents(db, { outcome: 'rejected', limit: 10 }),
+      recentLinkedinPosts(db, 8),
     ]);
     const erpOff = parseAllowlist(c.env.ERP_IP_ALLOWLIST).length === 0;
     const body = h`
@@ -413,6 +476,9 @@ ${erpOff ? h`<div class="flash">The ERP is not connected yet. <a href="/admin/te
 ${LI_STEPS.map(([k, label]) => h`<div class="stat"><b>${totals[k]}</b><span>${label}</span></div>`)}
 </div>
 <p class="muted">Each press of Post to LinkedIn, step by step. Signed in but not posted: stopped on the review page. Test cards are not counted.</p>
+<h2>Recent LinkedIn posts</h2>
+${postsTable(posts, true)}
+<p class="muted">Each one also emails the LinkedIn post alert (Settings), so the team can like and comment within the hour. <a href="/admin/report">The monthly report</a> has every post.</p>
 <h2>Recent rejected events</h2>
 ${eventsTable(rejected.rows)}`;
     return respond(c, { title: 'Dashboard', active: 'dashboard', flash: flashOf(c), body });
@@ -911,6 +977,37 @@ ${dryTable(dry)}
     });
   });
 
+  // ---------------------------------------------------------------- monthly report (src/report/)
+
+  app.get('/report', async (c) => {
+    const db = c.env.DB;
+    const q = c.req.query('month');
+    const thisMonth = dubaiMonth();
+    const month = isMonth(q) && q <= thisMonth ? q : previousMonth(thisMonth);
+    const [report, sends, to] = await Promise.all([buildReport(db, month), reportSends(db, month), reportRecipients(db)]);
+    return respond(c, { title: `Report: ${report.label}`, active: 'report', flash: flashOf(c), body: reportBody(c, report, sends, to, thisMonth) });
+  });
+
+  // The email as the recipients get it, to look at before sending.
+  app.get('/report/email', async (c) => {
+    const q = c.req.query('month');
+    const month = isMonth(q) ? q : previousMonth(dubaiMonth());
+    return c.html(renderReportEmail(await buildReport(c.env.DB, month), c.env.BASE_URL).html);
+  });
+
+  app.post('/report/send', async (c) => {
+    const body = await readForm(c);
+    const bad = csrfFailure(c, body);
+    if (bad) return forbidden(c, bad);
+    const month = field(body, 'month');
+    if (!isMonth(month)) return c.redirect('/admin/report', 303);
+    const to = field(body, 'to') === 'me' ? parseAddressList(c.get('actor') ?? '').list : await reportRecipients(c.env.DB);
+    if (!to.length) return c.redirect(`/admin/report?month=${month}&m=report-none`, 303);
+    await queueReport(c.env.DB, { month, to, actor: c.get('actor') ?? 'admin' });
+    await audit(c, 'emailed', null);
+    return c.redirect(`/admin/report?month=${month}&m=report-queued`, 303);
+  });
+
   // ---------------------------------------------------------------- settings
 
   app.get('/settings', async (c) => settingsForm(c, await getSettings(c.env.DB), null));
@@ -927,6 +1024,26 @@ ${dryTable(dry)}
     const gtm = checked(body, 'gtm_enabled') ? '1' : '0';
     submitted['gtm_enabled'] = gtm;
     updates.push(['gtm_enabled', gtm]);
+
+    const alertTo = field(body, 'post_alert_to');
+    submitted['post_alert_to'] = alertTo;
+    const alertBad = alertTo.toLowerCase() === 'off' ? [] : parseAddressList(alertTo).bad;
+    if (alertBad.length) errors.push(`LinkedIn post alert: ${alertBad.join(', ')} is not an email address.`);
+    else updates.push(['post_alert_to', alertTo.toLowerCase() === 'off' ? 'off' : parseAddressList(alertTo).list.join(', ')]);
+
+    const review = checked(body, 'review_enabled') ? '1' : '0';
+    submitted['review_enabled'] = review;
+    updates.push(['review_enabled', review]);
+    const reviewUrl = field(body, 'review_url');
+    submitted['review_url'] = reviewUrl;
+    if (reviewUrl && !isReviewUrl(reviewUrl)) errors.push('Review link: use a full https:// address.');
+    else updates.push(['review_url', reviewUrl]);
+
+    const reportTo = field(body, 'report_to');
+    submitted['report_to'] = reportTo;
+    const reportBad = parseAddressList(reportTo).bad;
+    if (reportBad.length) errors.push(`Monthly report: ${reportBad.join(', ')} is not an email address.`);
+    else updates.push(['report_to', parseAddressList(reportTo).list.join(', ')]);
 
     if (errors.length) return settingsForm(c, submitted, errors, 400);
     for (const [k, v] of updates) await setSetting(c.env.DB, k, v);

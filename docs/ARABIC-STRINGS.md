@@ -155,6 +155,20 @@ the LinkedIn caption. Generated from the source; `{company}` and `{first name}` 
 | errUpstream | تعذّر الوصول إلى لينكدإن. حاول مرة أخرى بعد قليل. | We could not reach LinkedIn. Try again in a moment. |
 | errImage | تعذّر تجهيز صورة بطاقتك. عد إلى بطاقتك وحاول مرة أخرى. | Your card picture could not be prepared. Go back to your card and try again. |
 | title | النشر على لينكدإن · المنطقة الحرة لمدينة الشارقة للنشر | Post to LinkedIn · SPC Free Zone |
+| reviewAsk | كيف كانت تجربتك في الحصول على رخصتك من المنطقة الحرة لمدينة الشارقة للنشر؟ | How was getting your licence with SPC Free Zone? |
+| reviewBody | تقييم قصير على Google يساعد روّاد الأعمال الآخرين في العثور علينا. | A short Google review helps other founders find us. |
+| reviewButton | اكتب تقييماً على Google | Leave a Google review |
+
+## Comments suggested in the LinkedIn post alert (src/mail/post-alert.ts, suggestedComments; 5 November 2026)
+
+For posts made in Arabic. The alert goes to SPC staff, who paste one under the customer's post. {who}: the
+founder's first name (left out when there is none); {company}: the Arabic company name.
+
+| # | Arabic (Claude's draft, for review) | English meaning |
+|---|---|---|
+| 1 | مبروك {who}! أهلاً بـ{company} في المنطقة الحرة لمدينة الشارقة للنشر، ونتمنى لكم كل التوفيق. | Congratulations {who}! Welcome, {company}, to SPC Free Zone; we wish you every success. |
+| 2 | بالتوفيق لـ{company}! سعداء بانضمامكم إلى مجتمع المنطقة الحرة لمدينة الشارقة للنشر. | Best of luck, {company}! We're glad you've joined the SPC Free Zone community. |
+| 3 | خطوة رائعة! نتطلع إلى رؤية {company} تنمو وتزدهر معنا. | A great step! We look forward to seeing {company} grow and thrive with us. |
 
 ## Suggested captions and headlines (5 November 2026)
 

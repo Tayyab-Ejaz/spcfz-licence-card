@@ -346,7 +346,9 @@ export async function metricsTotals(db: D1Database, sinceDay: string): Promise<R
     .prepare('SELECT kind, SUM(count) AS count FROM metrics WHERE day >= ?1 GROUP BY kind')
     .bind(sinceDay)
     .all<{ kind: MetricKind; count: number }>();
-  const out: Record<MetricKind, number> = { view: 0, download: 0, share: 0, caption: 0, li_start: 0, li_signin: 0, li_cancel: 0, li_post: 0, li_fail: 0 };
+  const out: Record<MetricKind, number> = {
+    view: 0, download: 0, share: 0, caption: 0, li_start: 0, li_signin: 0, li_cancel: 0, li_post: 0, li_fail: 0, review_ask: 0, review_click: 0,
+  };
   for (const row of r.results ?? []) out[row.kind] = Number(row.count);
   return out;
 }

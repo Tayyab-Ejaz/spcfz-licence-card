@@ -210,6 +210,13 @@ describe('sign-in, review and post', () => {
 
     const done = await (await app.request('/linkedin/done', { headers: { Cookie: cookie } }, env)).text();
     expect(done).toContain('https://www.linkedin.com/feed/update/urn:li:share:7001/');
+    // The Google review request (src/page/review.ts), asked once and counted once however often the page loads.
+    expect(done).toContain('How was getting your licence with SPC Free Zone?');
+    expect(done).toContain(`href="/c/${card.token}/review?from=linkedin"`);
+    expect(done).toContain(`spc-review:${card.token}`);
+    await app.request('/linkedin/done', { headers: { Cookie: cookie } }, env);
+    await flushBackground();
+    expect((await metricsForCard(env.DB, card.id)).filter((m) => m.kind === 'review_ask').map((m) => [m.network, Number(m.count)])).toEqual([['linkedin', 1]]);
 
     // SPC is told about the post (src/mail/post-alert.ts).
     const [post] = await linkedinPostsForCard(env.DB, card.id);

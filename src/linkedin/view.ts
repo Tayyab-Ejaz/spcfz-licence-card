@@ -37,6 +37,9 @@ export const LI_STRINGS = {
     postedLead: '{company} is now on your LinkedIn feed.',
     viewPost: 'View your post on LinkedIn',
     postedTip: 'Tip: tag your co-founders and team in a comment, so it reaches their networks too.',
+    reviewAsk: 'How was getting your licence with SPC Free Zone?',
+    reviewBody: 'A short Google review helps other founders find us.',
+    reviewButton: 'Leave a Google review',
     problemTitle: 'Your post was not published',
     tryAgain: 'Try again',
     signInAgain: 'Sign in to LinkedIn again',
@@ -76,6 +79,9 @@ export const LI_STRINGS = {
     postedLead: '{company} الآن على صفحتك في لينكدإن.',
     viewPost: 'شاهد منشورك على لينكدإن',
     postedTip: 'نصيحة: أشِر إلى شركائك وفريقك في تعليق، ليصل المنشور إلى شبكاتهم أيضاً.',
+    reviewAsk: 'كيف كانت تجربتك في الحصول على رخصتك من المنطقة الحرة لمدينة الشارقة للنشر؟',
+    reviewBody: 'تقييم قصير على Google يساعد روّاد الأعمال الآخرين في العثور علينا.',
+    reviewButton: 'اكتب تقييماً على Google',
     problemTitle: 'لم يُنشر منشورك',
     tryAgain: 'حاول مرة أخرى',
     signInAgain: 'سجّل الدخول إلى لينكدإن مجدداً',
@@ -164,6 +170,11 @@ textarea{display:block;width:100%;min-height:150px;border:0;padding:8px 16px 4px
 .mark svg{width:30px;height:30px}
 .thumb{display:block;width:min(260px,70%);height:auto;margin:0 auto 22px;border-radius:12px;border:1px solid var(--line);box-shadow:0 12px 28px -14px rgba(7,19,41,.35);transform:rotate(-2deg)}
 .tip{margin:20px auto 0;max-width:420px;font-size:13px;color:var(--muted)}
+.review{margin:22px auto 0;max-width:360px;padding-top:20px;border-top:1px solid var(--line);font-size:14px;color:var(--muted)}
+.review b{display:block;color:var(--ink);font-size:15px;margin-bottom:2px}
+.review p{margin:0 0 14px}
+.review .btn{width:100%}
+.star{width:17px;height:17px;flex:none;color:var(--gold,#f0b429)}
 footer{max-width:640px;margin:0 auto;padding:0 16px 28px;font-size:12px;color:var(--muted);text-align:center}
 footer a{color:var(--muted)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.tick path{stroke-dashoffset:0}}
@@ -286,7 +297,14 @@ export interface PostedInput {
   postUrl: string;
   imageUrl: string | null;
   cardUrl: string;
+  /**
+   * The Google review button (src/page/review.ts): /c/<token>/review?from=linkedin, or absent when the request is
+   * off. With it, the studio is told this card has been asked (reviewKey), so it does not ask again.
+   */
+  review?: { href: string; key: string } | null;
 }
+
+const STAR = h`<svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"/></svg>`;
 
 export function renderPostedPage(i: PostedInput): string {
   const s = LI_STRINGS[i.lang];
@@ -302,8 +320,11 @@ ${i.imageUrl ? h`<img class="thumb" src="${i.imageUrl}" alt="">` : ''}
 <a class="btn ghost" href="${i.cardUrl}">${s.backToCard}</a>
 </div>
 <p class="tip">${s.postedTip}</p>
+${i.review ? h`<div class="review"><p><b>${s.reviewAsk}</b>${s.reviewBody}</p><a class="btn ghost" href="${i.review.href}" target="_blank" rel="noopener">${STAR}<span>${s.reviewButton}</span></a></div>` : ''}
 </div>`;
-  return page({ lang: i.lang, nonce: i.nonce, body, action: true });
+  // Asked here, so the studio does not ask again for this card (client/card-data.js maybeAskReview).
+  const asked = i.review ? `try{localStorage.setItem(${JSON.stringify(`spc-review:${i.review.key}`)},'asked')}catch(e){}` : '';
+  return page({ lang: i.lang, nonce: i.nonce, body, action: true, script: asked || undefined });
 }
 
 export interface ProblemInput {

@@ -44,10 +44,12 @@ export interface StudioCardData {
   is_test: boolean;
   /** "Post to LinkedIn" is set up (src/linkedin/), so the studio shows its button. */
   linkedin: boolean;
+  /** The Google review request is on (./review.ts): the studio asks once, after the first download or share. */
+  review: boolean;
 }
 
 /** `lang` is the card language the studio opens with: ?lang= when given, else the customer's preference. */
-export function cardData(card: CardRow, lang: Lang = card.preferred_language, linkedin = false): StudioCardData {
+export function cardData(card: CardRow, lang: Lang = card.preferred_language, linkedin = false, review = false): StudioCardData {
   return {
     token: card.token,
     company_en: card.company_name_en,
@@ -61,6 +63,7 @@ export function cardData(card: CardRow, lang: Lang = card.preferred_language, li
     lang,
     is_test: card.is_test,
     linkedin,
+    review,
   };
 }
 
@@ -84,6 +87,8 @@ export interface ShellInput {
   baseUrl?: string;
   /** Show "Post to LinkedIn". */
   linkedin?: boolean;
+  /** Ask for a Google review once the card is downloaded or shared (./review.ts). */
+  review?: boolean;
   manifest?: StudioManifest;
 }
 
@@ -169,7 +174,7 @@ ${i.gtmContainer ? raw(gtmSnippet(i.gtmContainer, i.nonce)) : ''}
 </head>
 <body>
 <div id="dc-root"></div>
-<script type="application/json" id="card-data">${raw(jsonForScript(cardData(i.card, i.lang, i.linkedin ?? false)))}</script>
+<script type="application/json" id="card-data">${raw(jsonForScript(cardData(i.card, i.lang, i.linkedin ?? false, i.review ?? false)))}</script>
 <script src="${m.js}" defer></script>
 </body>
 </html>`;

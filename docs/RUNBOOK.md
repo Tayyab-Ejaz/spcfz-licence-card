@@ -308,13 +308,27 @@ the customer's own photo and edits, so it starts from the studio.)
 5. Apply the env-file change (see Secrets) and post from a TEST card to your
    own LinkedIn. The admin card page lists the post with a link.
 
-**Post alert (3 November 2026).** After each post, the service emails
-`tayyab@spcfz.ae` with a link to it, so SPC's page can like, comment on and
-repost it while it is new. It goes through the same email sending as the
-welcome email (so it needs that on), retries the same way, and is listed under
-LinkedIn posts on the admin card page. Test cards send it too, marked [TEST].
-To change who gets it, set `LINKEDIN_ALERT_TO` (comma separated, or `off`) and
-apply the env-file change.
+**Post alert (3 November 2026; since 5 November with the first-hour ask).** After each post, the service emails
+SPC's team a link to it and three comments ready to paste (in Arabic for an Arabic post), asking them to like and
+comment within the hour, when reactions do the most for how widely LinkedIn shows it. It goes through the same email
+sending as the welcome email (so it needs that on), retries the same way, and is listed under LinkedIn posts on the
+admin card page and the dashboard. Test cards send it too, marked [TEST]. Who gets it: Admin → Settings → LinkedIn
+post alert (comma separated, or `off`); when that is empty, `LINKEDIN_ALERT_TO` in the env file, else
+`tayyab@spcfz.ae`.
+
+**Google review request (5 November 2026).** After a customer's first download or share, the studio asks once for a
+Google review of SPC Free Zone; the page after a LinkedIn post asks too. The button goes through `/c/<token>/review`,
+which counts the press and redirects to the review link. Admin → Settings switches it off or sets the link; until a
+link is set it is SPC on Google Maps (the link www.spcfz.ae uses). For a link that opens the review form directly,
+copy "Ask for reviews" from SPC's Google Business Profile into that setting. Everyone is asked in the same neutral
+words (Google does not allow asking only happy customers).
+
+**Monthly report (5 November 2026).** Admin → Report shows any month: new cards, welcome emails, customers who
+opened and who shared their card, LinkedIn posts (with links), review clicks, and the change on the month before;
+test cards are left out. On the 1st of each month at 09:00 Dubai time the month before is emailed to Admin →
+Settings → Monthly report (nobody until addresses are added); a daily run on the 2nd or 3rd catches up if the
+server was down on the 1st. "Send to me" and "Send to the report list" send the month shown at any time; the page
+lists each sending.
 
 ## Rate limits
 

@@ -6,12 +6,14 @@ import type { AppEnv, CanonicalFields, CardRow, CardStatus } from '../src/types.
 import { createAdminRoutes } from '../src/admin/routes.js';
 import {
   bumpMetric, findCardByLicence, getCardById, getEvent, getSetting, insertCard, insertEvent, listEvents, setCardStatus,
+  setSetting,
 } from '../src/db/cards.js';
 import { todayInDubai } from '../src/util/time.js';
 import { randomToken } from '../src/util/crypto.js';
 import { flushBackground } from '../src/util/background.js';
 import { emailsForCard } from '../src/db/emails.js';
 import { createTestEnv } from './env.js';
+import { reportSends } from '../src/report/send.js';
 
 const env = createTestEnv();
 const ACTOR = 'staff@spcfz.ae';
@@ -304,6 +306,55 @@ describe('settings', () => {
     // An unchecked checkbox is simply absent from the form body.
     await post('/admin/settings', {});
     expect(await getSetting(env.DB, 'gtm_enabled')).toBe('0');
+  });
+});
+
+describe('settings: post alert, Google review, monthly report', () => {
+  it('saves the three lists and the review switch, tidied', async () => {
+    const { res } = await post('/admin/settings', {
+      post_alert_to: 'Social@spcfz.ae, am@spcfz.ae', review_enabled: '1', review_url: 'https://g.page/r/spc/review', report_to: 'boss@spcfz.ae;team@spcfz.ae',
+    });
+    expect(res.status).toBe(303);
+    expect(await getSetting(env.DB, 'post_alert_to')).toBe('social@spcfz.ae, am@spcfz.ae');
+    expect(await getSetting(env.DB, 'review_enabled')).toBe('1');
+    expect(await getSetting(env.DB, 'review_url')).toBe('https://g.page/r/spc/review');
+    expect(await getSetting(env.DB, 'report_to')).toBe('boss@spcfz.ae, team@spcfz.ae');
+    const page = await (await get('/admin/settings')).res.text();
+    expect(page).toContain('Now: social@spcfz.ae, am@spcfz.ae.');
+    expect(page).toContain('name="review_enabled" value="1" checked');
+  });
+
+  it('refuses what is not an address or an https link, and keeps what was typed', async () => {
+    const { res } = await post('/admin/settings', { post_alert_to: 'nope', review_url: 'http://example.com', report_to: 'a@b' });
+    expect(res.status).toBe(400);
+    const t = await res.text();
+    expect(t).toContain('LinkedIn post alert: nope is not an email address.');
+    expect(t).toContain('Review link: use a full https:// address.');
+    expect(t).toContain('Monthly report: a@b is not an email address.');
+    expect(t).toContain('value="nope"');
+  });
+});
+
+describe('monthly report', () => {
+  it('shows a month and its email, and sends it to the signed-in admin', async () => {
+    const page = await (await get('/admin/report?month=2026-10')).res.text();
+    expect(page).toContain('October 2026');
+    expect(page).toContain('New licence cards');
+    expect(page).toContain('Send to me');
+    expect(page).toContain('href="/admin/report/email?month=2026-10"');
+    const mail = await (await get('/admin/report/email?month=2026-10')).res.text();
+    expect(mail).toContain('Licence cards: October 2026');
+    const { res } = await post('/admin/report/send', { month: '2026-10', to: 'me' });
+    expect(res.status).toBe(303);
+    expect(res.headers.get('location')).toBe('/admin/report?month=2026-10&m=report-queued');
+    expect((await reportSends(env.DB, '2026-10')).map((r) => [r.to_email, r.actor, r.status])).toEqual([[ACTOR, ACTOR, 'queued']]);
+  });
+
+  it('with nobody on the report list, says where to add them', async () => {
+    await setSetting(env.DB, 'report_to', '');
+    const { res } = await post('/admin/report/send', { month: '2026-09', to: 'list' });
+    expect(res.headers.get('location')).toBe('/admin/report?month=2026-09&m=report-none');
+    expect(await reportSends(env.DB, '2026-09')).toEqual([]);
   });
 });
 

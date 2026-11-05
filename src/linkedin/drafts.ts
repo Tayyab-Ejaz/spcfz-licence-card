@@ -33,8 +33,8 @@ export interface Draft {
   /** Set while the post is being made, so a second press waits for the first instead of posting twice. */
   posting: Promise<void> | null;
   posted: { urn: string } | null;
-  /** Steps already counted for this press (admin's LinkedIn figures), so a retry is not counted twice. */
-  counted: LinkedinStep[];
+  /** Steps already counted for this press (admin's LinkedIn figures, the review request), so none counts twice. */
+  counted: Array<LinkedinStep | 'review_ask'>;
 }
 
 export type NewDraft = Pick<Draft, 'cardId' | 'token' | 'lang' | 'isTest' | 'company' | 'source' | 'image' | 'imageType' | 'caption'>;

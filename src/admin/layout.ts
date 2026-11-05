@@ -13,10 +13,11 @@ export function h(strings: TemplateStringsArray, ...values: unknown[]): RawHtml 
 
 export const EMPTY = raw('');
 
-export type NavKey = 'dashboard' | 'cards' | 'events' | 'test' | 'create' | 'import' | 'settings';
+export type NavKey = 'dashboard' | 'report' | 'cards' | 'events' | 'test' | 'create' | 'import' | 'settings';
 
 const NAV: ReadonlyArray<{ key: NavKey; href: string; label: string }> = [
   { key: 'dashboard', href: '/admin', label: 'Dashboard' },
+  { key: 'report', href: '/admin/report', label: 'Report' },
   { key: 'cards', href: '/admin/cards', label: 'Cards' },
   { key: 'events', href: '/admin/events', label: 'Events' },
   { key: 'test', href: '/admin/test-flow', label: 'Test flow' },

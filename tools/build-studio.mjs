@@ -163,6 +163,27 @@ const IMG_ASK = `<input type="file" accept="image/*" ref="{{ imgAskFileRef }}" s
 <sc-if value="{{ hasToast }}"`;
 for (const layout of ['studio', 'mobile']) DATA_PATCHES[layout].push(['<sc-if value="{{ hasToast }}"', IMG_ASK]);
 
+// Both layouts (SPC, 5 November 2026): the Google review request (client/card-data.js maybeAskReview), once, after
+// the first download or share. Neutral words and no stars to tap here: everyone is asked the same way, and the
+// rating is given on Google. Shaped like the photo prompt above.
+const REVIEW_ASK = `<sc-if value="{{ hasReviewAsk }}" hint-placeholder-val="{{ false }}">
+  <div sc-camel-on-click="{{ reviewClose }}" style="position:fixed;inset:0;z-index:60;display:flex;align-items:{{ reviewAskAlign }};justify-content:center;padding:16px 16px calc(16px + env(safe-area-inset-bottom));background:rgba(7,19,41,.45)">
+    <div data-review-ask="" role="dialog" aria-modal="true" aria-labelledby="review-ask-title" style="width:100%;max-width:400px;box-sizing:border-box;display:flex;flex-direction:column;gap:16px;padding:22px 20px 20px;border-radius:20px;background:#fff;box-shadow:0 18px 48px rgba(7,19,41,.22)">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <p id="review-ask-title" style="margin:0;font-size:18px;font-weight:700;line-height:1.3;color:var(--spc-ink)">How was getting your licence with SPC Free Zone?</p>
+        <p style="margin:0;font-size:14.5px;line-height:1.5;color:var(--spc-muted);text-wrap:pretty">A short Google review helps other founders find us. It takes a minute.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="primary" size="lg" sc-camel-on-click="{{ reviewGo }}" style="display:block" hint-size="100%,54px"><i class="ph-bold ph-star" style="font-size:18px"></i><span>Leave a Google review</span></x-import>
+        <x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="secondary" size="lg" sc-camel-on-click="{{ reviewLater }}" style="display:block" hint-size="100%,54px"><span>Not now</span></x-import>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ hasToast }}"`;
+for (const layout of ['studio', 'mobile']) DATA_PATCHES[layout].push(['<sc-if value="{{ hasToast }}"', REVIEW_ASK]);
+
 // Adjust your photo (SPC, 5 November 2026). The design's − and + beside the zoom slider were icons only, and the
 // desktop preview was a small circle whatever the card's photo shape. Now − and + zoom (both layouts), and on
 // desktop a crop view replaces the circle: the whole photo, dimmed, with a frame in the shape of the card's photo

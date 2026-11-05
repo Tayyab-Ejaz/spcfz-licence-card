@@ -17,6 +17,7 @@ import type { ServerConfig } from './platform/config.js';
 import { MIGRATIONS_DIR, applyMigrations } from './platform/migrate.js';
 import { Scheduler } from './platform/scheduler.js';
 import { onEmailQueued, processOutbox } from './mail/outbox.js';
+import { processReports, queueMonthlyReport } from './report/send.js';
 import { transportFromEnv } from './mail/transport.js';
 import { SqliteDb } from './platform/sqlite-db.js';
 import type { Env } from './types.js';
@@ -47,9 +48,13 @@ export interface RunningServer {
   close(): Promise<void>;
 }
 
-/** Everything the daily scheduler does: housekeeping, the SQLite backup, and a refresh of Cloudflare's ranges. */
+/**
+ * Everything the daily scheduler does: housekeeping, the monthly report on the 1st (src/report/send.ts), the SQLite
+ * backup, and a refresh of Cloudflare's ranges.
+ */
 export async function dailyTask(env: Env, db: SqliteDb, cloudflare: CloudflareRanges | null, log: Logger): Promise<void> {
   await runHousekeeping(env);
+  await queueMonthlyReport(env).catch((err: unknown) => log('monthly report not queued', { message: err instanceof Error ? err.message : String(err) }));
   const backup = await backupDatabase(db, env.DATA_DIR);
   log('backup written', { file: backup.file, removed: backup.removed });
   if (cloudflare) {
@@ -98,13 +103,17 @@ export async function startServer(options: StartOptions): Promise<RunningServer>
     await scheduler.start();
   }
 
-  // The email outbox (src/mail/outbox.ts): every 30 seconds, and a moment after something is queued.
+  // The email outbox (src/mail/outbox.ts) and the monthly report (src/report/send.ts): every 30 seconds, and a
+  // moment after something is queued.
   const transport = transportFromEnv(env);
   let sending = false;
   const sendDue = (): void => {
     if (sending || !transport) return;
     sending = true;
-    processOutbox(env, transport).catch((err: unknown) => log('outbox failed', { message: err instanceof Error ? err.message : String(err) })).finally(() => { sending = false; });
+    processOutbox(env, transport)
+      .then(() => processReports(env, transport))
+      .catch((err: unknown) => log('outbox failed', { message: err instanceof Error ? err.message : String(err) }))
+      .finally(() => { sending = false; });
   };
   const outboxTimer = (options.schedulerEnabled ?? true) ? setInterval(sendDue, 30_000) : null;
   outboxTimer?.unref();

@@ -168,6 +168,10 @@ export function withCardData(Base) {
       this.askKeys = null;
       if (this.onLeave) window.removeEventListener('beforeunload', this.onLeave);
       this.onLeave = null;
+      if (this.reviewKeys) document.removeEventListener('keydown', this.reviewKeys);
+      this.reviewKeys = null;
+      clearTimeout(this.reviewTimer);
+      this.reviewTimer = null;
       if (super.componentWillUnmount) super.componentWillUnmount();
     }
 
@@ -310,6 +314,57 @@ export function withCardData(Base) {
         },
         imgAskClose: (ev) => { if (!ev || ev.target === ev.currentTarget) this.setState({ imgAsk: null }); },
       };
+    }
+
+    /**
+     * The Google review request (SPC, 5 November 2026; src/page/review.ts). Once the customer has their card, after
+     * the first download or share, a small card asks once, in neutral words, a moment after the confirmation toast.
+     * Never again for this card in this browser (also after the "posted" page asked). The button opens
+     * /c/<token>/review in a new tab, which counts the press and goes on to SPC's review link.
+     */
+    maybeAskReview() {
+      const c = this.props.card;
+      if (c.review !== true || c.debug === true || this.reviewAsked || this.state.reviewAsk || this.reviewTimer) return;
+      const key = `spc-review:${c.token}`;
+      const asked = () => { try { return !!localStorage.getItem(key); } catch (e) { return false; } };
+      if (asked()) return;
+      this.reviewTimer = setTimeout(() => {
+        this.reviewTimer = null;
+        // Something else is open (the photo prompt, a phone drawer): ask after the next download or share instead.
+        if (this.state.imgAsk || this.state.sheet || asked()) return;
+        this.reviewAsked = true;
+        try { localStorage.setItem(key, 'asked'); } catch (e) { /* this visit only, then */ }
+        this.setState({ reviewAsk: true });
+        beacon(c.token, { kind: 'review_ask', lang: this.state.lang, size: this.state.format });
+      }, 1600);
+    }
+
+    reviewVals() {
+      const s = this.state;
+      const close = () => this.setState({ reviewAsk: false });
+      return {
+        hasReviewAsk: !!s.reviewAsk,
+        reviewAskAlign: (s.vw || 1280) < 760 ? 'flex-end' : 'center',
+        reviewGo: () => {
+          window.open(`/c/${encodeURIComponent(this.props.card.token)}/review`, '_blank', 'noopener');
+          close();
+        },
+        reviewLater: close,
+        reviewClose: (ev) => { if (!ev || ev.target === ev.currentTarget) close(); },
+      };
+    }
+
+    watchReviewAsk() {
+      const open = !!this.state.reviewAsk;
+      if (open && !this.reviewKeys) {
+        this.reviewKeys = (ev) => { if (ev.key === 'Escape') this.setState({ reviewAsk: false }); };
+        document.addEventListener('keydown', this.reviewKeys);
+        const first = document.querySelector('[data-review-ask] button');
+        if (first) first.focus();
+      } else if (!open && this.reviewKeys) {
+        document.removeEventListener('keydown', this.reviewKeys);
+        this.reviewKeys = null;
+      }
     }
 
     /**
@@ -696,6 +751,7 @@ export function withCardData(Base) {
     /** The card was downloaded or shared (tools/build-studio.mjs calls this): nothing left to lose. */
     markSaved() {
       if (this.state.unsaved) this.setState({ unsaved: false });
+      this.maybeAskReview();
     }
 
     componentDidMount() {
@@ -726,6 +782,7 @@ export function withCardData(Base) {
       if (settling) setTimeout(() => this.watchPanel(), PART_MS + 20);
       this.watchOutsideTaps();
       this.watchImgAsk(args[1]);
+      this.watchReviewAsk();
       this.measureCrop();
       this.scrollToPart(settling);
     }
@@ -864,6 +921,7 @@ export function withCardData(Base) {
         goPortal: () => window.location.assign(PORTAL_URL),
         ...this.detailsNav(v),
         ...this.imgAskVals(),
+        ...this.reviewVals(),
         ...this.cropVals(),
         download: track(this.remember(v.download), 'download'),
         shareCard: track(this.remember(v.shareCard), 'share', 'native'),

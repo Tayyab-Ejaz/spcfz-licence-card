@@ -5,7 +5,7 @@
 // After each Post to LinkedIn, SPC staff get a post alert (src/mail/post-alert.ts) through the same outbox.
 // Before an SMTP send, the recipient's domain must be able to receive email (src/mail/domain-check.ts).
 import type { CardRow, Env } from '../types.js';
-import { getCardById } from '../db/cards.js';
+import { getCardById, getSetting } from '../db/cards.js';
 import { getLinkedinPost } from '../db/linkedin.js';
 import {
   dueEmails, hasActiveEmail, insertEmail, markEmailRetry, markEmailSent, markEmailSkipped, suppression, suppressionNote,
@@ -18,7 +18,7 @@ import { domainChecker, domainOf } from './domain-check.js';
 import type { DomainChecker } from './domain-check.js';
 import type { MailTransport } from './transport.js';
 
-const RETRY_MINUTES = [1, 5, 30, 120, 720];
+export const RETRY_MINUTES = [1, 5, 30, 120, 720];
 
 /** Is this recipient allowed for a test card? MAIL_TEST_ALLOWLIST: domains or full addresses, comma separated. */
 export function testRecipientAllowed(env: Pick<Env, 'MAIL_TEST_ALLOWLIST'>, email: string): boolean {
@@ -33,6 +33,11 @@ let kick: (() => void) | null = null;
 /** src/server.ts registers the worker so a newly queued email goes out within seconds. */
 export function onEmailQueued(fn: (() => void) | null): void {
   kick = fn;
+}
+
+/** Something other than a card email was queued (the monthly report, src/report/send.ts): send soon. */
+export function nudgeOutbox(): void {
+  kick?.();
 }
 
 /** Queue the welcome email for a card, unless it has no email, already had one (without `force`), or has expired. */
@@ -60,7 +65,7 @@ export async function queueWelcome(env: Env, card: CardRow, o: { actor: string |
 /** Queue the post alert for a post just made (linkedin_posts id); returns how many addresses it goes to. */
 export async function queuePostAlert(env: Env, o: { cardId: string; postId: string; now?: string }): Promise<number> {
   const now = o.now ?? nowIso();
-  const to = alertRecipients(env);
+  const to = alertRecipients(env, await getSetting(env.DB, 'post_alert_to'));
   for (const address of to) {
     await insertEmail(env.DB, { card_id: o.cardId, kind: 'post_alert', to_email: address, cc_email: null, lang: 'en', status: 'queued', actor: null, ref: o.postId, now });
   }

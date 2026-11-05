@@ -194,13 +194,20 @@ events (
 metrics (
   day TEXT NOT NULL,              -- YYYY-MM-DD live, YYYY-MM once compacted
   card_id TEXT NOT NULL,
-  kind TEXT NOT NULL,             -- view | download | share | caption; li_start | li_signin | li_cancel | li_post | li_fail (Post to LinkedIn steps, counted by the service)
+  kind TEXT NOT NULL,             -- view | download | share | caption; li_start | li_signin | li_cancel | li_post | li_fail (Post to LinkedIn steps, counted by the service); review_ask | review_click (the Google review request, src/page/review.ts)
   lang TEXT NOT NULL DEFAULT '', size TEXT NOT NULL DEFAULT '', network TEXT NOT NULL DEFAULT '',
   count INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (day, card_id, kind, lang, size, network)
 );
 
-settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);   -- gtm_enabled (the retention_* and caption rows are no longer read)
+settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);   -- gtm_enabled; post_alert_to, review_enabled, review_url, report_to (5 Nov 2026); the retention_* and caption rows are no longer read
+
+report_emails (                   -- the monthly impact report (src/report/, migration 0010): one row per address per sending
+  id TEXT PRIMARY KEY, month TEXT NOT NULL,   -- YYYY-MM, Dubai, the month reported on
+  to_email TEXT NOT NULL, status TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, next_attempt_at TEXT, last_error TEXT,
+  provider_id TEXT, subject TEXT, actor TEXT,  -- actor null: the monthly run on the 1st; else the admin who pressed Send
+  created_at TEXT NOT NULL, sent_at TEXT
+);
 ```
 
 ## 6. Rendering

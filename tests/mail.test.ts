@@ -10,7 +10,8 @@ import sharp from 'sharp';
 import { getCardById, insertCard, setCardStatus } from '../src/db/cards.js';
 import { emailsForCard, suppress, suppression } from '../src/db/emails.js';
 import { insertLinkedinPost } from '../src/db/linkedin.js';
-import { alertRecipients } from '../src/mail/post-alert.js';
+import { alertRecipients, parseAddressList, suggestedComments } from '../src/mail/post-alert.js';
+import { setSetting } from '../src/db/cards.js';
 import { domainChecker } from '../src/mail/domain-check.js';
 import type { DomainChecker, MailDns } from '../src/mail/domain-check.js';
 import { randomToken } from '../src/util/crypto.js';
@@ -314,6 +315,25 @@ describe('post alert', () => {
     expect(alertRecipients({ LINKEDIN_ALERT_TO: 'off' })).toEqual([]);
   });
 
+  it('goes to the Admin → Settings list when it has one, before LINKEDIN_ALERT_TO', () => {
+    expect(alertRecipients({ LINKEDIN_ALERT_TO: 'env@spcfz.ae' }, 'Social@spcfz.ae; am@spcfz.ae')).toEqual(['social@spcfz.ae', 'am@spcfz.ae']);
+    expect(alertRecipients({ LINKEDIN_ALERT_TO: 'env@spcfz.ae' }, '  ')).toEqual(['env@spcfz.ae']);
+    expect(alertRecipients({}, 'OFF')).toEqual([]);
+    expect(parseAddressList('a@spcfz.ae, nope, b@x.ae')).toEqual({ list: ['a@spcfz.ae', 'b@x.ae'], bad: ['nope'] });
+  });
+
+  it('offers comments in the language of the post, with the founder\'s first name', () => {
+    const card = { company_name_en: 'Nimbus Publishing FZE', company_name_ar: 'نيمبوس للنشر', founder_name_en: 'Layla Haddad', founder_name_ar: 'ليلى حداد' };
+    const en = suggestedComments(card, 'en');
+    expect(en).toHaveLength(3);
+    expect(en[0]).toBe("Congratulations, Layla! Welcome to SPC Free Zone. We're proud to have Nimbus Publishing FZE with us.");
+    expect(en.every((t) => t.includes('Nimbus Publishing FZE') && t.includes('SPC Free Zone'))).toBe(true);
+    const ar = suggestedComments(card, 'ar');
+    expect(ar[0]).toContain('مبروك ليلى!');
+    expect(ar.every((t) => t.includes('نيمبوس للنشر'))).toBe(true);
+    expect(suggestedComments({ ...card, founder_name_en: null }, 'en')[0]).toMatch(/^Congratulations! Welcome/);
+  });
+
   it('links the post and the admin card, and sends even when the customer unsubscribed', async () => {
     const card = await seedCard({ is_test: true });
     await suppress(env.DB, { email: 'tayyab@spcfz.ae', card_id: card.id, source: 'page', created_at: '2026-11-01T00:00:00.000Z' });
@@ -321,15 +341,26 @@ describe('post alert', () => {
     const t = fakeTransport();
     expect(await processOutbox(env, t)).toMatchObject({ sent: 1 });
     const m = t.sent[0];
-    expect(m).toMatchObject({ to: 'tayyab@spcfz.ae', subject: '[TEST] Nimbus Publishing FZE posted their licence card on LinkedIn' });
+    expect(m).toMatchObject({ to: 'tayyab@spcfz.ae', subject: '[TEST] Like and comment now: Nimbus Publishing FZE just posted on LinkedIn' });
     expect(m?.unsubscribeUrl).toBeUndefined();
     for (const body of [m?.html, m?.text]) {
       expect(body).toContain('https://www.linkedin.com/feed/update/urn:li:share:7001/');
       expect(body).toContain(`/admin/cards/${card.id}`);
       expect(body).toContain('3 Nov 2026, 12:30, Dubai time');
+      expect(body).toContain('The first hour matters most');
+      expect(body).toContain('Comments ready to paste');
+      expect(body).toContain('Congratulations, Layla!');
     }
     const [row] = (await emailsForCard(env.DB, card.id)).filter((e) => e.kind === 'post_alert');
     expect(row).toMatchObject({ status: 'sent', lang: 'en' });
+  });
+
+  it('goes to the addresses in Admin → Settings', async () => {
+    const card = await seedCard();
+    await setSetting(env.DB, 'post_alert_to', 'social@spcfz.ae, am@spcfz.ae');
+    expect(await queuePostAlert(env, { cardId: card.id, postId: await posted(card) })).toBe(2);
+    expect((await emailsForCard(env.DB, card.id)).map((e) => e.to_email).sort()).toEqual(['am@spcfz.ae', 'social@spcfz.ae']);
+    await setSetting(env.DB, 'post_alert_to', '');
   });
 
   it('queues nothing when switched off', async () => {
