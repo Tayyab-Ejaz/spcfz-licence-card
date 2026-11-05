@@ -217,6 +217,15 @@ DATA_PATCHES.studio.push(
 for (const layout of ['studio', 'mobile']) {
   DATA_PATCHES[layout].push(['<textarea dir="{{ dir }}" value="{{ caption }}"', '<textarea dir="{{ dir }}" value="{{ caption }}" placeholder="{{ captionPlaceholder }}"']);
 }
+// The role and activity boxes showed the trimmed text, so a space typed at the end vanished at once ("Managing
+// Director" or "Book publishing" could not be typed). The boxes now show what was typed; the card, the checks and
+// the summaries still use the trimmed text.
+for (const layout of ['studio', 'mobile']) {
+  DATA_PATCHES[layout].push(['value="{{ role }}"', 'value="{{ roleInput }}"'], ['value="{{ activity }}"', 'value="{{ activityInput }}"']);
+}
+const INPUT_LOGIC = [
+  ['name: T.name, company: T.company, isAr: ar,', 'name: T.name, roleInput: T.role, activityInput: T.activity, company: T.company, isAr: ar,'],
+];
 const CONTENT_LOGIC = [
   ["const presets = ar ? ['بدأنا العمل رسمياً.', 'اليوم الأول.', 'أصبح الأمر رسمياً.', 'أبوابنا مفتوحة الآن.', 'الآن في الإمارات.', 'افتتحنا فرعنا في الإمارات.'] : ['Officially in business.', 'Day one.', \"It's official.\", 'Now open for business.', 'Now in the UAE.', 'Our UAE branch is open.'];",
     "const presets = ar ? ['مفتوحون للأعمال!', 'اليوم الأول!', 'أصبح الأمر رسمياً!', 'أبوابنا مفتوحة الآن.', '', ''] : ['Open for business!', 'Day one!', \"It's official!\", 'Now open for business.', '', ''];"],
@@ -235,6 +244,8 @@ const CONTENT_LOGIC = [
   ["'PNG with a transparent background works best'", "'Use a PNG file with a transparent background'"],
   ['desc: `"${imgIni}" in SPC blue, nothing to upload`', "desc: 'Add your initials'"],
   ["actFieldLabel: s.focus === 'personal' ? 'What you do' : 'What your company does'", "actFieldLabel: 'What your business does'"],
+  // Not the resolution (SPC, 5 November 2026): customers only need to know it worked.
+  ["'Card downloaded at 2× resolution. It\\'s ready to post.'", "'Your card is downloaded and ready to post.'"],
 ];
 const MOBILE_CONTENT_LOGIC = [
   ["names = { daylight: 'Daylight',", "names = { daylight: 'Standard',"],
@@ -253,7 +264,36 @@ DATA_PATCHES.studio.push(
   ['      </div>\n      <sc-if value="{{ feed }}" hint-placeholder-val="{{ false }}"><span style="position:relative;z-index:1;font-size:12.5px',
     '      </div></div>\n      <sc-if value="{{ feed }}" hint-placeholder-val="{{ false }}"><span style="position:relative;z-index:1;font-size:12.5px'],
 );
+// Desktop motion (SPC, 5 November 2026; client/card-data.js animateStep, animateParts, animateStage). Markers for
+// the step panels and the Details parts; the line between steps fills instead of switching colour, and a step's
+// tick pops in when it is done. "Looks right" becomes "Save and continue" once a detail differs from the licence.
+DATA_PATCHES.studio.push(
+  ['<sc-if value="{{ isStep0 }}" hint-placeholder-val="{{ true }}">\n        <div style="display:flex;flex-direction:column;gap:22px">',
+    '<sc-if value="{{ isStep0 }}" hint-placeholder-val="{{ true }}">\n        <div data-step-panel="0" style="display:flex;flex-direction:column;gap:22px">'],
+  ['<sc-if value="{{ isStep1 }}" hint-placeholder-val="{{ false }}">\n        <div style="display:flex;flex-direction:column;gap:18px">',
+    '<sc-if value="{{ isStep1 }}" hint-placeholder-val="{{ false }}">\n        <div data-step-panel="1" style="display:flex;flex-direction:column;gap:18px">'],
+  ['<sc-if value="{{ isStep2 }}" hint-placeholder-val="{{ false }}">\n        <div style="display:flex;flex-direction:column;gap:22px">',
+    '<sc-if value="{{ isStep2 }}" hint-placeholder-val="{{ false }}">\n        <div data-step-panel="2" style="display:flex;flex-direction:column;gap:22px">'],
+  ['<div style="display:flex;flex-direction:column;border-bottom:1px solid var(--spc-border)">',
+    '<div data-parts="" style="display:flex;flex-direction:column;border-bottom:1px solid var(--spc-border)">'],
+  ['<sc-if value="{{ st.done }}"><i class="ph-bold ph-check" style="font-size:14px"></i></sc-if>',
+    '<sc-if value="{{ st.done }}"><i class="ph-bold ph-check spc-pop" style="font-size:14px"></i></sc-if>'],
+  ['<span style="flex:1;min-width:12px;height:2px;border-radius:2px;background:{{ st.lineBg }}"></span>',
+    '<span style="flex:1;min-width:12px;height:2px;border-radius:2px;background:linear-gradient(var(--success-500),var(--success-500)) 0 0/{{ st.lineFill }} 100% no-repeat,var(--spc-border);transition:background-size .5s cubic-bezier(.2,.8,.2,1)"></span>'],
+  ['<span>Looks right</span><i class="ph-bold ph-check" style="font-size:13px"></i>',
+    '<span>{{ detailsDoneLabel }}</span><i class="ph-bold {{ detailsDoneIcon }}" style="font-size:13px"></i>'],
+);
+// Colour changes in the side panel (a chosen template's ring, the format and language switches, a field's border)
+// ease instead of snapping. :where() keeps this below every rule of the design system's own components.
+const STUDIO_MOTION_CSS = [
+  ':where([data-screen-label="Customize"]) *{transition-property:background-color,border-color,color,box-shadow;transition-duration:.2s;transition-timing-function:ease}',
+  '@keyframes spc-pop{0%{opacity:0;transform:scale(.4)}60%{opacity:1;transform:scale(1.12)}100%{opacity:1;transform:none}}',
+  '.spc-pop{display:inline-block;animation:spc-pop .4s cubic-bezier(.2,.8,.2,1) both}',
+  '@media (prefers-reduced-motion:reduce){:where([data-screen-label="Customize"]) *{transition:none!important}.spc-pop{animation:none}}',
+].join('');
 const STAGE_LOGIC = [
+  ["lineBg: i < s.step ? 'var(--success-500)' : 'var(--spc-border)',",
+    "lineBg: i < s.step ? 'var(--success-500)' : 'var(--spc-border)', lineFill: i < s.step ? '100%' : '0%',"],
   // The same sum as dispW above, for a portrait card.
   ['    const dispH = Math.round(cardH * scale);\n',
     '    const dispH = Math.round(cardH * scale);\n'
@@ -263,8 +303,9 @@ const STAGE_LOGIC = [
 ];
 
 const LOGIC_PATCHES = {
-  studio: [...SHARE_PATCHES, ...CONTENT_LOGIC, ...STAGE_LOGIC],
+  studio: [...SHARE_PATCHES, ...CONTENT_LOGIC, ...STAGE_LOGIC, ...INPUT_LOGIC],
   mobile: [
+    ...INPUT_LOGIC,
     ['const availH = sheet ? Math.max(90, vh - 56 - sheetH - 28) : Math.max(200, vh - 420);',
       'const availH = sheet ? Math.max(90, vh - 56 - sheetH - 28) : Math.max(180, vh - (s.chromeH || 440) - 8);'],
     ...SHARE_PATCHES,
@@ -456,7 +497,7 @@ for (const layout of LAYOUTS) {
 const a = styles.studio.join('\n'), b = styles.mobile.join('\n');
 if (a !== b) console.warn('note: studio and mobile <helmet> styles differ; using the studio set, which both layouts were checked against');
 const hover = [...pseudoRules].map(([k, cls]) => { const [p, ...rest] = k.split('|'); const css = rest.join('|'); return `.${cls}:${p}{${importantify(css)}}`; }).join('\n');
-const css = cleanCss(a) + '\n' + hover + '\n' + FULL_PAGE_CSS + '\n' + MOBILE_CSS + '\n';
+const css = cleanCss(a) + '\n' + hover + '\n' + FULL_PAGE_CSS + '\n' + MOBILE_CSS + '\n' + STUDIO_MOTION_CSS + '\n';
 for (const m of css.matchAll(/\/static\/studio\/a\/([a-f0-9]{16}\.[a-z0-9]+)/g)) used.add(m[1]);
 const cssName = `studio-${hash(css)}.css`;
 writeFileSync(path.join(OUT, cssName), css);

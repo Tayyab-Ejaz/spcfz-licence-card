@@ -101,6 +101,7 @@ export function calDaySizes(day) {
 }
 
 const EASE_OUT = 'cubic-bezier(.2,.8,.2,1)';
+const PART_MS = 380;   // a Details part opening or closing
 const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const frameEl = () => document.querySelector('.m-frame');
 
@@ -474,19 +475,99 @@ export function withCardData(Base) {
       };
     }
 
-    /** After Next or Back opens a part: bring it on screen if it is not, e.g. when the panel sits below the card. */
-    scrollToPart() {
+    /**
+     * After Next or Back opens a part: bring it on screen if it is not, e.g. when the panel sits below the card.
+     * When the parts are changing height (animateParts), wait until they have settled.
+     */
+    scrollToPart(settling = false) {
       const k = this.partScroll;
       this.partScroll = null;
       if (typeof k !== 'number' || this.state.step !== 1) return;
-      requestAnimationFrame(() => {
-        const input = document.querySelector('input[type=file]');
-        const part = input && input.nextElementSibling && input.nextElementSibling.children[k];
+      const go = () => {
+        const box = document.querySelector('[data-parts]');
+        const part = box && box.children[k];
         if (!part) return;
         const r = part.getBoundingClientRect();
         if (r.top >= 0 && r.bottom <= window.innerHeight) return;
         part.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: r.height > window.innerHeight * 0.8 ? 'start' : 'nearest' });
+      };
+      if (settling) setTimeout(go, PART_MS + 20);
+      else requestAnimationFrame(go);
+    }
+
+    // ---- Desktop motion (SPC, 5 November 2026): steps slide, parts open and close smoothly, the card softens
+    // when it changes. Short and quiet, and none of it with reduced motion. The phone layout has its own.
+
+    /** Before a render (client/dc.js): the Details parts' heights as they are on screen, mid-animation included. */
+    beforeUpdate() {
+      const box = document.querySelector('[data-parts]');
+      return box ? { parts: [...box.children].map((el) => el.getBoundingClientRect().height) } : null;
+    }
+
+    /** Style, Details and Share: the new step comes in from the side you are heading, a row at a time. */
+    animateStep(prev) {
+      if (!prev || prev.step === this.state.step || reducedMotion()) return;
+      const panel = document.querySelector('[data-step-panel]');
+      if (!panel) return;
+      const dx = this.state.step > prev.step ? 16 : -16;
+      [...panel.children].slice(0, 8).forEach((el, i) => el.animate(
+        [{ opacity: 0, transform: `translateX(${dx}px)` }, { opacity: 1, transform: 'none' }],
+        { duration: 360, delay: i * 45, easing: EASE_OUT, fill: 'backwards' },
+      ));
+    }
+
+    /**
+     * Details: when a part opens or closes, or what it shows changes (a photo, a different image option), each part
+     * moves from the height it had to the height it has, and a part that changed shows its new content fading in.
+     * Typing changes nothing here. Returns whether anything moved.
+     */
+    animateParts(prev, snap) {
+      const s = this.state;
+      const box = document.querySelector('[data-parts]');
+      if (!prev || !box || !snap || !snap.parts || prev.step !== 1 || s.step !== 1 || reducedMotion()) return false;
+      const phase = (st, i) => (st.sub === i ? 'open' : (st.subDone || []).includes(i) ? 'done' : 'next');
+      const swapped = [...box.children].map((_, i) => phase(prev, i) !== phase(s, i));
+      const shown = prev.imgMode !== s.imgMode || prev.focus !== s.focus || !!prev.photo !== !!s.photo
+        || !!prev.logo !== !!s.logo || prev.hIdx !== s.hIdx;
+      if (!shown && !swapped.some(Boolean)) return false;
+      let moved = false;
+      [...box.children].forEach((el, i) => {
+        const from = snap.parts[i];
+        if (from == null) return;
+        el.getAnimations().forEach((a) => a.cancel());
+        const to = el.getBoundingClientRect().height;
+        if (swapped[i] && el.firstElementChild) {
+          el.firstElementChild.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }],
+            { duration: 300, delay: to > from ? 90 : 0, easing: EASE_OUT, fill: 'backwards' });
+        }
+        if (Math.abs(to - from) < 2) return;
+        moved = true;
+        el.style.overflow = 'hidden';
+        const a = el.animate([{ height: `${from}px` }, { height: `${to}px` }], { duration: PART_MS, easing: EASE_OUT });
+        a.onfinish = a.oncancel = () => { el.style.overflow = ''; };
       });
+      return moved;
+    }
+
+    /** The card preview softens for a moment when its style, format, language or view changes. */
+    animateStage(prev) {
+      if (!prev || frameEl() || reducedMotion()) return;   // frameEl: the phone layout, which has animateFrame
+      const s = this.state;
+      if (prev.tpl === s.tpl && prev.format === s.format && prev.lang === s.lang && prev.view === s.view) return;
+      const frame = this.cardRef && this.cardRef.current && this.cardRef.current.parentElement
+        && this.cardRef.current.parentElement.parentElement;
+      if (!frame) return;
+      frame.getAnimations().forEach((a) => a.cancel());
+      frame.animate([{ opacity: 0.45, transform: 'scale(.985)' }, { opacity: 1, transform: 'none' }], { duration: 320, easing: EASE_OUT });
+    }
+
+    /** Details as they came from the licence, for the current card language, trimmed. */
+    detailsEdited() {
+      const s = this.state;
+      if (!this.licenceDetails) this.licenceDetails = this.fresh();
+      const now = s.lang === 'ar' ? s.ar || {} : s;
+      const was = s.lang === 'ar' ? this.licenceDetails.ar || {} : this.licenceDetails;
+      return ['name', 'role', 'activity'].some((k) => String(now[k] || '').trim() !== String(was[k] || '').trim());
     }
 
     closeSheetSmoothly(close) {
@@ -563,10 +644,13 @@ export function withCardData(Base) {
       this.fitStub();
       this.fitChrome();
       this.animateFrame(args[1]);
+      this.animateStage(args[1]);
+      this.animateStep(args[1]);
+      const settling = this.animateParts(args[1], args[2]);
       this.watchOutsideTaps();
       this.watchImgAsk(args[1]);
       this.measureCrop();
-      this.scrollToPart();
+      this.scrollToPart(settling);
     }
 
     stubKey() {
@@ -669,6 +753,9 @@ export function withCardData(Base) {
         // Desktop Share step intro (tools/build-studio.mjs DESKTOP_SHARE_ACTIONS); the phone layout does not use it.
         shareIntro: 'Share your card with your network on LinkedIn, WhatsApp, or any other social media app of your choice.',
         captionPlaceholder: (s.tone || 'warm') === 'custom' ? 'Write your own caption' : '',
+        // Desktop "Check your details": confirm as they came from the licence, or save what was changed.
+        detailsDoneLabel: this.detailsEdited() ? 'Save and continue' : 'Looks right',
+        detailsDoneIcon: this.detailsEdited() ? 'ph-arrow-right' : 'ph-check',
         // Post to LinkedIn (tools/build-studio.mjs): first and primary when on; Share and Download step down.
         liOn,
         postLinkedIn: this.remember(() => this.postLinkedIn()),

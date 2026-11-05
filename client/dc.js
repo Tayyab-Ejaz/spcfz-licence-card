@@ -186,11 +186,16 @@ export class Host extends React.Component {
     this.setState((s) => ({ v: s.v + 1 }), cb);
   }
   componentDidMount() { this.logic.componentDidMount(); }
-  componentDidUpdate(prevProps) {
+  // A logic that measures the page before a render (client/card-data.js, for its motion) gets what it measured
+  // as componentDidUpdate's third argument, as a React component's getSnapshotBeforeUpdate would.
+  getSnapshotBeforeUpdate() {
+    return typeof this.logic.beforeUpdate === 'function' ? this.logic.beforeUpdate() : null;
+  }
+  componentDidUpdate(prevProps, _prevState, snapshot) {
     const ps = this.prevLogicState;
     this.prevLogicState = null;
     this.logic.props = this.props.userProps;
-    this.logic.componentDidUpdate(prevProps.userProps, ps || undefined);
+    this.logic.componentDidUpdate(prevProps.userProps, ps || undefined, snapshot);
   }
   componentWillUnmount() {
     if (this.props.onUnmount) this.props.onUnmount(this.logic.state);
