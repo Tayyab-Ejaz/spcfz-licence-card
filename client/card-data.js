@@ -487,9 +487,12 @@ export function withCardData(Base) {
         const box = document.querySelector('[data-parts]');
         const part = box && box.children[k];
         if (!part) return;
+        // Side by side the panel's step content scrolls inside the panel (FIT_LOGIC); stacked, the page scrolls.
+        const pane = part.closest('[data-step-panel]');
+        const v = pane && pane.scrollHeight > pane.clientHeight + 1 ? pane.getBoundingClientRect() : { top: 0, bottom: window.innerHeight };
         const r = part.getBoundingClientRect();
-        if (r.top >= 0 && r.bottom <= window.innerHeight) return;
-        part.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: r.height > window.innerHeight * 0.8 ? 'start' : 'nearest' });
+        if (r.top >= v.top && r.bottom <= v.bottom) return;
+        part.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: r.height > (v.bottom - v.top) * 0.8 ? 'start' : 'nearest' });
       };
       if (settling) setTimeout(go, PART_MS + 20);
       else requestAnimationFrame(go);
@@ -497,6 +500,24 @@ export function withCardData(Base) {
 
     // ---- Desktop motion (SPC, 5 November 2026): steps slide, parts open and close smoothly, the card softens
     // when it changes. Short and quiet, and none of it with reduced motion. The phone layout has its own.
+
+    /**
+     * Side by side, the panel's step content scrolls inside the panel (FIT_LOGIC). While more of it is below, it
+     * fades out at the foot (data-more), so it is clear there is more to see.
+     */
+    watchPanel() {
+      const pane = document.querySelector('[data-step-panel]');
+      if (!pane) return;
+      const mark = () => {
+        const more = pane.scrollTop + pane.clientHeight < pane.scrollHeight - 2;
+        if (more !== pane.hasAttribute('data-more')) pane.toggleAttribute('data-more', more);
+      };
+      if (pane !== this.watchedPane) {
+        this.watchedPane = pane;
+        pane.addEventListener('scroll', mark, { passive: true });
+      }
+      mark();
+    }
 
     /** Before a render (client/dc.js): the Details parts' heights as they are on screen, mid-animation included. */
     beforeUpdate() {
@@ -637,6 +658,7 @@ export function withCardData(Base) {
       this.fitStub();
       this.fitChrome();
       this.fitDesk();
+      this.watchPanel();
       if (document.fonts && document.fonts.status !== 'loaded') document.fonts.ready.then(() => { this.forceUpdate(); this.fitStub(); });
     }
 
@@ -649,6 +671,12 @@ export function withCardData(Base) {
       this.animateStage(args[1]);
       this.animateStep(args[1]);
       const settling = this.animateParts(args[1], args[2]);
+      // A part that opened on its own (an answer, Looks right) comes into view too, not only after Next or Back.
+      const prev = args[1];
+      if (prev && prev.step === 1 && this.state.step === 1 && typeof this.state.sub === 'number' && prev.sub !== this.state.sub
+        && typeof this.partScroll !== 'number') this.partScroll = this.state.sub;
+      this.watchPanel();
+      if (settling) setTimeout(() => this.watchPanel(), PART_MS + 20);
       this.watchOutsideTaps();
       this.watchImgAsk(args[1]);
       this.measureCrop();
@@ -674,13 +702,12 @@ export function withCardData(Base) {
      */
     /**
      * Desktop: where the workspace (the row holding the card and the panel) starts on the page, so the card preview
-     * fits the window below it (tools/build-studio.mjs FIT_LOGIC). Measured on the row, not on the card, which is
-     * sticky and reports where it is stuck once the page scrolls.
+     * fits the window below it (tools/build-studio.mjs FIT_LOGIC).
      */
     fitDesk() {
       const st = this.stageRef && this.stageRef.current;
       const row = st && st.parentElement;
-      if (!row || (this.state.vw || window.innerWidth) < 1000) return;
+      if (!row || (this.state.vw || window.innerWidth) < 760) return;   // the desktop layout, side by side or stacked
       const top = Math.round(row.getBoundingClientRect().top + window.scrollY);
       if (Math.abs(top - (this.state.deskTop || 0)) > 1) this.setState({ deskTop: top });
     }

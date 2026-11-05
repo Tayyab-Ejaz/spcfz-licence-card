@@ -261,7 +261,7 @@ const MOBILE_CONTENT_LOGIC = [
 // phone layout already does this: its card area is a fixed height while a sheet is open.
 DATA_PATCHES.studio.push(
   ['      <div style="position:relative;z-index:1;width:{{ dispW }}px;max-width:100%;background:#fff;',
-    '      <div style="position:{{ frameBoxPos }};top:16px;z-index:1;align-self:stretch;min-height:{{ frameBoxH }}px;display:flex;align-items:center;justify-content:center"><div style="position:relative;z-index:1;width:{{ dispW }}px;max-width:100%;background:#fff;'],
+    '      <div style="position:relative;z-index:1;align-self:stretch;flex:1 0 auto;min-height:{{ frameBoxH }}px;display:flex;align-items:center;justify-content:center"><div style="position:relative;z-index:1;width:{{ dispW }}px;max-width:100%;background:#fff;'],
   ['      </div>\n      <sc-if value="{{ feed }}" hint-placeholder-val="{{ false }}"><span style="position:relative;z-index:1;font-size:12.5px',
     '      </div></div>\n      <sc-if value="{{ feed }}" hint-placeholder-val="{{ false }}"><span style="position:relative;z-index:1;font-size:12.5px'],
 );
@@ -270,11 +270,11 @@ DATA_PATCHES.studio.push(
 // tick pops in when it is done. "Looks right" becomes "Save and continue" once a detail differs from the licence.
 DATA_PATCHES.studio.push(
   ['<sc-if value="{{ isStep0 }}" hint-placeholder-val="{{ true }}">\n        <div style="display:flex;flex-direction:column;gap:22px">',
-    '<sc-if value="{{ isStep0 }}" hint-placeholder-val="{{ true }}">\n        <div data-step-panel="0" style="display:flex;flex-direction:column;gap:22px">'],
+    '<sc-if value="{{ isStep0 }}" hint-placeholder-val="{{ true }}">\n        <div data-step-panel="0" style="display:flex;flex-direction:column;gap:22px;flex:{{ panelFlex }};min-height:0;overflow-y:{{ panelScroll }};overscroll-behavior:contain;padding:{{ panelPad }};margin:{{ panelMargin }}">'],
   ['<sc-if value="{{ isStep1 }}" hint-placeholder-val="{{ false }}">\n        <div style="display:flex;flex-direction:column;gap:18px">',
-    '<sc-if value="{{ isStep1 }}" hint-placeholder-val="{{ false }}">\n        <div data-step-panel="1" style="display:flex;flex-direction:column;gap:18px">'],
+    '<sc-if value="{{ isStep1 }}" hint-placeholder-val="{{ false }}">\n        <div data-step-panel="1" style="display:flex;flex-direction:column;gap:18px;flex:{{ panelFlex }};min-height:0;overflow-y:{{ panelScroll }};overscroll-behavior:contain;padding:{{ panelPad }};margin:{{ panelMargin }}">'],
   ['<sc-if value="{{ isStep2 }}" hint-placeholder-val="{{ false }}">\n        <div style="display:flex;flex-direction:column;gap:22px">',
-    '<sc-if value="{{ isStep2 }}" hint-placeholder-val="{{ false }}">\n        <div data-step-panel="2" style="display:flex;flex-direction:column;gap:22px">'],
+    '<sc-if value="{{ isStep2 }}" hint-placeholder-val="{{ false }}">\n        <div data-step-panel="2" style="display:flex;flex-direction:column;gap:22px;flex:{{ panelFlex }};min-height:0;overflow-y:{{ panelScroll }};overscroll-behavior:contain;padding:{{ panelPad }};margin:{{ panelMargin }}">'],
   ['<div style="display:flex;flex-direction:column;border-bottom:1px solid var(--spc-border)">',
     '<div data-parts="" style="display:flex;flex-direction:column;border-bottom:1px solid var(--spc-border)">'],
   ['<sc-if value="{{ st.done }}"><i class="ph-bold ph-check" style="font-size:14px"></i></sc-if>',
@@ -291,25 +291,41 @@ const STUDIO_MOTION_CSS = [
   '@keyframes spc-pop{0%{opacity:0;transform:scale(.4)}60%{opacity:1;transform:scale(1.12)}100%{opacity:1;transform:none}}',
   '.spc-pop{display:inline-block;animation:spc-pop .4s cubic-bezier(.2,.8,.2,1) both}',
   '@media (prefers-reduced-motion:reduce){:where([data-screen-label="Customize"]) *{transition:none!important}.spc-pop{animation:none}}',
+  // The panel's step content, while more of it is below (client/card-data.js watchPanel): it fades out at the foot.
+  '[data-step-panel][data-more]{-webkit-mask-image:linear-gradient(#000 calc(100% - 40px),transparent);mask-image:linear-gradient(#000 calc(100% - 40px),transparent)}',
 ].join('');
-// Desktop fits the window (SPC, 5 November 2026). The card was sized as if the page title were not there, so on
-// laptop screens its bottom and the Next button sat below the fold. Now the stage is the window's height below
-// where the workspace starts (client/card-data.js measures that as deskTop), less a 24px margin; the title is a
-// little tighter; and the "1080 × 1350 px" line above the card is gone (the format note says it). Back / Next stay
-// at the end of the panel: SPC did not want them pinned to the window.
+// Desktop workspace (SPC, 5 November 2026). Side by side (1080px and wider), the card and the panel are one height,
+// the window's height below where the workspace starts (client/card-data.js measures that as deskTop) less a 24px
+// margin, kept between 500 and 820px. The card is as large as that height allows and sits centred in its canvas;
+// the panel's step content scrolls inside the panel when it is longer, with Back / Next at the panel's foot. So the
+// page itself does not scroll on a laptop, the card is never cut off, and the two columns always line up. On short
+// windows (under 820px) the page title is more compact. The "1080 × 1350 px" line above the card is gone (the
+// format note says it). Narrower windows keep the stacked layout.
 DATA_PATCHES.studio.push(
-  ['font-size:clamp(30px,4vw,46px)', 'font-size:clamp(28px,3vw,40px)'],
+  ['font-size:clamp(30px,4vw,46px)', 'font-size:{{ titleSize }}'],
   ['<section ref="{{ stageRef }}" data-screen-label="Preview" style="flex:1 1 560px;min-width:0;position:{{ stagePos }};',
-    '<section ref="{{ stageRef }}" data-screen-label="Preview" style="flex:1 1 560px;min-width:0;align-self:{{ stageAlign }};position:{{ stagePos }};'],
-  // clip, not hidden: it trims the decorative shapes the same way without stopping the card from sticking.
-  ['margin:{{ stageMargin }};overflow:hidden;background:var(--blue-100)', 'margin:{{ stageMargin }};overflow:clip;background:var(--blue-100)'],
+    '<section ref="{{ stageRef }}" data-screen-label="Preview" style="flex:1 1 560px;min-width:0;height:{{ deskH }};position:{{ stagePos }};'],
+  ['<aside data-screen-label="Customize" style="flex:1 1 360px;max-width:{{ asideMax }};align-self:stretch;',
+    '<aside data-screen-label="Customize" style="flex:1 1 360px;max-width:{{ asideMax }};align-self:stretch;height:{{ deskH }};'],
 );
 const FIT_LOGIC = [
+  ['    const side = (s.vw || 1280) >= 1000;', '    const side = (s.vw || 1280) >= 1080;'],
+  // The Share step's feed preview (the post with its header and Like / Comment row) shows only where the card in it
+  // can be at least 340px wide; on laptop heights a portrait card in it would be a sliver, so the card shows as on
+  // the other steps.
+  ["    const feed = s.view === 'feed';",
+    "    const fitH = Math.min(820, Math.max(450, (s.vh || 900) - (s.deskTop || 200) - 24)), sideW = (s.vw || 1280) >= 1080;\n"
+    + "    const stagePadPx = 2 * Math.min(32, Math.max(16, (s.vw || 1280) * .024)), compactHead = sideW && (s.vh || 900) < 820;\n"
+    + "    const feed = s.view === 'feed' && (!sideW || (fitH - stagePadPx - 236) * nativeW / cardH >= 340);"],
   ["const budget = side ? (s.vh || 900) - 32 - 2 * Math.min(40, Math.max(16, (s.vw || 1280) * .035)) - 60 - (feed ? 200 : 0) : ",
-    "const budget = side ? (s.vh || 900) - (s.deskTop || 200) - 24 - 2 * Math.min(32, Math.max(16, (s.vw || 1280) * .024)) - (feed ? 200 : 0) : "],
+    "const budget = side ? fitH - stagePadPx - (feed ? 236 : 0) : "],
+  // Stacked (under 1080px, e.g. a tablet held sideways) the card is no taller than the window either.
+  ["mStick ? Math.min((s.vh || 800) * .34, 300) : 9999;", "mStick ? Math.min((s.vh || 800) * .34, 300) : Math.max(320, (s.vh || 900) - (s.deskTop || 200) - 24 - stagePadPx - (feed ? 236 : 0));"],
   ["stagePad: mobile ? '14px 16px 16px' : 'clamp(16px,3.5vw,40px)'", "stagePad: mobile ? '14px 16px 16px' : 'clamp(16px,2.4vw,32px)'"],
   ["sizeRowDisp: mobile ? 'none' : 'flex'", "sizeRowDisp: 'none'"],
-  ["headPad: mobile ? '22px 0 18px' : '40px 0 32px'", "headPad: mobile ? '22px 0 18px' : '26px 0 22px'"],
+  ["mainPb: mobile ? 120 : 72, headPad: mobile ? '22px 0 18px' : '40px 0 32px',",
+    "mainPb: mobile ? 120 : side ? 24 : 72, headPad: mobile ? '22px 0 18px' : compactHead ? '14px 0 16px' : '26px 0 22px', titleSize: compactHead ? '30px' : 'clamp(28px,3vw,40px)',"
+    + " deskH: side ? `${fitH}px` : 'auto', panelFlex: side ? '1 1 auto' : '0 1 auto', panelScroll: side ? 'auto' : 'visible', panelPad: side ? '3px' : '0', panelMargin: side ? '-3px' : '0',"],
 ];
 const STAGE_LOGIC = [
   ...FIT_LOGIC,
@@ -320,10 +336,9 @@ const STAGE_LOGIC = [
     '    const dispH = Math.round(cardH * scale);\n'
     + '    const tallW = Math.floor(Math.min(Math.max(mStick ? 150 : 260, budget * 1080 / 1350), Math.min(avail, 540)));\n'
     + '    const frameBoxH = feed ? 0 : Math.round(1350 * tallW / 1080);\n'],
-  // Side by side, the stage runs the full height of the row (as tall as the panel) and the card inside it is what
-  // stays in view while the page scrolls, so the two columns line up top and bottom (SPC, 5 November 2026).
+  // Side by side the workspace has a set height (FIT_LOGIC), so the stage need not stick.
   ["      dispW, dispH, cardH, scale, stagePos: side || mStick ? 'sticky' : 'relative',",
-    "      dispW, dispH, cardH, scale, frameBoxH, frameBoxPos: side ? 'sticky' : 'relative', stageAlign: side ? 'stretch' : 'auto', stagePos: mStick ? 'sticky' : 'relative',"],
+    "      dispW, dispH, cardH, scale, frameBoxH, stagePos: mStick ? 'sticky' : 'relative',"],
   ["stageTop: side ? '16px' : '0px',", "stageTop: '0px',"],
 ];
 
