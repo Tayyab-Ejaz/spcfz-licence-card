@@ -243,8 +243,27 @@ const MOBILE_CONTENT_LOGIC = [
     "fmtOpts: [['portrait', 'Portrait', 10, 13], ['square', 'Square', 12, 12], ['landscape', 'Landscape', 15, 9]]"],
 ];
 
+// One canvas height for every format (SPC, 5 November 2026). In the card preview the desktop stage keeps the height a
+// portrait card takes at this window size, and a square or landscape card sits centred in it, so switching formats
+// moves neither the stage nor the panel beside or below it. The feed preview (Share step) keeps its own height. The
+// phone layout already does this: its card area is a fixed height while a sheet is open.
+DATA_PATCHES.studio.push(
+  ['      <div style="position:relative;z-index:1;width:{{ dispW }}px;max-width:100%;background:#fff;',
+    '      <div style="position:relative;z-index:1;align-self:stretch;min-height:{{ frameBoxH }}px;display:flex;align-items:center;justify-content:center"><div style="position:relative;z-index:1;width:{{ dispW }}px;max-width:100%;background:#fff;'],
+  ['      </div>\n      <sc-if value="{{ feed }}" hint-placeholder-val="{{ false }}"><span style="position:relative;z-index:1;font-size:12.5px',
+    '      </div></div>\n      <sc-if value="{{ feed }}" hint-placeholder-val="{{ false }}"><span style="position:relative;z-index:1;font-size:12.5px'],
+);
+const STAGE_LOGIC = [
+  // The same sum as dispW above, for a portrait card.
+  ['    const dispH = Math.round(cardH * scale);\n',
+    '    const dispH = Math.round(cardH * scale);\n'
+    + '    const tallW = Math.floor(Math.min(Math.max(mStick ? 150 : 260, budget * 1080 / 1350), Math.min(avail, 540)));\n'
+    + '    const frameBoxH = feed ? 0 : Math.round(1350 * tallW / 1080);\n'],
+  ['      dispW, dispH, cardH, scale, stagePos:', '      dispW, dispH, cardH, scale, frameBoxH, stagePos:'],
+];
+
 const LOGIC_PATCHES = {
-  studio: [...SHARE_PATCHES, ...CONTENT_LOGIC],
+  studio: [...SHARE_PATCHES, ...CONTENT_LOGIC, ...STAGE_LOGIC],
   mobile: [
     ['const availH = sheet ? Math.max(90, vh - 56 - sheetH - 28) : Math.max(200, vh - 420);',
       'const availH = sheet ? Math.max(90, vh - 56 - sheetH - 28) : Math.max(180, vh - (s.chromeH || 440) - 8);'],
