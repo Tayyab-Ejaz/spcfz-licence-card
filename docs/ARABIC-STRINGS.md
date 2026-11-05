@@ -143,7 +143,7 @@ the LinkedIn caption. Generated from the source; `{company}` and `{first name}` 
 | tryAgain | حاول مرة أخرى | Try again |
 | signInAgain | سجّل الدخول إلى لينكدإن مجدداً | Sign in to LinkedIn again |
 | expiredTitle | انتهت مهلة هذا المنشور | This post has timed out |
-| expiredBody | حفاظاً على أمانك، ينتظر المنشور 15 دقيقة فقط. ابدأ من جديد من بطاقتك؛ لن يستغرق ذلك سوى لحظة. | For your security, a post waits 15 minutes. Start again from your card; it takes a moment. |
+| expiredBody | حفاظاً على أمانك، ينتظر المنشور ساعة واحدة فقط. ابدأ من جديد من بطاقتك؛ لن يستغرق ذلك سوى لحظة. | For your security, a post waits an hour. Start again from your card; it takes a moment. |
 | openCard | افتح بطاقتي | Open my card |
 | portal | انتقل إلى بوابة العملاء | Go to the customer portal |
 | cancelledTitle | لم يُنشر شيء | Nothing was posted |

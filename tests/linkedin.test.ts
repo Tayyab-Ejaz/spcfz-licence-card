@@ -298,7 +298,7 @@ describe('sign-in, review and post', () => {
     expect(fake.calls).toEqual([]);
   });
 
-  it('a draft lasts 15 minutes from the last step', async () => {
+  it('a draft lasts an hour from the last step', async () => {
     const card = await seedCard();
     const { cookie } = await signedIn(card);
     clock += DRAFT_TTL_MS + 1;

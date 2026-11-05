@@ -21,7 +21,7 @@ import { PORTAL_URL } from '../page/strings.js';
 import { defaultCaption, orgUrn, toLittleText } from './caption.js';
 import { LinkedinError, MAX_COMMENTARY, linkedinClient } from './client.js';
 import type { LinkedinClient, LinkedinErrorKind } from './client.js';
-import { DraftStore } from './drafts.js';
+import { DRAFT_TTL_MS, DraftStore } from './drafts.js';
 import { fakeLinkedinClient } from './fake.js';
 import type { Draft } from './drafts.js';
 import { LI_STRINGS, linkedinCsp, renderPostedPage, renderProblemPage, renderReviewPage } from './view.js';
@@ -83,7 +83,7 @@ function pageHeaders(c: Context<AppEnv>, nonce: string): void {
 }
 
 function setDraftCookie(c: Context<AppEnv>, d: Draft): void {
-  setCookie(c, COOKIE, d.id, { httpOnly: true, secure: baseOf(c).startsWith('https:'), sameSite: 'Lax', path: '/', maxAge: 30 * 60 });
+  setCookie(c, COOKIE, d.id, { httpOnly: true, secure: baseOf(c).startsWith('https:'), sameSite: 'Lax', path: '/', maxAge: (2 * DRAFT_TTL_MS) / 1000 });
 }
 
 /** The studio's request must come from the studio: same origin, by Origin or by Sec-Fetch-Site. */

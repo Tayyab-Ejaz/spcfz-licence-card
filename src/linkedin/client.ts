@@ -4,7 +4,7 @@
 //   who       api.linkedin.com/v2/userinfo (OpenID Connect: sub, name, picture)
 //   image     api.linkedin.com/rest/images?action=initializeUpload, then PUT the bytes to the upload URL
 //   post      api.linkedin.com/rest/posts (the post's URN comes back in the x-restli-id header)
-// The token lives only in memory for the few minutes a post takes (./drafts.ts); nothing here stores it.
+// The token lives only in memory while a post is made, an hour at most (./drafts.ts); nothing here stores it.
 
 import type { Env } from '../types.js';
 

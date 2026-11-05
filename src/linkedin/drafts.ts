@@ -1,12 +1,12 @@
 // A post on its way to LinkedIn: the picture, the caption, and, once the customer has signed in, their LinkedIn
-// access token. In memory only, for 15 minutes from the last step; never written to disk or the database. A
+// access token. In memory only, for an hour from the last step; never written to disk or the database. A
 // restart forgets every draft, and the customer starts again from their card (one more tap). One process serves
 // the site, so memory is the whole store.
 import type { Lang } from '../types.js';
 import { randomSecret } from '../util/crypto.js';
 import type { Member } from './client.js';
 
-export const DRAFT_TTL_MS = 15 * 60_000;
+export const DRAFT_TTL_MS = 60 * 60_000;
 const MAX_DRAFTS = 300;
 const MAX_BYTES = 96 * 1024 * 1024; // the server also runs other portals; a draft is about 1 MB
 
@@ -77,7 +77,7 @@ export class DraftStore {
     return null;
   }
 
-  /** Another 15 minutes from now, after each step the customer takes. */
+  /** Another hour from now, after each step the customer takes. */
   touch(d: Draft): void {
     d.expiresAt = this.now() + DRAFT_TTL_MS;
   }

@@ -59,7 +59,7 @@ files, any change to www.spcfz.ae, customer accounts, customer-editable text.
 | C9 | Google Tag Manager is not loaded on the page by default. A config switch can add the site container GTM-PZ8R4DN. | Marketing decision; counters cover v1 needs. |
 | C11 | The service sends the welcome email itself (27 October 2026), one per card: when a card arrives with an email, or when an email first arrives for an existing card. Staff can send it again. Through any SMTP provider; retries 5 times over 15 hours. | The email can carry the customer's own card and a one-tap LinkedIn button, which the ERP's email cannot. |
 | C12 | Test cards only email addresses on `MAIL_TEST_ALLOWLIST` (default: spcfz.ae). CSV imports do not email unless staff tick the box. | Test data and back-fills must never reach customers by accident. |
-| C13 | "Post to LinkedIn" always shows the customer the post (picture, text, their name) and posts only when they press Post now, once. The LinkedIn token is held in memory for at most 15 minutes and never stored; the database keeps only the outcome. | Posting under someone's name must be their explicit act; a stored token would be a standing credential for every customer's account. |
+| C13 | "Post to LinkedIn" always shows the customer the post (picture, text, their name) and posts only when they press Post now, once. The LinkedIn token is held in memory for at most an hour from the customer's last step and never stored; the database keeps only the outcome. | Posting under someone's name must be their explicit act; a stored token would be a standing credential for every customer's account. |
 | C10 | ~~Deployment runs from GitHub Actions.~~ Since 15 Oct 2026: deployment runs from the Mac with `tools/deploy.sh`, one approved step at a time; CI on GitHub runs the checks. | The server is SPC's own and every write on it needs the user's approval. |
 
 ## 3. System overview
@@ -406,7 +406,7 @@ Screens:
 - Constant-time comparison. 64 KB body limit. JSON only.
 - Personal data is the founder's name and the two emails (C6). Logs record the licence
   number and card id, never payload fields or email addresses.
-- LinkedIn: the access token stays in memory with its draft for at most 15 minutes and is dropped once the
+- LinkedIn: the access token stays in memory with its draft for at most an hour from the last step and is dropped once the
   post is made (C13). The picture the customer made in the studio reaches the server only when they press
   Post to LinkedIn, and is held in memory with the draft, never written to disk. Drafts are bound to an
   HttpOnly, SameSite=Lax cookie; the review form carries a second key; the sign-in state is 40 random
