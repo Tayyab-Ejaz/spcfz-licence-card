@@ -102,6 +102,9 @@ export function calDaySizes(day) {
 
 const EASE_OUT = 'cubic-bezier(.2,.8,.2,1)';
 const PART_MS = 380;   // a Details part opening or closing
+// What the customer makes: a change to any of these is work a refresh would lose (askBeforeLeaving).
+const EDIT_FIELDS = ['tpl', 'format', 'lang', 'focus', 'imgMode', 'photo', 'logo', 'photoPos', 'photoZoom', 'hIdx',
+  'customHead', 'name', 'role', 'activity', 'ar', 'tone', 'caption'];
 const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const frameEl = () => document.querySelector('.m-frame');
 
@@ -163,6 +166,8 @@ export function withCardData(Base) {
       this.outsideTap = null;
       if (this.askKeys) document.removeEventListener('keydown', this.askKeys);
       this.askKeys = null;
+      if (this.onLeave) window.removeEventListener('beforeunload', this.onLeave);
+      this.onLeave = null;
       if (super.componentWillUnmount) super.componentWillUnmount();
     }
 
@@ -199,7 +204,7 @@ export function withCardData(Base) {
       const caption = s.caption ?? this.autoCaption();
       this.setState({ liBusy: true });
       // Back from LinkedIn with the browser's back button restores this page as it was: un-stick the button.
-      window.addEventListener('pageshow', (e) => { if (e.persisted) this.setState({ liBusy: false }); }, { once: true });
+      window.addEventListener('pageshow', (e) => { if (e.persisted) { this.leaving = false; this.setState({ liBusy: false }); } }, { once: true });
       try {
         const blob = await this.renderCard(true);
         const fd = new FormData();
@@ -209,6 +214,7 @@ export function withCardData(Base) {
         const res = await fetch(`/c/${encodeURIComponent(c.token)}/linkedin`, { method: 'POST', body: fd, credentials: 'same-origin' });
         const j = await res.json().catch(() => ({}));
         if (!res.ok || typeof j.go !== 'string') throw new Error(j.error || String(res.status));
+        this.leaving = true;   // on to LinkedIn: not a page to warn about leaving
         window.location.assign(j.go);
       } catch (e) {
         this.setState({ liBusy: false });
@@ -666,8 +672,35 @@ export function withCardData(Base) {
       };
     }
 
+    /**
+     * Nothing in the studio is saved, so a refresh or closing the tab loses every change. While the customer has
+     * changed something and not yet downloaded, shared or posted it (state.unsaved, which carries over when the
+     * layout switches), the browser asks before the page goes, in its own words: browsers allow no custom text.
+     * Opening LinkedIn from Post to LinkedIn is not a loss, so it does not ask (this.leaving).
+     */
+    askBeforeLeaving() {
+      if (this.onLeave) return;
+      this.onLeave = (e) => {
+        if (!this.state.unsaved || this.leaving) return;
+        e.preventDefault();
+        e.returnValue = '';
+      };
+      window.addEventListener('beforeunload', this.onLeave);
+    }
+
+    trackEdits(prev) {
+      if (!prev || this.state.unsaved) return;
+      if (EDIT_FIELDS.some((k) => prev[k] !== this.state[k])) this.setState({ unsaved: true });
+    }
+
+    /** The card was downloaded or shared (tools/build-studio.mjs calls this): nothing left to lose. */
+    markSaved() {
+      if (this.state.unsaved) this.setState({ unsaved: false });
+    }
+
     componentDidMount() {
       super.componentDidMount();
+      this.askBeforeLeaving();
       this.fitStub();
       this.fitChrome();
       this.fitDesk();
@@ -677,6 +710,7 @@ export function withCardData(Base) {
 
     componentDidUpdate(...args) {
       super.componentDidUpdate(...args);
+      this.trackEdits(args[1]);
       this.fitStub();
       this.fitChrome();
       this.fitDesk();

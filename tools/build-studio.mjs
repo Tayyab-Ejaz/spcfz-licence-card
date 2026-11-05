@@ -197,7 +197,7 @@ const SHARE_PATCHES = [
     "        file = new File([blob], this.fileName(blob.type), { type: blob.type || 'image/png' });"],
   ['    this.copyText(caption);\n', '    const copied = this.copyText(caption);\n'],
   ['await navigator.share({ files: [file], text: caption });',
-    "await navigator.share({ files: [file] }); copied.then((ok) => this.showToast(ok ? 'Caption copied. Paste it into your post.' : 'Copy the caption from Caption, then paste it into your post.'));"],
+    "await navigator.share({ files: [file] }); this.markSaved && this.markSaved(); copied.then((ok) => this.showToast(ok ? 'Caption copied. Paste it into your post.' : 'Copy the caption from Caption, then paste it into your post.'));"],
 ];
 // SPC's content writer (LinkedIn Milestone.xlsx, 5 November 2026). Wording only, both layouts where both show it:
 // step headings and subcopy, the Standard style (was Daylight), format notes and order (Portrait first), who-is-it-
@@ -247,6 +247,9 @@ const CONTENT_LOGIC = [
   ["actFieldLabel: s.focus === 'personal' ? 'What you do' : 'What your company does'", "actFieldLabel: 'What your business does'"],
   // Not the resolution (SPC, 5 November 2026): customers only need to know it worked.
   ["'Card downloaded at 2× resolution. It\\'s ready to post.'", "'Your card is downloaded and ready to post.'"],
+  // A download (and a completed share, in SHARE_PATCHES) means the customer has their card: client/card-data.js
+  // stops asking before the page is left until they change something again.
+  ["      this.showToast('Your card is downloaded and ready to post.');", "      this.markSaved && this.markSaved();\n      this.showToast('Your card is downloaded and ready to post.');"],
 ];
 const MOBILE_CONTENT_LOGIC = [
   ["names = { daylight: 'Daylight',", "names = { daylight: 'Standard',"],

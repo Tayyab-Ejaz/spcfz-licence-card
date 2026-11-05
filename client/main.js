@@ -26,23 +26,33 @@ const userProps = { prefillFromLicense: false, samplePhoto: false, startTemplate
 const MOBILE_QUERY = '(max-width: 759px)';
 const TRANSIENT = new Set(['sheet', 'toast', 'busy', 'drag', 'stageW', 'vw', 'vh', 'canShare', 'chromeH']);
 
+const keep = (st) => Object.fromEntries(Object.entries(st).filter(([k]) => !TRANSIENT.has(k)));
+
 function Root() {
   const mq = React.useMemo(() => window.matchMedia(MOBILE_QUERY), []);
   const [mobile, setMobile] = React.useState(mq.matches);
   const carry = React.useRef(null);
+  const host = React.useRef(null);
   React.useEffect(() => {
-    const on = (e) => setMobile(e.matches);
+    // Take the edits from the layout on screen before switching: the new layout is built before the old one
+    // unmounts, so what onUnmount hands over arrives one switch too late (the first switch lost every edit).
+    const on = (e) => {
+      const st = host.current && host.current.logic && host.current.logic.state;
+      if (st) carry.current = keep(st);
+      setMobile(e.matches);
+    };
     mq.addEventListener('change', on);
     return () => mq.removeEventListener('change', on);
   }, [mq]);
   return React.createElement(Host, {
+    ref: host,
     key: mobile ? 'mobile' : 'desktop',
     Logic: mobile ? MobileLogic : DesktopLogic,
     ast: mobile ? mobileAst : studioAst,
     components,
     userProps,
     initialState: carry.current,
-    onUnmount: (st) => { carry.current = Object.fromEntries(Object.entries(st).filter(([k]) => !TRANSIENT.has(k))); },
+    onUnmount: (st) => { carry.current = keep(st); },
   });
 }
 
