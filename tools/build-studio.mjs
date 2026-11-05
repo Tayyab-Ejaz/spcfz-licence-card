@@ -163,6 +163,28 @@ const IMG_ASK = `<input type="file" accept="image/*" ref="{{ imgAskFileRef }}" s
 <sc-if value="{{ hasToast }}"`;
 for (const layout of ['studio', 'mobile']) DATA_PATCHES[layout].push(['<sc-if value="{{ hasToast }}"', IMG_ASK]);
 
+// Adjust your photo (SPC, 5 November 2026). The design's − and + beside the zoom slider were icons only, and the
+// desktop preview was a small circle whatever the card's photo shape. Now − and + zoom (both layouts), and on
+// desktop a crop view replaces the circle: the whole photo, dimmed, with a frame in the shape of the card's photo
+// space showing exactly what the card shows. Drag the frame to choose; zoom keeps its centre
+// (client/card-data.js crop*).
+const zoomBtn = (dir, size) => `<button type="button" aria-label="Zoom ${dir === 'minus' ? 'out' : 'in'}" sc-camel-on-click="{{ ${dir === 'minus' ? 'zoomOut' : 'zoomIn'} }}" style="display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;width:${size}px;height:${size}px;padding:0;border:0;border-radius:50%;background:#fff;box-shadow:inset 0 0 0 1px var(--spc-border);color:var(--spc-ink);cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation"><i class="ph-bold ph-${dir}" style="font-size:13px"></i></button>`;
+const ZOOM_ICON = (dir) => `<i class="ph-bold ph-${dir}" style="font-size:13px;color:var(--spc-muted)"></i>`;
+DATA_PATCHES.studio.push(
+  [/<div style="display:flex;align-items:center;gap:18px;padding:14px;border-radius:18px;background:var\(--spc-soft\)">\s*<div sc-camel-on-pointer-down="\{\{ adjDown \}\}"[\s\S]*?<\/div>\s*<\/div>/,
+    `<div style="display:flex;flex-direction:column;gap:12px;padding:14px;border-radius:18px;background:var(--spc-soft)">
+                    <div ref="{{ cropRef }}" sc-camel-on-pointer-down="{{ cropDown }}" sc-camel-on-pointer-move="{{ cropMove }}" sc-camel-on-pointer-up="{{ cropUp }}" sc-camel-on-pointer-cancel="{{ cropUp }}" style="position:relative;width:100%;height:{{ crop.stageH }}px;border-radius:12px;overflow:hidden;background:#071329;cursor:grab;touch-action:none;user-select:none">
+                      <div style="position:absolute;left:{{ crop.imgL }}px;top:{{ crop.imgT }}px;width:{{ crop.imgW }}px;height:{{ crop.imgH }}px;background-image:{{ photoBg }};background-size:100% 100%;opacity:.35;pointer-events:none"></div>
+                      <div style="position:absolute;left:{{ crop.winL }}px;top:{{ crop.winT }}px;width:{{ crop.winW }}px;height:{{ crop.winH }}px;border-radius:{{ crop.radius }};overflow:hidden;box-shadow:0 0 0 2px #fff,0 6px 18px rgba(7,19,41,.45);pointer-events:none">
+                        <div style="position:absolute;left:{{ crop.innerL }}px;top:{{ crop.innerT }}px;width:{{ crop.imgW }}px;height:{{ crop.imgH }}px;background-image:{{ photoBg }};background-size:100% 100%"></div>
+                      </div>
+                    </div>`],
+  ['Drag the photo to move it. Use the slider to zoom.', 'Drag the frame to choose what shows on your card. Use − and + to zoom.'],
+  [ZOOM_ICON('minus'), zoomBtn('minus', 32)],
+  [ZOOM_ICON('plus'), zoomBtn('plus', 32)],
+);
+DATA_PATCHES.mobile.push([ZOOM_ICON('minus'), zoomBtn('minus', 40)], [ZOOM_ICON('plus'), zoomBtn('plus', 40)]);
+
 // Logic patches: the same exactly-once rule, applied to design/source/<layout>/logic.js before it is wrapped.
 // Share (SPC, 19 October 2026): hand the share menu the image only. With text alongside, LinkedIn's app keeps the
 // text and drops the image. The caption is still copied to the clipboard first; after sharing, a toast says to paste

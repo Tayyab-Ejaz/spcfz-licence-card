@@ -265,6 +265,112 @@ export function withCardData(Base) {
       };
     }
 
+    /**
+     * Choosing what the card shows of the photo (tools/build-studio.mjs, "Adjust your photo"). The card draws the
+     * photo as the design does: background-size cover, background-position X% Y%, then scale(zoom) around that same
+     * point. In photo pixels that is a window of slotW / (zoom × cover) wide whose left edge is
+     * X × (coverW − slotW / zoom) / cover, so the window and (X, Y, zoom) convert both ways without changing how the
+     * card is drawn. The slot's size and shape are read from the card itself, so every style and format is right.
+     */
+    measureCrop() {
+      const s = this.state;
+      if (s.imgMode !== 'photo' || !s.photo) return;
+      if (this.dimsFor !== s.photo) {
+        this.dimsFor = s.photo;
+        const im = new Image();
+        const src = s.photo;
+        im.onload = () => { if (this.state.photo === src) this.setState({ photoDims: { w: im.naturalWidth, h: im.naturalHeight } }); };
+        im.src = src;
+      }
+      const el = this.cardRef.current && this.cardRef.current.querySelector('[role="img"][aria-label="Photo"]');
+      if (!el || !el.clientWidth || !el.clientHeight) return;
+      let box = el.parentElement;
+      while (box && box !== this.cardRef.current && getComputedStyle(box).borderTopLeftRadius === '0px') box = box.parentElement;
+      const r = box && box !== this.cardRef.current ? getComputedStyle(box).borderTopLeftRadius : '0px';
+      const slot = { W: el.clientWidth, H: el.clientHeight, r };
+      const stageW = this.cropRef && this.cropRef.current ? this.cropRef.current.clientWidth : 0;
+      const old = s.cropSlot;
+      if (!old || old.W !== slot.W || old.H !== slot.H || old.r !== slot.r) this.setState({ cropSlot: slot });
+      if (stageW && stageW !== s.cropStageW) this.setState({ cropStageW: stageW });
+    }
+
+    /** The photo window for the current position and zoom, in photo pixels; null until the sizes are known. */
+    cropWindow(st = this.state) {
+      const slot = st.cropSlot, dims = st.photoDims;
+      if (!slot || !dims || !dims.w || !dims.h) return null;
+      const z = st.photoZoom || 1;
+      const [px, py] = String(st.photoPos || '50% 35%').split(' ').map(parseFloat);
+      const X = (isNaN(px) ? 50 : px) / 100, Y = (isNaN(py) ? 35 : py) / 100;
+      const s0 = Math.max(slot.W / dims.w, slot.H / dims.h);
+      const spareX = dims.w * s0 - slot.W / z, spareY = dims.h * s0 - slot.H / z;
+      return { s0, z, w: slot.W / (z * s0), h: slot.H / (z * s0), x: (X * spareX) / s0, y: (Y * spareY) / s0, slot, dims };
+    }
+
+    /** Moves the window so its centre is (cx, cy) in photo pixels, at zoom z, kept inside the photo. */
+    setCrop(z, cx, cy) {
+      const st = this.state;
+      const slot = st.cropSlot, dims = st.photoDims;
+      z = Math.round(Math.max(1, Math.min(2.5, z)) * 100) / 100;
+      if (!slot || !dims) { this.setState({ photoZoom: z }); return; }
+      const s0 = Math.max(slot.W / dims.w, slot.H / dims.h);
+      const w = slot.W / (z * s0), h = slot.H / (z * s0);
+      const x = Math.max(0, Math.min(dims.w - w, cx - w / 2)), y = Math.max(0, Math.min(dims.h - h, cy - h / 2));
+      const spareX = dims.w * s0 - slot.W / z, spareY = dims.h * s0 - slot.H / z;
+      const X = spareX > 0.5 ? (x * s0) / spareX : 0.5, Y = spareY > 0.5 ? (y * s0) / spareY : 0.35;
+      this.setState({ photoZoom: z, photoPos: `${(X * 100).toFixed(1)}% ${(Y * 100).toFixed(1)}%` });
+    }
+
+    /** Zoom around the window's centre (the design zoomed around a point that moved as it zoomed). */
+    zoomTo(z) {
+      const c = this.cropWindow();
+      if (!c) { this.setState({ photoZoom: Math.round(Math.max(1, Math.min(2.5, z)) * 100) / 100 }); return; }
+      this.setCrop(z, c.x + c.w / 2, c.y + c.h / 2);
+    }
+
+    cropVals() {
+      const s = this.state;
+      if (!this.cropRef) this.cropRef = { current: null };
+      const stageW = s.cropStageW || 300;
+      const stageH = 200;
+      const c = this.cropWindow();
+      const zero = { stageH, imgL: 0, imgT: 0, imgW: 0, imgH: 0, winL: 0, winT: 0, winW: 0, winH: 0, innerL: 0, innerT: 0, radius: '0' };
+      let crop = zero;
+      if (c) {
+        const pad = 12;
+        const fs = Math.min((stageW - 2 * pad) / c.dims.w, (stageH - 2 * pad) / c.dims.h);
+        const imgW = c.dims.w * fs, imgH = c.dims.h * fs;
+        const imgL = (stageW - imgW) / 2, imgT = (stageH - imgH) / 2;
+        const winW = c.w * fs, winH = c.h * fs;
+        const r = c.slot.r;
+        const radius = /%$/.test(r) ? r : `${((parseFloat(r) || 0) * winW) / c.slot.W}px`;
+        this.cropFs = fs;
+        crop = {
+          stageH, imgL, imgT, imgW, imgH,
+          winL: imgL + c.x * fs, winT: imgT + c.y * fs, winW, winH,
+          innerL: -c.x * fs, innerT: -c.y * fs, radius,
+        };
+      }
+      return {
+        crop,
+        cropRef: this.cropRef,
+        cropDown: (e) => {
+          const w = this.cropWindow();
+          if (!w || !this.cropFs) return;
+          try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) { /* older browsers */ }
+          this.cropDrag = { px: e.clientX, py: e.clientY, cx: w.x + w.w / 2, cy: w.y + w.h / 2, z: w.z, fs: this.cropFs };
+        },
+        cropMove: (e) => {
+          const d = this.cropDrag;
+          if (!d) return;
+          this.setCrop(d.z, d.cx + (e.clientX - d.px) / d.fs, d.cy + (e.clientY - d.py) / d.fs);
+        },
+        cropUp: () => { this.cropDrag = null; },
+        zoomIn: () => this.zoomTo((s.photoZoom || 1) + 0.25),
+        zoomOut: () => this.zoomTo((s.photoZoom || 1) - 0.25),
+        onZoom: (e) => this.zoomTo(parseFloat(e.target.value) || 1),
+      };
+    }
+
     /** While the question is open: focus its first button, Escape closes it. Once a photo or logo is in, say so. */
     watchImgAsk(prev) {
       const open = !!this.state.imgAsk;
@@ -419,6 +525,7 @@ export function withCardData(Base) {
       this.animateFrame(args[1]);
       this.watchOutsideTaps();
       this.watchImgAsk(args[1]);
+      this.measureCrop();
       this.scrollToPart();
     }
 
@@ -541,6 +648,7 @@ export function withCardData(Base) {
         goPortal: () => window.location.assign(PORTAL_URL),
         ...this.detailsNav(v),
         ...this.imgAskVals(),
+        ...this.cropVals(),
         download: track(this.remember(v.download), 'download'),
         shareCard: track(this.remember(v.shareCard), 'share', 'native'),
         copyCaption: track(v.copyCaption, 'caption'),
