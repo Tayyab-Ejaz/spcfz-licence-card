@@ -503,7 +503,9 @@ export function withCardData(Base) {
 
     /**
      * Side by side, the panel's step content scrolls inside the panel (FIT_LOGIC). While more of it is below, it
-     * fades out at the foot (data-more), so it is clear there is more to see.
+     * fades out at the foot (data-more) and the "More below" chip shows; scrolled down, its top edge fades too
+     * (data-top). The chip is in the tab order only while it shows; if it goes while it has focus, focus moves
+     * on to the step's main button.
      */
     watchPanel() {
       const pane = document.querySelector('[data-step-panel]');
@@ -513,6 +515,15 @@ export function withCardData(Base) {
         if (more !== pane.hasAttribute('data-more')) pane.toggleAttribute('data-more', more);
         const top = pane.scrollTop > 2;
         if (top !== pane.hasAttribute('data-top')) pane.toggleAttribute('data-top', top);
+        const cue = document.querySelector('[data-more-cue]');
+        if (cue && (cue.tabIndex === 0) !== more) {
+          cue.tabIndex = more ? 0 : -1;
+          cue.setAttribute('aria-hidden', more ? 'false' : 'true');
+          if (!more && document.activeElement === cue) {
+            const main = [...cue.parentElement.querySelectorAll('button')].filter((b) => b !== cue).pop();
+            if (main) main.focus({ preventScroll: true });
+          }
+        }
       };
       if (pane !== this.watchedPane) {
         this.watchedPane = pane;

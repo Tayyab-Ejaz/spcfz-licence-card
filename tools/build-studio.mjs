@@ -297,9 +297,10 @@ const STUDIO_MOTION_CSS = [
   // Scrolled down, its top edge softens the same way rather than cutting through a row.
   '[data-step-panel][data-top]{-webkit-mask-image:linear-gradient(transparent,#000 24px);mask-image:linear-gradient(transparent,#000 24px)}',
   '[data-step-panel][data-top][data-more]{-webkit-mask-image:linear-gradient(transparent,#000 24px,#000 calc(100% - 40px),transparent);mask-image:linear-gradient(transparent,#000 24px,#000 calc(100% - 40px),transparent)}',
-  '[data-more-cue]{opacity:0;transform:translate(-50%,6px);pointer-events:none;transition:opacity .2s ease,transform .25s cubic-bezier(.2,.8,.2,1)}',
+  '[data-more-cue]{opacity:0;transform:translate(-50%,-30%);pointer-events:none;transition:opacity .2s ease,transform .25s cubic-bezier(.2,.8,.2,1)}',
+  '[data-more-cue]:focus-visible{outline:2px solid var(--spc-blue);outline-offset:2px}',
   '[data-more-cue]:hover{box-shadow:0 0 0 1px var(--blue-200,#c7d6ff),0 8px 20px rgba(0,77,255,.16)!important}',
-  '[data-step-panel][data-more]~[data-nav] [data-more-cue]{opacity:1;transform:translate(-50%,0);pointer-events:auto}',
+  '[data-step-panel][data-more]~[data-nav] [data-more-cue]{opacity:1;transform:translate(-50%,-50%);pointer-events:auto}',
   '@keyframes spc-nudge{0%,100%{transform:none}50%{transform:translateY(2px)}}',
   '[data-step-panel][data-more]~[data-nav] [data-more-cue] i{animation:spc-nudge .7s ease-in-out .2s 2}',
   '@media (prefers-reduced-motion:reduce){[data-more-cue],[data-more-cue] i{transition:none!important;animation:none!important}}',
@@ -315,11 +316,12 @@ DATA_PATCHES.studio.push(
   ['font-size:clamp(30px,4vw,46px)', 'font-size:{{ titleSize }}'],
   ['box-shadow:{{ asideShadow }};padding:{{ asidePad }};display:flex;flex-direction:column;gap:26px">',
     'box-shadow:{{ asideShadow }};padding:{{ asidePad }};display:flex;flex-direction:column;gap:{{ asideGap }}px">'],
-  // While more of the panel's step content is below, a "More below" chip sits just above Back / Next and scrolls
-  // the panel on a click (client/card-data.js watchPanel sets data-more; STUDIO_MOTION_CSS shows the chip).
+  // While more of the panel's step content is below, a "More below" chip sits on the line above Back / Next (in the
+  // gap between the content and the buttons, so it covers neither) and scrolls the panel on a click. client/card-
+  // data.js watchPanel sets data-more and makes the chip reachable by keyboard only while it shows.
   ['<div style="margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:{{ navPad }};border-top:1px solid var(--spc-border);position:{{ navPos }};left:0;right:0;bottom:0;z-index:{{ navZ }};background:#fff;box-shadow:{{ navShadow }}">',
     '<div data-nav="" style="margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:{{ navPad }};border-top:1px solid var(--spc-border);position:{{ navPos }};left:0;right:0;bottom:0;z-index:{{ navZ }};background:#fff;box-shadow:{{ navShadow }}">'
-    + '<span data-more-cue="" aria-hidden="true" sc-camel-on-click="{{ moreBelow }}" style="position:absolute;left:50%;bottom:calc(100% + 10px);display:inline-flex;align-items:center;gap:6px;padding:7px 14px 7px 11px;border-radius:999px;background:#fff;box-shadow:0 0 0 1px var(--spc-border),0 6px 16px rgba(7,19,41,.12);font-size:12.5px;font-weight:700;color:var(--spc-ink);cursor:pointer;white-space:nowrap;z-index:2"><i class="ph-bold ph-caret-down" style="font-size:13px;color:var(--spc-blue)"></i>More below</span>'],
+    + '<button type="button" data-more-cue="" tabindex="-1" aria-hidden="true" aria-label="Scroll down for more options" sc-camel-on-click="{{ moreBelow }}" style="position:absolute;left:50%;top:0;display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 12px 0 9px;border:0;border-radius:999px;background:#fff;box-shadow:0 0 0 1px var(--spc-border),0 4px 12px rgba(7,19,41,.10);font:inherit;font-size:12px;font-weight:700;color:var(--spc-ink);cursor:pointer;white-space:nowrap;z-index:2"><i class="ph-bold ph-caret-down" style="font-size:12px;color:var(--spc-blue)"></i>More below</button>'],
   ['<section ref="{{ stageRef }}" data-screen-label="Preview" style="flex:1 1 560px;min-width:0;position:{{ stagePos }};',
     '<section ref="{{ stageRef }}" data-screen-label="Preview" style="flex:1 1 560px;min-width:0;height:{{ deskH }};position:{{ stagePos }};'],
   ['<aside data-screen-label="Customize" style="flex:1 1 360px;max-width:{{ asideMax }};align-self:stretch;',
