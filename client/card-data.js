@@ -509,7 +509,7 @@ export function withCardData(Base) {
 
     /**
      * Side by side, the panel's step content scrolls inside the panel (FIT_LOGIC). While more of it is below, it
-     * fades out at the foot (data-more) and the "More below" chip shows; scrolled down, its top edge fades too
+     * fades out at the foot (data-more) and the "See more" chip shows; scrolled down, its top edge fades too
      * (data-top). The chip is in the tab order only while it shows; if it goes while it has focus, focus moves
      * on to the step's main button.
      */
@@ -842,7 +842,7 @@ export function withCardData(Base) {
         // Desktop Share step intro (tools/build-studio.mjs DESKTOP_SHARE_ACTIONS); the phone layout does not use it.
         shareIntro: 'Share your card with your network on LinkedIn, WhatsApp, or any other social media app of your choice.',
         captionPlaceholder: (s.tone || 'warm') === 'custom' ? 'Write your own caption' : '',
-        // Desktop "More below" chip (watchPanel shows it): scroll the panel's step content on by most of a screen.
+        // Desktop "See more" chip (watchPanel shows it): scroll the panel's step content on by most of a screen.
         moreBelow: () => {
           const pane = document.querySelector('[data-step-panel]');
           if (pane) pane.scrollBy({ top: Math.max(120, pane.clientHeight * 0.6), behavior: reducedMotion() ? 'auto' : 'smooth' });

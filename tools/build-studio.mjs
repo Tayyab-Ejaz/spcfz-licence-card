@@ -295,7 +295,7 @@ const STUDIO_MOTION_CSS = [
   '.spc-pop{display:inline-block;animation:spc-pop .4s cubic-bezier(.2,.8,.2,1) both}',
   '@media (prefers-reduced-motion:reduce){:where([data-screen-label="Customize"]) *{transition:none!important}.spc-pop{animation:none}}',
   // The panel's step content, while more of it is below (client/card-data.js watchPanel): it fades out at the foot,
-  // and the "More below" chip shows (its caret nudges down twice as it appears).
+  // and the "See more" chip shows (its caret nudges down twice as it appears).
   '[data-step-panel][data-more]{-webkit-mask-image:linear-gradient(#000 calc(100% - 40px),transparent);mask-image:linear-gradient(#000 calc(100% - 40px),transparent)}',
   // Scrolled down, its top edge softens the same way rather than cutting through a row.
   '[data-step-panel][data-top]{-webkit-mask-image:linear-gradient(transparent,#000 24px);mask-image:linear-gradient(transparent,#000 24px)}',
@@ -319,12 +319,12 @@ DATA_PATCHES.studio.push(
   ['font-size:clamp(30px,4vw,46px)', 'font-size:{{ titleSize }}'],
   ['box-shadow:{{ asideShadow }};padding:{{ asidePad }};display:flex;flex-direction:column;gap:26px">',
     'box-shadow:{{ asideShadow }};padding:{{ asidePad }};display:flex;flex-direction:column;gap:{{ asideGap }}px">'],
-  // While more of the panel's step content is below, a "More below" chip sits on the line above Back / Next (in the
+  // While more of the panel's step content is below, a "See more" chip sits on the line above Back / Next (in the
   // gap between the content and the buttons, so it covers neither) and scrolls the panel on a click. client/card-
   // data.js watchPanel sets data-more and makes the chip reachable by keyboard only while it shows.
   ['<div style="margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:{{ navPad }};border-top:1px solid var(--spc-border);position:{{ navPos }};left:0;right:0;bottom:0;z-index:{{ navZ }};background:#fff;box-shadow:{{ navShadow }}">',
     '<div data-nav="" style="margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:{{ navPad }};border-top:1px solid var(--spc-border);position:{{ navPos }};left:0;right:0;bottom:0;z-index:{{ navZ }};background:#fff;box-shadow:{{ navShadow }}">'
-    + '<button type="button" data-more-cue="" tabindex="-1" aria-hidden="true" aria-label="Scroll down for more options" sc-camel-on-click="{{ moreBelow }}" style="position:absolute;left:50%;top:0;display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 12px 0 9px;border:0;border-radius:999px;background:#fff;box-shadow:0 0 0 1px var(--spc-border),0 4px 12px rgba(7,19,41,.10);font:inherit;font-size:12px;font-weight:700;color:var(--spc-ink);cursor:pointer;white-space:nowrap;z-index:2"><i class="ph-bold ph-caret-down" style="font-size:12px;color:var(--spc-blue)"></i>More below</button>'],
+    + '<button type="button" data-more-cue="" tabindex="-1" aria-hidden="true" aria-label="Scroll down for more options" sc-camel-on-click="{{ moreBelow }}" style="position:absolute;left:50%;top:0;display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 12px 0 9px;border:0;border-radius:999px;background:#fff;box-shadow:0 0 0 1px var(--spc-border),0 4px 12px rgba(7,19,41,.10);font:inherit;font-size:12px;font-weight:700;color:var(--spc-ink);cursor:pointer;white-space:nowrap;z-index:2"><i class="ph-bold ph-caret-down" style="font-size:12px;color:var(--spc-blue)"></i>See more</button>'],
   ['<section ref="{{ stageRef }}" data-screen-label="Preview" style="flex:1 1 560px;min-width:0;position:{{ stagePos }};',
     '<section ref="{{ stageRef }}" data-screen-label="Preview" style="flex:1 1 560px;min-width:0;height:{{ deskH }};position:{{ stagePos }};'],
   ['<aside data-screen-label="Customize" style="flex:1 1 360px;max-width:{{ asideMax }};align-self:stretch;',
