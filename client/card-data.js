@@ -151,6 +151,8 @@ export function withCardData(Base) {
     componentWillUnmount() {
       if (this.outsideTap) document.removeEventListener('pointerdown', this.outsideTap, true);
       this.outsideTap = null;
+      if (this.askKeys) document.removeEventListener('keydown', this.askKeys);
+      this.askKeys = null;
       if (super.componentWillUnmount) super.componentWillUnmount();
     }
 
@@ -177,7 +179,7 @@ export function withCardData(Base) {
 
     /**
      * Post to LinkedIn (27 October 2026; src/linkedin/routes.ts): the card as it looks now, as a JPEG, goes to the
-     * service with the caption; the service keeps it for a few minutes and sends the customer to LinkedIn to sign
+     * service with the caption; the service keeps it for up to an hour and sends the customer to LinkedIn to sign
      * in, then to a page where they review the post and press Post now. Nothing is posted from here.
      */
     async postLinkedIn() {
@@ -210,6 +212,75 @@ export function withCardData(Base) {
     fileName(type) {
       const name = super.fileName();
       return type === 'image/jpeg' ? name.replace(/\.png$/, '.jpg') : name;
+    }
+
+    /**
+     * Post, Share or Download while the card still waits for a photo or logo (SPC, 5 November 2026): instead of
+     * the design's trip back to the photo step, ask on the spot (tools/build-studio.mjs IMG_ASK): add it now, or
+     * continue with initials, which carries on with the button that was pressed. Text that needs fixing still
+     * goes back to its part first, as the design does.
+     */
+    preflight() {
+      const st = this.state;
+      const e = this.cardIssues();
+      const waiting = (st.imgMode === 'photo' && !st.photo) || (st.imgMode === 'logo' && !st.logo);
+      if (!waiting || e.headline || e.name || e.role || e.activity || !this.pressed) return super.preflight();
+      this.setState({ imgAsk: st.imgMode });
+      return false;
+    }
+
+    /** Keeps the button the customer pressed, so "Continue with initials" can carry on with it. */
+    remember(fn) {
+      return typeof fn === 'function' ? (...args) => { this.pressed = () => fn(...args); return fn(...args); } : fn;
+    }
+
+    imgAskVals() {
+      const s = this.state;
+      const logo = s.imgAsk === 'logo';
+      if (!this.askFileRef) this.askFileRef = { current: null };
+      return {
+        hasImgAsk: !!s.imgAsk,
+        imgAskAlign: (s.vw || 1280) < 760 ? 'flex-end' : 'center',
+        imgAskTitle: logo ? 'Add your logo?' : 'Add your photo?',
+        imgAskBody: logo
+          ? 'Your card has a space for your logo. Add it now, or continue with your initials.'
+          : 'Your card has a space for your photo. Add one now, or continue with your initials.',
+        imgAskIcon: logo ? 'ph-buildings' : 'ph-user',
+        imgAskAddLabel: logo ? 'Add logo' : 'Add photo',
+        imgAskFileRef: this.askFileRef,
+        imgAskAdd: () => {
+          this.target = logo ? 'logo' : 'photo';
+          this.setState({ imgAsk: null });
+          if (this.askFileRef.current) this.askFileRef.current.click();
+        },
+        imgAskFile: (ev) => {
+          this.askedFile = true;
+          this.onFile(ev);
+        },
+        imgAskInitials: () => {
+          const go = this.pressed;
+          this.setState({ imgAsk: null, imgMode: 'initials' }, () => { if (go) go(); });
+        },
+        imgAskClose: (ev) => { if (!ev || ev.target === ev.currentTarget) this.setState({ imgAsk: null }); },
+      };
+    }
+
+    /** While the question is open: focus its first button, Escape closes it. Once a photo or logo is in, say so. */
+    watchImgAsk(prev) {
+      const open = !!this.state.imgAsk;
+      if (open && !this.askKeys) {
+        this.askKeys = (ev) => { if (ev.key === 'Escape') this.setState({ imgAsk: null }); };
+        document.addEventListener('keydown', this.askKeys);
+        const first = document.querySelector('[data-img-ask] button');
+        if (first) first.focus();
+      } else if (!open && this.askKeys) {
+        document.removeEventListener('keydown', this.askKeys);
+        this.askKeys = null;
+      }
+      if (this.askedFile && prev && (this.state.photo !== prev.photo || this.state.logo !== prev.logo)) {
+        this.askedFile = false;
+        this.showToast(`${this.state.imgMode === 'logo' ? 'Logo' : 'Photo'} added. Check how it looks, then post or share your card.`);
+      }
     }
 
     /**
@@ -344,6 +415,7 @@ export function withCardData(Base) {
       this.fitChrome();
       this.animateFrame(args[1]);
       this.watchOutsideTaps();
+      this.watchImgAsk(args[1]);
       this.scrollToPart();
     }
 
@@ -454,7 +526,7 @@ export function withCardData(Base) {
             : 'Download your card and post it anywhere, with the caption below.',
         // Post to LinkedIn (tools/build-studio.mjs): first and primary when on; Share and Download step down.
         liOn,
-        postLinkedIn: () => this.postLinkedIn(),
+        postLinkedIn: this.remember(() => this.postLinkedIn()),
         liLabel: s.liBusy ? 'Opening LinkedIn…' : 'Post to LinkedIn',
         liShort: s.liBusy ? 'Opening…' : 'LinkedIn',
         shareVariant: liOn ? 'secondary' : 'primary',
@@ -465,8 +537,9 @@ export function withCardData(Base) {
         portalUrl: PORTAL_URL,
         goPortal: () => window.location.assign(PORTAL_URL),
         ...this.detailsNav(v),
-        download: track(v.download, 'download'),
-        shareCard: track(v.shareCard, 'share', 'native'),
+        ...this.imgAskVals(),
+        download: track(this.remember(v.download), 'download'),
+        shareCard: track(this.remember(v.shareCard), 'share', 'native'),
         copyCaption: track(v.copyCaption, 'caption'),
         openLinkedIn: track(v.openLinkedIn, 'share', 'linkedin'),
       };

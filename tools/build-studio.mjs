@@ -140,6 +140,29 @@ DATA_PATCHES.mobile.push(
     'variant="{{ mDlVariant }}" size="lg" sc-camel-on-click="{{ download }}" style="display:block;min-width:0" hint-size="100%,54px">'],
 );
 
+// Both layouts (SPC, 5 November 2026): Post, Share or Download pressed while the card still waits for a photo (or
+// logo) asks right there: add one now, or continue with initials (client/card-data.js preflight). The design sent
+// the customer back to the photo step with a toast instead. A centred card on desktop, a bottom card on phones.
+// The prompt has its own file input, always on the page: the design's sits inside desktop step 1 only.
+const IMG_ASK = `<input type="file" accept="image/*" ref="{{ imgAskFileRef }}" sc-camel-on-change="{{ imgAskFile }}" style="display:none">
+<sc-if value="{{ hasImgAsk }}" hint-placeholder-val="{{ false }}">
+  <div sc-camel-on-click="{{ imgAskClose }}" style="position:fixed;inset:0;z-index:60;display:flex;align-items:{{ imgAskAlign }};justify-content:center;padding:16px 16px calc(16px + env(safe-area-inset-bottom));background:rgba(7,19,41,.45)">
+    <div data-img-ask="" role="dialog" aria-modal="true" aria-labelledby="img-ask-title" style="width:100%;max-width:400px;box-sizing:border-box;display:flex;flex-direction:column;gap:16px;padding:22px 20px 20px;border-radius:20px;background:#fff;box-shadow:0 18px 48px rgba(7,19,41,.22)">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <p id="img-ask-title" style="margin:0;font-size:18px;font-weight:700;line-height:1.3;color:var(--spc-ink)">{{ imgAskTitle }}</p>
+        <p style="margin:0;font-size:14.5px;line-height:1.5;color:var(--spc-muted);text-wrap:pretty">{{ imgAskBody }}</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="primary" size="lg" sc-camel-on-click="{{ imgAskAdd }}" style="display:block" hint-size="100%,54px"><i class="ph-bold {{ imgAskIcon }}" style="font-size:18px"></i><span>{{ imgAskAddLabel }}</span></x-import>
+        <x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="secondary" size="lg" sc-camel-on-click="{{ imgAskInitials }}" style="display:block" hint-size="100%,54px"><span>Continue with initials</span></x-import>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ hasToast }}"`;
+for (const layout of ['studio', 'mobile']) DATA_PATCHES[layout].push(['<sc-if value="{{ hasToast }}"', IMG_ASK]);
+
 // Logic patches: the same exactly-once rule, applied to design/source/<layout>/logic.js before it is wrapped.
 // Share (SPC, 19 October 2026): hand the share menu the image only. With text alongside, LinkedIn's app keeps the
 // text and drops the image. The caption is still copied to the clipboard first; after sharing, a toast says to paste
