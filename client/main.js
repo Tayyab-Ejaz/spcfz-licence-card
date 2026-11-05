@@ -11,12 +11,15 @@ import makeMobileLogic from './generated/mobile.logic.js';
 import { Host, StreamableLogic } from './dc.js';
 import { components } from './ds.js';
 import { withCardData } from './card-data.js';
+import { installGuard } from './guard.js';
 
 // The design's logic reads these globals.
 window.React = React;
 window.htmlToImage = htmlToImage;
 
 const card = JSON.parse(document.getElementById('card-data').textContent);
+// No right-click menu or developer-tools keys on the card page (./guard.js); the stress and compare tools set debug.
+if (card.debug !== true) installGuard();
 const DesktopLogic = withCardData(makeStudioLogic(StreamableLogic, React));
 const MobileLogic = withCardData(makeMobileLogic(StreamableLogic, React));
 const userProps = { prefillFromLicense: false, samplePhoto: false, startTemplate: 'dayone', card };
