@@ -33,6 +33,14 @@ export function beacon(token, body) {
   } catch (e) { /* metrics are best effort */ }
 }
 
+/** A name as text to compare: no spacing, one kind of dash, no invisible direction or joining marks. */
+export function normName(t) {
+  return String(t || '').normalize('NFC')
+    .replace(/[​-‏‪-‮⁠-⁩؜﻿]/g, '')
+    .replace(/[‐-―−]/g, '-')
+    .replace(/\s+/g, '');
+}
+
 /** The design's name field holds 40 characters; a longer legal name becomes first and last name. */
 export function cardName(full) {
   const n = String(full || '').trim().replace(/\s+/g, ' ');
@@ -221,12 +229,32 @@ export function withCardData(Base) {
      * goes back to its part first, as the design does.
      */
     preflight() {
+      if (!this.cardIntact()) {
+        this.showToast('This card was changed outside the studio. Reload the page to continue.');
+        return false;
+      }
       const st = this.state;
       const e = this.cardIssues();
       const waiting = (st.imgMode === 'photo' && !st.photo) || (st.imgMode === 'logo' && !st.logo);
       if (!waiting || e.headline || e.name || e.role || e.activity || !this.pressed) return super.preflight();
       this.setState({ imgAsk: st.imgMode });
       return false;
+    }
+
+    /**
+     * Before every Download, Share and Post to LinkedIn (SPC, 5 November 2026): the card must still show the company
+     * as licensed, checked against the server's data, not the page's state. Catches the company edited through the
+     * browser's tools (Inspect, or a React tools extension). With "Just you" the card shows no company, so there is
+     * nothing to check. Spacing, dash variants and invisible direction marks are ignored, since the card wraps and
+     * marks names its own way. A deterrent, like client/guard.js: it cannot stop a downloaded card being edited.
+     */
+    cardIntact() {
+      const node = this.cardRef.current;
+      const s = this.state;
+      if (!node || s.focus === 'personal') return true;
+      const c = this.props.card;
+      const want = s.lang === 'ar' ? c.company_ar || c.company_en : c.company_en;
+      return !want || normName(node.textContent).includes(normName(want));
     }
 
     /** Keeps the button the customer pressed, so "Continue with initials" can carry on with it. */

@@ -1,7 +1,7 @@
 // Pure helpers of the studio's data layer (client/card-data.js).
 import { describe, expect, it } from 'vitest';
 // @ts-expect-error plain JavaScript module without type declarations
-import { calDaySizes, cardName, dates } from '../client/card-data.js';
+import { calDaySizes, cardName, dates, normName } from '../client/card-data.js';
 
 describe('dates', () => {
   it('formats the issue date the way the cards show it, in both languages', () => {
@@ -23,5 +23,14 @@ describe('cardName', () => {
     expect(cardName('  Layla   Haddad ')).toBe('Layla Haddad');
     expect(cardName('Mohammed bin Abdullah bin Rashid Al Example Al Somebody')).toBe('Mohammed Somebody');
     expect(cardName(null)).toBe('');
+  });
+});
+
+describe('normName', () => {
+  it('compares a company as the card shows it: wrapped, with non-breaking dashes and direction marks', () => {
+    expect(normName('Cedar & Quill\nPublishing  FZE')).toBe(normName('Cedar & Quill Publishing FZE'));
+    expect(normName('Al Noor Media FZ\u2011LLC')).toBe(normName('Al Noor Media FZ-LLC'));
+    expect(normName('\u200fالنور للإعلام ش.ذ.م.م \u2011 منطقة حرة')).toBe(normName('النور للإعلام ش.ذ.م.م - منطقة حرة'));
+    expect(normName('Someone Else Trading LLC').includes(normName('Cedar & Quill Publishing FZE'))).toBe(false);
   });
 });
