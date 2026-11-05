@@ -371,6 +371,44 @@ const FIT_LOGIC = [
     "mainPb: mobile ? 120 : side ? 24 : 72, headPad: mobile ? '22px 0 18px' : compactHead ? '14px 0 16px' : '26px 0 22px', titleSize: compactHead ? '30px' : 'clamp(28px,3vw,40px)',"
     + " deskH: side ? `${fitH}px` : 'auto', panelFlex: side ? '1 1 auto' : '0 1 auto', panelScroll: side ? 'auto' : 'visible', panelPad: side ? '3px' : '0', panelMargin: side ? '-3px' : '0', asideGap: side ? 20 : 26,"],
 ];
+// The header (SPC, 5 November 2026: "hover effect should be better"; chosen from three variations): a "Need help?
+// 800 77239" call link beside "Back to Customer Portal" as a blue outlined button that fills on hover, its arrow
+// nudging back. On phones the help link is a round phone button and the button reads "Portal". The number is the
+// email footer's (src/mail/assets.ts PHONE).
+const HELP_LINK = '<a data-help-link="" href="tel:80077239" aria-label="Need help? Call SPC Free Zone on 800 77239"><i class="ph ph-phone" style="font-size:16px"></i><span>Need help? 800 77239</span></a>';
+for (const layout of ['studio', 'mobile']) {
+  DATA_PATCHES[layout].push([
+    layout === 'studio'
+      ? '<a href="{{ portalUrl }}" style="display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--spc-ink)"><i class="ph ph-arrow-left" style="font-size:16px"></i>{{ backLabel }}</a>'
+      : '<a href="{{ portalUrl }}" style="display:inline-flex;align-items:center;gap:6px;min-height:44px;font-size:14px;font-weight:600;color:var(--spc-ink)"><i class="ph ph-arrow-left" style="font-size:16px"></i>Portal</a>',
+    `<span data-nav-actions="" style="display:inline-flex;align-items:center">${HELP_LINK}`
+      + (layout === 'studio'
+        ? '<a data-portal-link="" href="{{ portalUrl }}" style="display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--spc-ink)"><i class="ph ph-arrow-left" style="font-size:16px"></i><span>{{ backLabel }}</span></a>'
+        : '<a data-portal-link="" href="{{ portalUrl }}" style="display:inline-flex;align-items:center;gap:6px;min-height:44px;font-size:14px;font-weight:600;color:var(--spc-ink)"><i class="ph ph-arrow-left" style="font-size:16px"></i><span>Portal</span></a>')
+      + '</span>',
+  ]);
+}
+const NAV_CSS = [
+  // No underline from the design system's a:hover, an arrow that can move, a clear keyboard ring.
+  '[data-portal-link],[data-help-link]{text-decoration:none!important;-webkit-tap-highlight-color:transparent}',
+  '[data-portal-link] i,[data-help-link] i{transition:transform .22s cubic-bezier(.2,.8,.2,1)}',
+  '[data-portal-link]:focus-visible,[data-help-link]:focus-visible{outline:2px solid var(--spc-blue);outline-offset:3px;border-radius:999px}',
+  '[data-nav-actions]{gap:22px}',
+  '[data-help-link]{display:inline-flex;align-items:center;gap:7px;font-size:14px;font-weight:600;color:var(--spc-muted);transition:color .18s ease}',
+  '[data-help-link]:hover{color:var(--spc-blue)}',
+  '[data-portal-link]{padding:9px 17px 9px 14px!important;border:1.5px solid var(--spc-blue);border-radius:999px;color:var(--spc-blue)!important;transition:background-color .18s ease,color .18s ease,box-shadow .18s ease,transform .12s ease}',
+  '[data-portal-link]:hover{background:var(--spc-blue);color:#fff!important;box-shadow:0 6px 16px -6px rgba(0,77,255,.55)}',
+  '[data-portal-link]:hover i{transform:translateX(-3px)}',
+  '[data-portal-link]:active{transform:scale(.97)}',
+  // Phones: the help link is a round phone button; both keep a 40px touch target.
+  '@media (max-width:759px){[data-nav-actions]{gap:8px}[data-help-link] span{display:none}'
+    + '[data-help-link]{width:40px;height:40px;justify-content:center;border:1px solid var(--spc-border);border-radius:50%;color:var(--spc-ink)}'
+    + '[data-portal-link]{min-height:40px!important;padding-top:0!important;padding-bottom:0!important}}',
+  // The smallest phones (320px): a slightly smaller logo and a tighter button, so the header stays on screen.
+  '@media (max-width:359px){header img{height:28px!important}[data-portal-link]{padding-left:10px!important;padding-right:12px!important}}',
+  '@media (hover:none){[data-portal-link]:hover i,[data-help-link]:hover i{transform:none}}',
+  '@media (prefers-reduced-motion:reduce){[data-portal-link],[data-portal-link] i,[data-help-link]{transition:none!important}}',
+].join('');
 const STAGE_LOGIC = [
   ...FIT_LOGIC,
   ["lineBg: i < s.step ? 'var(--success-500)' : 'var(--spc-border)',",
@@ -581,7 +619,7 @@ for (const layout of LAYOUTS) {
 const a = styles.studio.join('\n'), b = styles.mobile.join('\n');
 if (a !== b) console.warn('note: studio and mobile <helmet> styles differ; using the studio set, which both layouts were checked against');
 const hover = [...pseudoRules].map(([k, cls]) => { const [p, ...rest] = k.split('|'); const css = rest.join('|'); return `.${cls}:${p}{${importantify(css)}}`; }).join('\n');
-const css = cleanCss(a) + '\n' + hover + '\n' + FULL_PAGE_CSS + '\n' + MOBILE_CSS + '\n' + STUDIO_MOTION_CSS + '\n';
+const css = cleanCss(a) + '\n' + hover + '\n' + FULL_PAGE_CSS + '\n' + MOBILE_CSS + '\n' + STUDIO_MOTION_CSS + '\n' + NAV_CSS + '\n';
 for (const m of css.matchAll(/\/static\/studio\/a\/([a-f0-9]{16}\.[a-z0-9]+)/g)) used.add(m[1]);
 const cssName = `studio-${hash(css)}.css`;
 writeFileSync(path.join(OUT, cssName), css);
