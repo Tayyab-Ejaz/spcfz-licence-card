@@ -511,6 +511,8 @@ export function withCardData(Base) {
       const mark = () => {
         const more = pane.scrollTop + pane.clientHeight < pane.scrollHeight - 2;
         if (more !== pane.hasAttribute('data-more')) pane.toggleAttribute('data-more', more);
+        const top = pane.scrollTop > 2;
+        if (top !== pane.hasAttribute('data-top')) pane.toggleAttribute('data-top', top);
       };
       if (pane !== this.watchedPane) {
         this.watchedPane = pane;
@@ -795,6 +797,11 @@ export function withCardData(Base) {
         // Desktop Share step intro (tools/build-studio.mjs DESKTOP_SHARE_ACTIONS); the phone layout does not use it.
         shareIntro: 'Share your card with your network on LinkedIn, WhatsApp, or any other social media app of your choice.',
         captionPlaceholder: (s.tone || 'warm') === 'custom' ? 'Write your own caption' : '',
+        // Desktop "More below" chip (watchPanel shows it): scroll the panel's step content on by most of a screen.
+        moreBelow: () => {
+          const pane = document.querySelector('[data-step-panel]');
+          if (pane) pane.scrollBy({ top: Math.max(120, pane.clientHeight * 0.6), behavior: reducedMotion() ? 'auto' : 'smooth' });
+        },
         // Desktop "Check your details": confirm as they came from the licence, or save what was changed.
         detailsDoneLabel: this.detailsEdited() ? 'Save and continue' : 'Looks right',
         detailsDoneIcon: this.detailsEdited() ? 'ph-arrow-right' : 'ph-check',

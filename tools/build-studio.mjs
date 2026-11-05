@@ -270,7 +270,7 @@ DATA_PATCHES.studio.push(
 // tick pops in when it is done. "Looks right" becomes "Save and continue" once a detail differs from the licence.
 DATA_PATCHES.studio.push(
   ['<sc-if value="{{ isStep0 }}" hint-placeholder-val="{{ true }}">\n        <div style="display:flex;flex-direction:column;gap:22px">',
-    '<sc-if value="{{ isStep0 }}" hint-placeholder-val="{{ true }}">\n        <div data-step-panel="0" style="display:flex;flex-direction:column;gap:22px;flex:{{ panelFlex }};min-height:0;overflow-y:{{ panelScroll }};overscroll-behavior:contain;padding:{{ panelPad }};margin:{{ panelMargin }}">'],
+    '<sc-if value="{{ isStep0 }}" hint-placeholder-val="{{ true }}">\n        <div data-step-panel="0" style="display:flex;flex-direction:column;gap:18px;flex:{{ panelFlex }};min-height:0;overflow-y:{{ panelScroll }};overscroll-behavior:contain;padding:{{ panelPad }};margin:{{ panelMargin }}">'],
   ['<sc-if value="{{ isStep1 }}" hint-placeholder-val="{{ false }}">\n        <div style="display:flex;flex-direction:column;gap:18px">',
     '<sc-if value="{{ isStep1 }}" hint-placeholder-val="{{ false }}">\n        <div data-step-panel="1" style="display:flex;flex-direction:column;gap:18px;flex:{{ panelFlex }};min-height:0;overflow-y:{{ panelScroll }};overscroll-behavior:contain;padding:{{ panelPad }};margin:{{ panelMargin }}">'],
   ['<sc-if value="{{ isStep2 }}" hint-placeholder-val="{{ false }}">\n        <div style="display:flex;flex-direction:column;gap:22px">',
@@ -291,8 +291,18 @@ const STUDIO_MOTION_CSS = [
   '@keyframes spc-pop{0%{opacity:0;transform:scale(.4)}60%{opacity:1;transform:scale(1.12)}100%{opacity:1;transform:none}}',
   '.spc-pop{display:inline-block;animation:spc-pop .4s cubic-bezier(.2,.8,.2,1) both}',
   '@media (prefers-reduced-motion:reduce){:where([data-screen-label="Customize"]) *{transition:none!important}.spc-pop{animation:none}}',
-  // The panel's step content, while more of it is below (client/card-data.js watchPanel): it fades out at the foot.
+  // The panel's step content, while more of it is below (client/card-data.js watchPanel): it fades out at the foot,
+  // and the "More below" chip shows (its caret nudges down twice as it appears).
   '[data-step-panel][data-more]{-webkit-mask-image:linear-gradient(#000 calc(100% - 40px),transparent);mask-image:linear-gradient(#000 calc(100% - 40px),transparent)}',
+  // Scrolled down, its top edge softens the same way rather than cutting through a row.
+  '[data-step-panel][data-top]{-webkit-mask-image:linear-gradient(transparent,#000 24px);mask-image:linear-gradient(transparent,#000 24px)}',
+  '[data-step-panel][data-top][data-more]{-webkit-mask-image:linear-gradient(transparent,#000 24px,#000 calc(100% - 40px),transparent);mask-image:linear-gradient(transparent,#000 24px,#000 calc(100% - 40px),transparent)}',
+  '[data-more-cue]{opacity:0;transform:translate(-50%,6px);pointer-events:none;transition:opacity .2s ease,transform .25s cubic-bezier(.2,.8,.2,1)}',
+  '[data-more-cue]:hover{box-shadow:0 0 0 1px var(--blue-200,#c7d6ff),0 8px 20px rgba(0,77,255,.16)!important}',
+  '[data-step-panel][data-more]~[data-nav] [data-more-cue]{opacity:1;transform:translate(-50%,0);pointer-events:auto}',
+  '@keyframes spc-nudge{0%,100%{transform:none}50%{transform:translateY(2px)}}',
+  '[data-step-panel][data-more]~[data-nav] [data-more-cue] i{animation:spc-nudge .7s ease-in-out .2s 2}',
+  '@media (prefers-reduced-motion:reduce){[data-more-cue],[data-more-cue] i{transition:none!important;animation:none!important}}',
 ].join('');
 // Desktop workspace (SPC, 5 November 2026). Side by side (1080px and wider), the card and the panel are one height,
 // the window's height below where the workspace starts (client/card-data.js measures that as deskTop) less a 24px
@@ -303,6 +313,13 @@ const STUDIO_MOTION_CSS = [
 // format note says it). Narrower windows keep the stacked layout.
 DATA_PATCHES.studio.push(
   ['font-size:clamp(30px,4vw,46px)', 'font-size:{{ titleSize }}'],
+  ['box-shadow:{{ asideShadow }};padding:{{ asidePad }};display:flex;flex-direction:column;gap:26px">',
+    'box-shadow:{{ asideShadow }};padding:{{ asidePad }};display:flex;flex-direction:column;gap:{{ asideGap }}px">'],
+  // While more of the panel's step content is below, a "More below" chip sits just above Back / Next and scrolls
+  // the panel on a click (client/card-data.js watchPanel sets data-more; STUDIO_MOTION_CSS shows the chip).
+  ['<div style="margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:{{ navPad }};border-top:1px solid var(--spc-border);position:{{ navPos }};left:0;right:0;bottom:0;z-index:{{ navZ }};background:#fff;box-shadow:{{ navShadow }}">',
+    '<div data-nav="" style="margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:{{ navPad }};border-top:1px solid var(--spc-border);position:{{ navPos }};left:0;right:0;bottom:0;z-index:{{ navZ }};background:#fff;box-shadow:{{ navShadow }}">'
+    + '<span data-more-cue="" aria-hidden="true" sc-camel-on-click="{{ moreBelow }}" style="position:absolute;left:50%;bottom:calc(100% + 10px);display:inline-flex;align-items:center;gap:6px;padding:7px 14px 7px 11px;border-radius:999px;background:#fff;box-shadow:0 0 0 1px var(--spc-border),0 6px 16px rgba(7,19,41,.12);font-size:12.5px;font-weight:700;color:var(--spc-ink);cursor:pointer;white-space:nowrap;z-index:2"><i class="ph-bold ph-caret-down" style="font-size:13px;color:var(--spc-blue)"></i>More below</span>'],
   ['<section ref="{{ stageRef }}" data-screen-label="Preview" style="flex:1 1 560px;min-width:0;position:{{ stagePos }};',
     '<section ref="{{ stageRef }}" data-screen-label="Preview" style="flex:1 1 560px;min-width:0;height:{{ deskH }};position:{{ stagePos }};'],
   ['<aside data-screen-label="Customize" style="flex:1 1 360px;max-width:{{ asideMax }};align-self:stretch;',
@@ -323,9 +340,10 @@ const FIT_LOGIC = [
   ["mStick ? Math.min((s.vh || 800) * .34, 300) : 9999;", "mStick ? Math.min((s.vh || 800) * .34, 300) : Math.max(320, (s.vh || 900) - (s.deskTop || 200) - 24 - stagePadPx - (feed ? 236 : 0));"],
   ["stagePad: mobile ? '14px 16px 16px' : 'clamp(16px,3.5vw,40px)'", "stagePad: mobile ? '14px 16px 16px' : 'clamp(16px,2.4vw,32px)'"],
   ["sizeRowDisp: mobile ? 'none' : 'flex'", "sizeRowDisp: 'none'"],
+  ["navPos: mobile ? 'fixed' : 'static'", "navPos: mobile ? 'fixed' : 'relative'"],
   ["mainPb: mobile ? 120 : 72, headPad: mobile ? '22px 0 18px' : '40px 0 32px',",
     "mainPb: mobile ? 120 : side ? 24 : 72, headPad: mobile ? '22px 0 18px' : compactHead ? '14px 0 16px' : '26px 0 22px', titleSize: compactHead ? '30px' : 'clamp(28px,3vw,40px)',"
-    + " deskH: side ? `${fitH}px` : 'auto', panelFlex: side ? '1 1 auto' : '0 1 auto', panelScroll: side ? 'auto' : 'visible', panelPad: side ? '3px' : '0', panelMargin: side ? '-3px' : '0',"],
+    + " deskH: side ? `${fitH}px` : 'auto', panelFlex: side ? '1 1 auto' : '0 1 auto', panelScroll: side ? 'auto' : 'visible', panelPad: side ? '3px' : '0', panelMargin: side ? '-3px' : '0', asideGap: side ? 20 : 26,"],
 ];
 const STAGE_LOGIC = [
   ...FIT_LOGIC,
