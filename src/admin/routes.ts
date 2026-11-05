@@ -3,7 +3,7 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import type {
-  AppEnv, CanonicalFields, CardRow, CardSource, CardStatus, Env, EventOutcome, EventRoute, EventRow, SettingKey,
+  AppEnv, CanonicalFields, CardRow, CardSource, CardStatus, Env, EventOutcome, EventRoute, EventRow, LinkedinStep, SettingKey,
 } from '../types.js';
 import { LANGS } from '../types.js';
 import type { CardFilter } from '../db/cards.js';
@@ -353,6 +353,11 @@ function emailsTable(rows: EmailRow[], emptyText = 'No welcome email yet.'): Raw
 
 // ------------------------------------------------------------------ the router
 
+/** Post to LinkedIn, step by step (types.ts LinkedinStep), as the dashboard and the card page show it. */
+const LI_STEPS: [LinkedinStep, string][] = [
+  ['li_start', 'Started'], ['li_signin', 'Signed in'], ['li_cancel', 'Cancelled at LinkedIn'], ['li_post', 'Posted'], ['li_fail', 'Failed'],
+];
+
 export function createAdminRoutes(verify: AdminVerifier, auth: AuthHandlers = createAuthHandlers()): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
 
@@ -403,6 +408,11 @@ ${erpOff ? h`<div class="flash">The ERP is not connected yet. <a href="/admin/te
 <div class="stat"><b>${totals.share}</b><span>Share clicks</span></div>
 <div class="stat"><b>${totals.caption}</b><span>Caption copies</span></div>
 </div>
+<h2>Post to LinkedIn, last 7 days</h2>
+<div class="cards">
+${LI_STEPS.map(([k, label]) => h`<div class="stat"><b>${totals[k]}</b><span>${label}</span></div>`)}
+</div>
+<p class="muted">Each press of Post to LinkedIn, step by step. Signed in but not posted: stopped on the review page. Test cards are not counted.</p>
 <h2>Recent rejected events</h2>
 ${eventsTable(rejected.rows)}`;
     return respond(c, { title: 'Dashboard', active: 'dashboard', flash: flashOf(c), body });
@@ -518,6 +528,7 @@ ${card.customer_email
 <a class="btn small secondary" href="/admin/cards/${card.id}/email-preview?lang=ar" target="_blank" rel="noopener">Preview (Arabic)</a>
 </div>
 <h2>LinkedIn posts</h2>
+<p class="muted">${card.is_test ? 'Test cards are not counted.' : LI_STEPS.map(([k, label]) => `${label} ${metrics.filter((m) => m.kind === k).reduce((n, m) => n + Number(m.count), 0)}`).join(' · ')}</p>
 ${table(['When', 'Status', 'Post'], posts.map((p) => [h`${fmtDateTime(p.created_at)}`, h`${p.status}`, p.post_urn ? h`<a href="https://www.linkedin.com/feed/update/${p.post_urn}/" target="_blank" rel="noopener">View on LinkedIn</a>` : h`<span class="muted">${p.error ?? ''}</span>`]), 'No posts through "Post to LinkedIn" yet.')}
 ${alerts.length ? h`<p class="muted">Alerts to SPC about these posts:</p>${emailsTable(alerts)}` : EMPTY}
 <h2>Metrics (all time)</h2>

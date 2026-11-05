@@ -5,8 +5,9 @@ import { Hono } from 'hono';
 import type { AppEnv, CanonicalFields, CardRow, CardStatus } from '../src/types.js';
 import { createAdminRoutes } from '../src/admin/routes.js';
 import {
-  findCardByLicence, getCardById, getEvent, getSetting, insertCard, insertEvent, listEvents, setCardStatus,
+  bumpMetric, findCardByLicence, getCardById, getEvent, getSetting, insertCard, insertEvent, listEvents, setCardStatus,
 } from '../src/db/cards.js';
+import { todayInDubai } from '../src/util/time.js';
 import { randomToken } from '../src/util/crypto.js';
 import { flushBackground } from '../src/util/background.js';
 import { emailsForCard } from '../src/db/emails.js';
@@ -128,6 +129,19 @@ describe('session gate', () => {
     const body = await (await get('/admin')).res.text();
     expect(body).toContain('licence_number: required');
     expect(body).not.toContain('Recent failed cards');
+  });
+
+  it('shows Post to LinkedIn step by step, on the dashboard and the card page', async () => {
+    const card = await seedCard();
+    const today = todayInDubai();
+    for (const kind of ['li_start', 'li_start', 'li_signin', 'li_post'] as const) await bumpMetric(env.DB, { card_id: card.id, kind, lang: 'en', network: 'linkedin' }, today);
+    const dash = await (await get('/admin')).res.text();
+    expect(dash).toContain('Post to LinkedIn, last 7 days');
+    expect(dash).toMatch(/<b>2<\/b><span>Started<\/span>[\s\S]*<b>1<\/b><span>Signed in<\/span>[\s\S]*<b>0<\/b><span>Cancelled at LinkedIn<\/span>[\s\S]*<b>1<\/b><span>Posted<\/span>[\s\S]*<b>0<\/b><span>Failed<\/span>/);
+    const page = await (await get(`/admin/cards/${card.id}`)).res.text();
+    expect(page).toContain('Started 2 · Signed in 1 · Cancelled at LinkedIn 0 · Posted 1 · Failed 0');
+    const test = await seedCard({ is_test: true });
+    expect(await (await get(`/admin/cards/${test.id}`)).res.text()).toContain('Test cards are not counted.');
   });
 });
 

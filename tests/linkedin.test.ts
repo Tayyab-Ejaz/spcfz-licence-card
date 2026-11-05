@@ -286,6 +286,26 @@ describe('sign-in, review and post', () => {
     expect((await app.request('/linkedin/callback?code=c0de&state=forged', {}, env)).status).toBe(410);
   });
 
+  it('counts each step once per press, for the admin', async () => {
+    const card = await seedCard();
+    // A press that fails once, then posts on the second try.
+    const { cookie, key } = await signedIn(card);
+    fake.failPost.push(new LinkedinError('upstream', 'post: 503', 503));
+    expect((await publish(cookie, { k: key, caption: 'x' })).status).toBe(502);
+    fake.failPost.push(new LinkedinError('upstream', 'post: 503', 503));
+    expect((await publish(cookie, { k: key, caption: 'x' })).status).toBe(502);
+    expect((await publish(cookie, { k: key, caption: 'x' })).status).toBe(303);
+    // A second press, cancelled at LinkedIn.
+    const start = await studioPost(card.token);
+    const { go } = (await start.json()) as { go: string };
+    await app.request(`/linkedin/callback?error=user_cancelled_login&state=${stateOf(go)}`, { headers: { Cookie: cookieOf(start) } }, env);
+    await flushBackground();
+    const m = await metricsForCard(env.DB, card.id);
+    const count = (k: string): number => m.filter((x) => x.kind === k).reduce((n, x) => n + Number(x.count), 0);
+    expect([count('li_start'), count('li_signin'), count('li_cancel'), count('li_post'), count('li_fail')]).toEqual([2, 1, 1, 1, 1]);
+    expect(m.filter((x) => x.kind.startsWith('li_')).every((x) => x.network === 'linkedin' && x.lang === 'en')).toBe(true);
+  });
+
   it('cancelling at LinkedIn posts nothing and offers the way back', async () => {
     const card = await seedCard();
     const start = await studioPost(card.token);

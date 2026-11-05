@@ -194,7 +194,7 @@ events (
 metrics (
   day TEXT NOT NULL,              -- YYYY-MM-DD live, YYYY-MM once compacted
   card_id TEXT NOT NULL,
-  kind TEXT NOT NULL,             -- view | download | share | caption
+  kind TEXT NOT NULL,             -- view | download | share | caption; li_start | li_signin | li_cancel | li_post | li_fail (Post to LinkedIn steps, counted by the service)
   lang TEXT NOT NULL DEFAULT '', size TEXT NOT NULL DEFAULT '', network TEXT NOT NULL DEFAULT '',
   count INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (day, card_id, kind, lang, size, network)

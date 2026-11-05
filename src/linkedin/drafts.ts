@@ -2,7 +2,7 @@
 // access token. In memory only, for an hour from the last step; never written to disk or the database. A
 // restart forgets every draft, and the customer starts again from their card (one more tap). One process serves
 // the site, so memory is the whole store.
-import type { Lang } from '../types.js';
+import type { Lang, LinkedinStep } from '../types.js';
 import { randomSecret } from '../util/crypto.js';
 import type { Member } from './client.js';
 
@@ -33,6 +33,8 @@ export interface Draft {
   /** Set while the post is being made, so a second press waits for the first instead of posting twice. */
   posting: Promise<void> | null;
   posted: { urn: string } | null;
+  /** Steps already counted for this press (admin's LinkedIn figures), so a retry is not counted twice. */
+  counted: LinkedinStep[];
 }
 
 export type NewDraft = Pick<Draft, 'cardId' | 'token' | 'lang' | 'isTest' | 'company' | 'source' | 'image' | 'imageType' | 'caption'>;
@@ -54,6 +56,7 @@ export class DraftStore {
       accessToken: null,
       posting: null,
       posted: null,
+      counted: [],
     };
     this.drafts.set(draft.id, draft);
     this.trim();

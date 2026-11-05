@@ -8,7 +8,7 @@ import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { getCookie, setCookie } from 'hono/cookie';
 import sharp from 'sharp';
-import type { AppEnv, CardRow, Env, Lang } from '../types.js';
+import type { AppEnv, CardRow, Env, Lang, LinkedinStep } from '../types.js';
 import { isLang } from '../types.js';
 import { bumpMetric, getCardByToken } from '../db/cards.js';
 import { insertLinkedinPost } from '../db/linkedin.js';
@@ -107,6 +107,17 @@ function logFailure(step: string, d: Pick<Draft, 'token'> | null, err: unknown):
   });
 }
 
+/**
+ * Counts one step of a press of Post to LinkedIn, once per draft (types.ts LinkedinStep), so the admin can see
+ * where customers stop. Test cards are not counted, like every other counter.
+ */
+function countStep(c: Context<AppEnv>, d: Draft, step: LinkedinStep): void {
+  if (d.isTest || d.counted.includes(step)) return;
+  d.counted.push(step);
+  background(bumpMetric(c.env.DB, { card_id: d.cardId, kind: step, lang: d.lang, network: 'linkedin' }, todayInDubai())
+    .catch((err: unknown) => logFailure('metric', d, err)), 'metric');
+}
+
 export function createLinkedinRoutes(o: LinkedinRouteOptions = {}): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
   const drafts = o.drafts ?? new DraftStore();
@@ -182,6 +193,7 @@ export function createLinkedinRoutes(o: LinkedinRouteOptions = {}): Hono<AppEnv>
       imageType: type,
       caption: cleanCaption(form['caption']) || defaultCaption(card, lang),
     });
+    countStep(c, d, 'li_start');
     setDraftCookie(c, d);
     return c.json({ go: client.authorizeUrl({ redirectUri: redirectUri(c), state: d.state ?? '' }) });
   });
@@ -220,6 +232,7 @@ export function createLinkedinRoutes(o: LinkedinRouteOptions = {}): Hono<AppEnv>
       imageType: 'image/jpeg',
       caption: defaultCaption(card, lang),
     });
+    countStep(c, d, 'li_start');
     setDraftCookie(c, d);
     c.header('Cache-Control', 'no-store');
     c.header('Referrer-Policy', 'no-referrer');
@@ -242,6 +255,7 @@ export function createLinkedinRoutes(o: LinkedinRouteOptions = {}): Hono<AppEnv>
     const s = LI_STRINGS[d.lang];
     if (c.req.query('error') || !c.req.query('code')) {
       // user_cancelled_login, user_cancelled_authorize, or LinkedIn refused the app.
+      countStep(c, d, 'li_cancel');
       const nonce = makeNonce();
       pageHeaders(c, nonce);
       return c.html(renderProblemPage({ lang: d.lang, nonce, title: s.cancelledTitle, message: s.cancelledBody, primary: { href: cardUrl(d), label: s.backToCard }, secondary: { href: '/linkedin/again', label: s.tryAgain } }), 200);
@@ -252,11 +266,13 @@ export function createLinkedinRoutes(o: LinkedinRouteOptions = {}): Hono<AppEnv>
       d.accessToken = t.accessToken;
     } catch (err) {
       logFailure('sign-in', d, err);
+      countStep(c, d, 'li_fail');
       const nonce = makeNonce();
       pageHeaders(c, nonce);
       const kind = err instanceof LinkedinError ? err.kind : 'upstream';
       return c.html(renderProblemPage({ lang: d.lang, nonce, title: s.problemTitle, message: errorText(d.lang, kind === 'auth' ? 'upstream' : kind), primary: { href: '/linkedin/again', label: s.tryAgain }, secondary: { href: cardUrl(d), label: s.backToCard } }), 502);
     }
+    countStep(c, d, 'li_signin');
     c.header('Referrer-Policy', 'no-referrer');
     return c.redirect('/linkedin/review', 303);
   });
@@ -351,6 +367,7 @@ export function createLinkedinRoutes(o: LinkedinRouteOptions = {}): Hono<AppEnv>
         .catch((err: unknown) => { logFailure('record', d, err); return null; });
       // SPC hears about it while the post is new (src/mail/post-alert.ts).
       if (postId) await queuePostAlert(c.env, { cardId: d.cardId, postId }).catch((err: unknown) => logFailure('post alert', d, err));
+      countStep(c, d, 'li_post');
       if (!d.isTest) {
         background(bumpMetric(c.env.DB, { card_id: d.cardId, kind: 'share', lang: d.lang, network: 'linkedin' }, todayInDubai())
           .catch((err: unknown) => logFailure('metric', d, err)), 'metric');
@@ -359,6 +376,7 @@ export function createLinkedinRoutes(o: LinkedinRouteOptions = {}): Hono<AppEnv>
     }
 
     logFailure('publish', d, failure);
+    countStep(c, d, 'li_fail');
     const kind: LinkedinErrorKind = failure instanceof LinkedinError ? failure.kind : 'upstream';
     await insertLinkedinPost(c.env.DB, {
       card_id: d.cardId,

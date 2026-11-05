@@ -196,7 +196,12 @@ export interface EventRow {
   actor: string | null;
 }
 
-export type MetricKind = 'view' | 'download' | 'share' | 'caption';
+/**
+ * "Post to LinkedIn" step by step, counted by the service (src/linkedin/routes.ts), never by the page's beacon:
+ * pressed, signed in, cancelled at LinkedIn, posted, failed. Once each per press; test cards are not counted.
+ */
+export type LinkedinStep = 'li_start' | 'li_signin' | 'li_cancel' | 'li_post' | 'li_fail';
+export type MetricKind = 'view' | 'download' | 'share' | 'caption' | LinkedinStep;
 
 /** What `upsertFromCanonical` reports back. */
 export type UpsertOutcome = 'created' | 'unchanged' | 'updated';
