@@ -171,40 +171,71 @@ address, so sign in with your @spcfz.ae account. Test cards are kept; delete the
 Until `MAIL_TRANSPORT=smtp` is set, welcome emails are queued in the admin but
 not sent (Settings shows "off").
 
-1. The sender (decided 27 Oct 2026): SPC's Microsoft 365, from
-   `more@spcfz.ae`, the account the marketing dashboard's lead monitor
-   already uses. Replies land in its inbox and Office 365 keeps a copy of
-   each email in its Sent Items. To send from a different address, IT gives
-   `more@spcfz.ae` Send As on it first, or Office 365 refuses every email
-   with `SendAsDenied`. spcfz.ae already publishes Microsoft 365's DKIM, so
-   DNS needs no change.
-   From December 2026 Microsoft turns password SMTP off by default
-   (Message Center MC786329): if sends start failing with an authentication
-   error, IT re-enables it for `more@spcfz.ae`, or we move to OAuth.
-2. Add these lines to `/opt/spcfz-licence-card/licence-card.env`:
+1. The sender (since 2 November 2026): Amazon SES in Mumbai (`ap-south-1`,
+   account 275472740409, production access), from `more@spcfz.ae`. Replies
+   land in that mailbox's inbox, but SES keeps no copy in its Sent Items:
+   set `MAIL_BCC` if SPC wants one. AWS suspended SES in Mumbai in 2023 over
+   bounces and reinstated it on 4 November 2026 after a clean-up; it expects
+   only email people asked for, bounces and complaints removed (the feed
+   below does that) and keys rotated. Send nothing else through these
+   credentials.
+2. DNS, done, in Cloudflare (DNS only, not proxied):
+   - the `spcfz.ae` domain identity with Easy DKIM: three
+     `…._domainkey.spcfz.ae` CNAMEs pointing to `…dkim.amazonses.com`;
+   - custom MAIL FROM `bounce.spcfz.ae`: MX
+     `10 feedback-smtp.ap-south-1.amazonses.com` and TXT
+     `v=spf1 include:amazonses.com ~all`.
+
+   spcfz.ae's DMARC is `p=reject`; SES email passes it through DKIM. The
+   MAIL FROM is set on the domain and on the `more@spcfz.ae` address
+   identity, because an address identity's own setting wins over its
+   domain's (until 5 November the address had none, and bounces came back
+   through amazonses.com). Check it in CloudShell:
+
+   ```
+   aws sesv2 get-email-identity --region ap-south-1 --email-identity more@spcfz.ae --query "MailFromAttributes"
+   ```
+
+   It shows `bounce.spcfz.ae` and `SUCCESS`.
+3. SMTP credentials: the IAM user `ses-smtp-user.20261102-104617` (in a
+   group with `AmazonSesSendingAccess`), for this service only; another
+   system that needs to send gets its own IAM user. Use **IAM SMTP
+   credentials**, not the console's default "Mail Manager SMTP" (an ingress
+   endpoint with its own charges). The SMTP password the console generated
+   for this user worked only in us-east-1, so the Mumbai password is derived
+   from a regular access key of the user with AWS's documented algorithm
+   ("Obtaining Amazon SES SMTP credentials by converting existing AWS
+   credentials"), on the server so it is never shown. The server keeps only
+   the derived password, never the secret key.
+4. Add these lines to `/opt/spcfz-licence-card/licence-card.env`:
 
    ```
    MAIL_TRANSPORT=smtp
-   MAIL_SMTP_URL=smtp://more%40spcfz.ae:<app password>@smtp.office365.com:587
+   MAIL_SMTP_URL=smtps://<access key id>:<SMTP password>@email-smtp.ap-south-1.amazonaws.com:465
    MAIL_FROM=SPC Free Zone <more@spcfz.ae>
    ```
 
-   Office 365 takes port 587 with STARTTLS, so the URL starts `smtp://`,
-   not `smtps://` (other providers often use `smtps://...:465`). The app
-   password is the one in the dashboard's `quiet_monitor/config.php`: copy it
-   on the server so it is never shown, or type it yourself with
+   Port 465 is TLS from the start, so the URL starts `smtps://`. SMTP
+   passwords can contain `/`, `+` and `=`: percent-encode them (`%2F`,
+   `%2B`, `%3D`), as any `@` or `:` in the user or password (`@` is `%40`).
+   Type secrets yourself with
    `ssh -t root@13.206.34.102 nano /opt/spcfz-licence-card/licence-card.env`.
-   If that password is ever changed, change it in both files. Characters
-   such as `@`, `:` or `/` in the user or password must be percent-encoded
-   (`@` is `%40`). `MAIL_REPLY_TO` sends replies somewhere other than the
-   sender (optional). `MAIL_BCC` keeps a copy of every email (optional).
-   `MAIL_TEST_ALLOWLIST` lists who test cards may email (default
-   `spcfz.ae`). Office 365 allows 30 emails a minute per mailbox; the
-   service sends 10 at a time and retries anything it throttles.
-3. Apply the env-file change (see Secrets).
-4. Check: in the admin, open a TEST card, set its customer email to your own
+   `MAIL_REPLY_TO` sends replies somewhere other than the sender (optional).
+   `MAIL_BCC` keeps a copy of every email (optional). `MAIL_TEST_ALLOWLIST`
+   lists who test cards may email (default `spcfz.ae`). The service sends 10
+   at a time and retries anything SES throttles.
+5. Apply the env-file change (see Secrets).
+6. Check: in the admin, open a TEST card, set its customer email to your own
    @spcfz.ae address and press Send again. The card's Welcome email table
-   shows sent, or the provider's error.
+   shows sent, or the provider's error. In the received email's headers,
+   look for `dkim=pass header.i=@spcfz.ae`, `dmarc=pass` and
+   `smtp.mailfrom=bounce.spcfz.ae`. Microsoft 365 marks it "originated from
+   outside" for SPC staff; customers do not see that.
+
+Before 2 November the service sent through SPC's Microsoft 365
+(`smtp://more%40spcfz.ae:<app password>@smtp.office365.com:587`, STARTTLS).
+That works as a fallback only until Microsoft turns password SMTP off by
+default in December 2026 (Message Center MC786329).
 
 The admin's card page has Preview links that show the email in both
 languages without sending anything. If a customer unsubscribed, the card page
