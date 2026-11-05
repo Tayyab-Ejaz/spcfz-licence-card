@@ -636,6 +636,7 @@ export function withCardData(Base) {
       super.componentDidMount();
       this.fitStub();
       this.fitChrome();
+      this.fitDesk();
       if (document.fonts && document.fonts.status !== 'loaded') document.fonts.ready.then(() => { this.forceUpdate(); this.fitStub(); });
     }
 
@@ -643,6 +644,7 @@ export function withCardData(Base) {
       super.componentDidUpdate(...args);
       this.fitStub();
       this.fitChrome();
+      this.fitDesk();
       this.animateFrame(args[1]);
       this.animateStage(args[1]);
       this.animateStep(args[1]);
@@ -670,6 +672,19 @@ export function withCardData(Base) {
      * screen. Measured rather than assumed: a long company name wraps the headline onto more lines. The
      * value does not depend on the card's own size, so setting it settles after one render.
      */
+    /**
+     * Desktop: where the workspace (the row holding the card and the panel) starts on the page, so the card preview
+     * fits the window below it (tools/build-studio.mjs FIT_LOGIC). Measured on the row, not on the card, which is
+     * sticky and reports where it is stuck once the page scrolls.
+     */
+    fitDesk() {
+      const st = this.stageRef && this.stageRef.current;
+      const row = st && st.parentElement;
+      if (!row || (this.state.vw || window.innerWidth) < 1000) return;
+      const top = Math.round(row.getBoundingClientRect().top + window.scrollY);
+      if (Math.abs(top - (this.state.deskTop || 0)) > 1) this.setState({ deskTop: top });
+    }
+
     fitChrome() {
       if (this.state.sheet || this.flipping) return;   // mid-glide the frame is transformed; measure once it lands
       const tools = document.querySelector('.m-chips');

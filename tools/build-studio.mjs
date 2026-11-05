@@ -206,7 +206,8 @@ const SHARE_PATCHES = [
 // starts empty) and their note. The captions themselves are in src/linkedin/captions.ts.
 DATA_PATCHES.studio.push(
   ['Choose a style</h2>', 'Choose a template</h2>'],
-  ['Every style uses the same details, so you can switch at any point.', 'Switch between styles at any point.'],
+  // No line under the Style heading (SPC, 5 November 2026), not even the writer's "Switch between styles at any point."
+  ['<p style="font-size:14.5px;line-height:1.5;color:var(--spc-muted);text-wrap:pretty">Every style uses the same details, so you can switch at any point.</p>', ''],
   ['">Daylight</span>', '">Standard</span>'],
   ['Your details come from your license. The company name is locked; other changes only affect the card.',
     'These have been auto-filled from your license. All details (except company name) can be modified for the card.'],
@@ -260,7 +261,7 @@ const MOBILE_CONTENT_LOGIC = [
 // phone layout already does this: its card area is a fixed height while a sheet is open.
 DATA_PATCHES.studio.push(
   ['      <div style="position:relative;z-index:1;width:{{ dispW }}px;max-width:100%;background:#fff;',
-    '      <div style="position:relative;z-index:1;align-self:stretch;min-height:{{ frameBoxH }}px;display:flex;align-items:center;justify-content:center"><div style="position:relative;z-index:1;width:{{ dispW }}px;max-width:100%;background:#fff;'],
+    '      <div style="position:{{ frameBoxPos }};top:16px;z-index:1;align-self:stretch;min-height:{{ frameBoxH }}px;display:flex;align-items:center;justify-content:center"><div style="position:relative;z-index:1;width:{{ dispW }}px;max-width:100%;background:#fff;'],
   ['      </div>\n      <sc-if value="{{ feed }}" hint-placeholder-val="{{ false }}"><span style="position:relative;z-index:1;font-size:12.5px',
     '      </div></div>\n      <sc-if value="{{ feed }}" hint-placeholder-val="{{ false }}"><span style="position:relative;z-index:1;font-size:12.5px'],
 );
@@ -291,7 +292,27 @@ const STUDIO_MOTION_CSS = [
   '.spc-pop{display:inline-block;animation:spc-pop .4s cubic-bezier(.2,.8,.2,1) both}',
   '@media (prefers-reduced-motion:reduce){:where([data-screen-label="Customize"]) *{transition:none!important}.spc-pop{animation:none}}',
 ].join('');
+// Desktop fits the window (SPC, 5 November 2026). The card was sized as if the page title were not there, so on
+// laptop screens its bottom and the Next button sat below the fold. Now the stage is the window's height below
+// where the workspace starts (client/card-data.js measures that as deskTop), less a 24px margin; the title is a
+// little tighter; and the "1080 × 1350 px" line above the card is gone (the format note says it). Back / Next stay
+// at the end of the panel: SPC did not want them pinned to the window.
+DATA_PATCHES.studio.push(
+  ['font-size:clamp(30px,4vw,46px)', 'font-size:clamp(28px,3vw,40px)'],
+  ['<section ref="{{ stageRef }}" data-screen-label="Preview" style="flex:1 1 560px;min-width:0;position:{{ stagePos }};',
+    '<section ref="{{ stageRef }}" data-screen-label="Preview" style="flex:1 1 560px;min-width:0;align-self:{{ stageAlign }};position:{{ stagePos }};'],
+  // clip, not hidden: it trims the decorative shapes the same way without stopping the card from sticking.
+  ['margin:{{ stageMargin }};overflow:hidden;background:var(--blue-100)', 'margin:{{ stageMargin }};overflow:clip;background:var(--blue-100)'],
+);
+const FIT_LOGIC = [
+  ["const budget = side ? (s.vh || 900) - 32 - 2 * Math.min(40, Math.max(16, (s.vw || 1280) * .035)) - 60 - (feed ? 200 : 0) : ",
+    "const budget = side ? (s.vh || 900) - (s.deskTop || 200) - 24 - 2 * Math.min(32, Math.max(16, (s.vw || 1280) * .024)) - (feed ? 200 : 0) : "],
+  ["stagePad: mobile ? '14px 16px 16px' : 'clamp(16px,3.5vw,40px)'", "stagePad: mobile ? '14px 16px 16px' : 'clamp(16px,2.4vw,32px)'"],
+  ["sizeRowDisp: mobile ? 'none' : 'flex'", "sizeRowDisp: 'none'"],
+  ["headPad: mobile ? '22px 0 18px' : '40px 0 32px'", "headPad: mobile ? '22px 0 18px' : '26px 0 22px'"],
+];
 const STAGE_LOGIC = [
+  ...FIT_LOGIC,
   ["lineBg: i < s.step ? 'var(--success-500)' : 'var(--spc-border)',",
     "lineBg: i < s.step ? 'var(--success-500)' : 'var(--spc-border)', lineFill: i < s.step ? '100%' : '0%',"],
   // The same sum as dispW above, for a portrait card.
@@ -299,7 +320,11 @@ const STAGE_LOGIC = [
     '    const dispH = Math.round(cardH * scale);\n'
     + '    const tallW = Math.floor(Math.min(Math.max(mStick ? 150 : 260, budget * 1080 / 1350), Math.min(avail, 540)));\n'
     + '    const frameBoxH = feed ? 0 : Math.round(1350 * tallW / 1080);\n'],
-  ['      dispW, dispH, cardH, scale, stagePos:', '      dispW, dispH, cardH, scale, frameBoxH, stagePos:'],
+  // Side by side, the stage runs the full height of the row (as tall as the panel) and the card inside it is what
+  // stays in view while the page scrolls, so the two columns line up top and bottom (SPC, 5 November 2026).
+  ["      dispW, dispH, cardH, scale, stagePos: side || mStick ? 'sticky' : 'relative',",
+    "      dispW, dispH, cardH, scale, frameBoxH, frameBoxPos: side ? 'sticky' : 'relative', stageAlign: side ? 'stretch' : 'auto', stagePos: mStick ? 'sticky' : 'relative',"],
+  ["stageTop: side ? '16px' : '0px',", "stageTop: '0px',"],
 ];
 
 const LOGIC_PATCHES = {
