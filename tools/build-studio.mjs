@@ -33,13 +33,13 @@ const DATA_PATCHES = {
     ['<span>Lumen &amp; Ledger FZ-LLC is licensed.</span>', '<span>{{ hdrTitle }}</span>'],
     ['<strong style="font-weight:600;color:var(--spc-ink)">8 October 2026</strong>', '<strong style="font-weight:600;color:var(--spc-ink)">{{ hdrDate }}</strong>'],
     [/<span>Activity <strong style="font-weight:600;color:var\(--spc-ink\)">Financial advisory for small businesses<\/strong><\/span>(\s*)<span style="width:1px;height:14px;background:var\(--spc-border\)"><\/span>/,
-      `<sc-if value="{{ hasHdrActivity }}"><span>Activity <strong style="font-weight:600;color:var(--spc-ink)">{{ hdrActivity }}</strong></span>$1${SEP}</sc-if>`],
+      `<sc-if value="{{ hasHdrActivity }}"><span>Main Activity <strong style="font-weight:600;color:var(--spc-ink)">{{ hdrActivity }}</strong></span>$1${SEP}</sc-if>`],
     ['<strong style="font-weight:600;color:var(--spc-ink)">4425153.01</strong>', '<strong style="font-weight:600;color:var(--spc-ink)">{{ licenceNo }}</strong>'],
     ['<a href="#" ', '<a href="{{ portalUrl }}" '],
   ],
   mobile: [
     ['<span>Lumen &amp; Ledger FZ-LLC is licensed.</span>', '<span>{{ hdrTitle }}</span>'],
-    ['Issued 8 Oct 2026 · License no. 4425153.01', 'Issued {{ hdrDateShort }} · License no. {{ licenceNo }}'],
+    ['Issued 8 Oct 2026 · License no. 4425153.01', 'Issued on {{ hdrDateShort }} · License no. {{ licenceNo }}'],
     ['<a href="#" ', '<a href="{{ portalUrl }}" '],
   ],
 };
@@ -199,31 +199,58 @@ const SHARE_PATCHES = [
   ['await navigator.share({ files: [file], text: caption });',
     "await navigator.share({ files: [file] }); copied.then((ok) => this.showToast(ok ? 'Caption copied. Paste it into your post.' : 'Copy the caption from Caption, then paste it into your post.'));"],
 ];
-// Refer a Friend (SPC, 3 November 2026): every suggested caption names SPC's referral page, before the hashtags.
-// The Warm lines are also in src/linkedin/caption.ts (the server's default caption); change both together.
-const REFER = {
-  en: 'Know someone planning to start a business in the UAE? Refer them to SPC Free Zone and earn up to AED 1,500:\\nhttps://www.spcfz.ae/refer-a-friend/',
-  enShort: 'Refer a friend and earn up to AED 1,500:\\nhttps://www.spcfz.ae/refer-a-friend/',
-  ar: 'هل تعرف شخصاً يخطط لتأسيس عمله في دولة الإمارات؟ رشّحه للمنطقة الحرة لمدينة الشارقة للنشر واكسب ما يصل إلى 1500 درهم إماراتي:\\nhttps://www.spcfz.ae/ar/refer-a-friend/',
-  arShort: 'رشّح صديقاً واكسب ما يصل إلى 1500 درهم إماراتي:\\nhttps://www.spcfz.ae/ar/refer-a-friend/',
-};
-const REFER_PATCHES = [
-  ["`\\n\\nLicensed with @SPC Free Zone, Sharjah.\\n\\n${tags}`",
-    "`\\n\\nLicensed with @SPC Free Zone, Sharjah.\\n\\n" + REFER.en + "\\n\\n${tags}`"],
-  ["`\\n\\n@SPC Free Zone ${exp ? '#UAE' : '#NewBusiness'}`",
-    "`\\n\\n" + REFER.enShort + "\\n\\n@SPC Free Zone ${exp ? '#UAE' : '#NewBusiness'}`"],
-  ["`\\n\\nبترخيص من @SPC Free Zone في الشارقة.\\n\\n${tags}`",
-    "`\\n\\nبترخيص من @SPC Free Zone في الشارقة.\\n\\n" + REFER.ar + "\\n\\n${tags}`"],
-  ["`\\n\\n@SPC Free Zone ${exp ? '#الإمارات' : '#مشروع_جديد'}`",
-    "`\\n\\n" + REFER.arShort + "\\n\\n@SPC Free Zone ${exp ? '#الإمارات' : '#مشروع_جديد'}`"],
+// SPC's content writer (LinkedIn Milestone.xlsx, 5 November 2026). Wording only, both layouts where both show it:
+// step headings and subcopy, the Standard style (was Daylight), format notes and order (Portrait first), who-is-it-
+// about and image options, the activity field, headlines (four presets and "Write custom headline"; the two UAE
+// expansion presets are gone, so the "UAE launch" kicker no longer appears), caption tabs (Short became Custom, which
+// starts empty) and their note. The captions themselves are in src/linkedin/captions.ts.
+DATA_PATCHES.studio.push(
+  ['Choose a style</h2>', 'Choose a template</h2>'],
+  ['Every style uses the same details, so you can switch at any point.', 'Switch between styles at any point.'],
+  ['">Daylight</span>', '">Standard</span>'],
+  ['Your details come from your license. The company name is locked; other changes only affect the card.',
+    'These have been auto-filled from your license. All details (except company name) can be modified for the card.'],
+  ['">Share it</h2>', '">Share the Joy!</h2>'],
+  ['<span>Issued <strong', '<span>Issued on <strong'],
+  [/( *<span sc-camel-on-click="\{\{ fmtSquare \}\}"[^\n]*\n)( *<span sc-camel-on-click="\{\{ fmtPortrait \}\}"[^\n]*\n)/, '$2$1'],
+);
+for (const layout of ['studio', 'mobile']) {
+  DATA_PATCHES[layout].push(['<textarea dir="{{ dir }}" value="{{ caption }}"', '<textarea dir="{{ dir }}" value="{{ caption }}" placeholder="{{ captionPlaceholder }}"']);
+}
+const CONTENT_LOGIC = [
+  ["const presets = ar ? ['بدأنا العمل رسمياً.', 'اليوم الأول.', 'أصبح الأمر رسمياً.', 'أبوابنا مفتوحة الآن.', 'الآن في الإمارات.', 'افتتحنا فرعنا في الإمارات.'] : ['Officially in business.', 'Day one.', \"It's official.\", 'Now open for business.', 'Now in the UAE.', 'Our UAE branch is open.'];",
+    "const presets = ar ? ['مفتوحون للأعمال!', 'اليوم الأول!', 'أصبح الأمر رسمياً!', 'أبوابنا مفتوحة الآن.', '', ''] : ['Open for business!', 'Day one!', \"It's official!\", 'Now open for business.', '', ''];"],
+  // Slots 4 and 5 (the UAE presets) are no longer offered; 6 stays the custom headline, as the design numbers it.
+  ["const chips = [...presets, 'Write your own'].map((label, i) => {",
+    "const chips = [...presets, 'Write custom headline'].map((label, i) => [label, i]).filter(([, i]) => i < 4 || i === 6).map(([label, i]) => {"],
+  ["['short', 'Short']", "['custom', 'Custom']"],
+  ["'Suggested from your details. Edit it however you like.'", "'Edit these captions to add or remove details.'"],
+  ["LinkedIn\\'s standard wide image size, good for desktop feeds.", 'Best for laptops.'],
+  ['Works in any feed.', 'Good on any device.'],
+  ['Fills more of the screen on phones.', 'Best for phones.'],
+  ["'You and your company', 'Your name and role, plus the company name'", "'You and your company', 'Your name, role, and company name'"],
+  ["'The company', 'Company name and activity, without your name'", "'The company', 'Company name and main activity'"],
+  ["'A headshot, JPG or PNG. Drop it here or click.'", "'JPG or PNG works best'"],
+  ["'Upload your company logo'", "'Upload your logo'"],
+  ["'PNG with a transparent background works best'", "'Use a PNG file with a transparent background'"],
+  ['desc: `"${imgIni}" in SPC blue, nothing to upload`', "desc: 'Add your initials'"],
+  ["actFieldLabel: s.focus === 'personal' ? 'What you do' : 'What your company does'", "actFieldLabel: 'What your business does'"],
 ];
+const MOBILE_CONTENT_LOGIC = [
+  ["names = { daylight: 'Daylight',", "names = { daylight: 'Standard',"],
+  ["styleName: names[s.tpl] || 'Daylight'", "styleName: names[s.tpl] || 'Standard'"],
+  ["fmtOpts: [['square', 'Square', 12, 12], ['portrait', 'Portrait', 10, 13], ['landscape', 'Landscape', 15, 9]]",
+    "fmtOpts: [['portrait', 'Portrait', 10, 13], ['square', 'Square', 12, 12], ['landscape', 'Landscape', 15, 9]]"],
+];
+
 const LOGIC_PATCHES = {
-  studio: [...SHARE_PATCHES, ...REFER_PATCHES],
+  studio: [...SHARE_PATCHES, ...CONTENT_LOGIC],
   mobile: [
     ['const availH = sheet ? Math.max(90, vh - 56 - sheetH - 28) : Math.max(200, vh - 420);',
       'const availH = sheet ? Math.max(90, vh - 56 - sheetH - 28) : Math.max(180, vh - (s.chromeH || 440) - 8);'],
     ...SHARE_PATCHES,
-    ...REFER_PATCHES,
+    ...CONTENT_LOGIC,
+    ...MOBILE_CONTENT_LOGIC,
   ],
 };
 

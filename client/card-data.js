@@ -3,6 +3,7 @@
 // fresh() for the starting state and adjusts the values renderVals() returns.
 
 import { renderCardImage } from './card-render.js';
+import { captionFor } from '../src/linkedin/captions.ts';
 
 export const PORTAL_URL = 'https://portal.spcfz.ae/frontend/login/';
 
@@ -214,6 +215,17 @@ export function withCardData(Base) {
           ? 'This card has expired, so it can\'t be posted.'
           : 'LinkedIn didn\'t open. Try again, or download the card and post it yourself.');
       }
+    }
+
+    /**
+     * The suggested caption (SPC's content writer, 5 November 2026): one source, src/linkedin/captions.ts, shared with
+     * the server's default caption for posts started from the email. Custom starts empty.
+     */
+    autoCaption() {
+      const s = this.state;
+      const ar = s.lang === 'ar';
+      const T = ar ? { ...s, ...s.ar } : s;
+      return captionFor({ lang: ar ? 'ar' : 'en', tone: s.tone || 'warm', focus: s.focus, company: T.company || '', role: T.role || '', activity: T.activity || '' });
     }
 
     /** The shared file is a JPEG: same name, .jpg. Downloads stay PNG. */
@@ -655,13 +667,8 @@ export function withCardData(Base) {
         hdrActivity: c.activity_en || '',
         licenceNo: c.licence_number,
         // Desktop Share step intro (tools/build-studio.mjs DESKTOP_SHARE_ACTIONS); the phone layout does not use it.
-        shareIntro: liOn
-          ? (v.canShare
-            ? 'Post your card straight to LinkedIn, share it to WhatsApp or any app, or download it. Your caption is below.'
-            : 'Post your card straight to LinkedIn, or download it to post anywhere. Your caption is below.')
-          : v.canShare
-            ? 'Share your card to LinkedIn, WhatsApp or any app, or download it to post later. Your caption is below.'
-            : 'Download your card and post it anywhere, with the caption below.',
+        shareIntro: 'Share your card with your network on LinkedIn, WhatsApp, or any other social media app of your choice.',
+        captionPlaceholder: (s.tone || 'warm') === 'custom' ? 'Write your own caption' : '',
         // Post to LinkedIn (tools/build-studio.mjs): first and primary when on; Share and Download step down.
         liOn,
         postLinkedIn: this.remember(() => this.postLinkedIn()),

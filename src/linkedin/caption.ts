@@ -1,33 +1,25 @@
-// Captions for LinkedIn posts: the default one (the studio's "warm" caption, client logic autoCaption), and the
-// conversion of any caption into LinkedIn's "little text" format, where "@SPC Free Zone" becomes a real mention of
-// SPC's company page and hashtags become LinkedIn hashtags.
+// Captions for LinkedIn posts: the default one (the studio's Warm caption, ./captions.ts, shared with the studio),
+// and the conversion of any caption into LinkedIn's "little text" format, where "@SPC Free Zone" becomes a real
+// mention of SPC's company page and hashtags become LinkedIn hashtags.
 import type { CardRow, Lang } from '../types.js';
+import { captionFor } from './captions.js';
 
-const lowerFirst = (s: string): string => (s ? s.charAt(0).toLowerCase() + s.slice(1) : s);
+export { REFER_LINE } from './captions.js';
 
-/** SPC's Refer a Friend page, before the hashtags (3 November 2026). The studio's are in tools/build-studio.mjs, REFER. */
-export const REFER_LINE: Record<Lang, string> = {
-  en: 'Know someone planning to start a business in the UAE? Refer them to SPC Free Zone and earn up to AED 1,500:\nhttps://www.spcfz.ae/refer-a-friend/',
-  ar: 'هل تعرف شخصاً يخطط لتأسيس عمله في دولة الإمارات؟ رشّحه للمنطقة الحرة لمدينة الشارقة للنشر واكسب ما يصل إلى 1500 درهم إماراتي:\nhttps://www.spcfz.ae/ar/refer-a-friend/',
-};
-
-/** The caption the studio writes by default (tone "warm"; "you and your company", or "the company" without a founder). */
+/**
+ * The caption the studio suggests first (Warm; "you and your company", or "the company" when the licence names no
+ * founder), for posts started from the welcome email. The role is the studio's default, Founder.
+ */
 export function defaultCaption(card: Pick<CardRow, 'company_name_en' | 'company_name_ar' | 'activity_category' | 'activity_category_ar' | 'founder_name_en'>, lang: Lang): string {
-  const person = Boolean(card.founder_name_en);
-  if (lang === 'ar') {
-    const co = card.company_name_ar || card.company_name_en;
-    const a = card.activity_category_ar || '';
-    const body = person
-      ? `خبر سعيد: أصبحت ${co} شركة مرخّصة رسمياً.\n\n${a ? `سنركّز على ${a}، وأشكر كل من ساعدنا على الوصول إلى اليوم الأول.` : 'أشكر كل من ساعدنا على الوصول إلى اليوم الأول.'}`
-      : `أصبحنا شركة مرخّصة رسمياً. ${co} تفتح أبوابها للأعمال${a ? `، مع التركيز على ${a}` : ''}.\n\nشكراً لكل من ساعدنا على الوصول إلى اليوم الأول.`;
-    return `${body}\n\nبترخيص من @SPC Free Zone في الشارقة.\n\n${REFER_LINE.ar}\n\n#مشروع_جديد #SPCFreeZone`;
-  }
-  const co = card.company_name_en;
-  const a = lowerFirst(card.activity_category ?? '');
-  const body = person
-    ? `Some personal news: ${co} is now officially licensed.\n\n${a ? `We'll be focusing on ${a}, and I'm grateful to everyone who helped us reach day one.` : "I'm grateful to everyone who helped us reach day one."}`
-    : `We're now officially licensed. ${co} is open for business${a ? `, focusing on ${a}` : ''}.\n\nThank you to everyone who helped us reach day one.`;
-  return `${body}\n\nLicensed with @SPC Free Zone, Sharjah.\n\n${REFER_LINE.en}\n\n#NewBusiness #SPCFreeZone`;
+  const ar = lang === 'ar';
+  return captionFor({
+    lang,
+    tone: 'warm',
+    focus: card.founder_name_en ? 'both' : 'company',
+    company: ar ? card.company_name_ar || card.company_name_en : card.company_name_en,
+    role: ar ? 'المؤسس' : 'Founder',
+    activity: (ar ? card.activity_category_ar : card.activity_category) ?? '',
+  });
 }
 
 /** LinkedIn's reserved characters in little text; each is escaped with a backslash. */

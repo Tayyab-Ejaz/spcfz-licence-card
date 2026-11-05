@@ -156,21 +156,40 @@ the LinkedIn caption. Generated from the source; `{company}` and `{first name}` 
 | errImage | تعذّر تجهيز صورة بطاقتك. عد إلى بطاقتك وحاول مرة أخرى. | Your card picture could not be prepared. Go back to your card and try again. |
 | title | النشر على لينكدإن · المنطقة الحرة لمدينة الشارقة للنشر | Post to LinkedIn · SPC Free Zone |
 
-## Default LinkedIn caption (src/linkedin/caption.ts; the studio's "Warm" caption)
+## Suggested captions and headlines (5 November 2026)
+
+English: SPC's content writer (LinkedIn Milestone.xlsx), Warm and Professional for "You and your company";
+Claude adapted the other cases in the same style. Arabic: drafted by Claude for all, not yet reviewed. One source:
+src/linkedin/captions.ts (the studio and the server's default caption for posts from the email, which is
+"Warm, You and your company", or "Warm, The company" when the licence names no founder). Custom starts empty.
+Without an activity, the "focusing on" part and "in this field" are left out. {role} is Founder / المؤسس unless
+the customer changes it.
 
 | | Arabic | English |
 |---|---|---|
-| With a founder | خبر سعيد: أصبحت {company} شركة مرخّصة رسمياً.<br><br>سنركّز على {activity}، وأشكر كل من ساعدنا على الوصول إلى اليوم الأول.<br><br>بترخيص من @SPC Free Zone في الشارقة.<br><br>#مشروع_جديد #SPCFreeZone | Some personal news: {company} is now officially licensed.<br><br>We'll be focusing on {activity}, and I'm grateful to everyone who helped us reach day one.<br><br>Licensed with @SPC Free Zone, Sharjah.<br><br>#NewBusiness #SPCFreeZone |
-| Without a founder | أصبحنا شركة مرخّصة رسمياً. {company} تفتح أبوابها للأعمال، مع التركيز على {activity}.<br><br>شكراً لكل من ساعدنا على الوصول إلى اليوم الأول.<br><br>بترخيص من @SPC Free Zone في الشارقة.<br><br>#مشروع_جديد #SPCFreeZone | We're now officially licensed. {company} is open for business, focusing on {activity}.<br><br>Thank you to everyone who helped us reach day one.<br><br>Licensed with @SPC Free Zone, Sharjah.<br><br>#NewBusiness #SPCFreeZone |
+| Warm, You and your company | خبر شخصي سعيد: بدأت رسمياً دوراً جديداً بصفتي {role} في {company}، مشروعي الخاص، مع التركيز على {activity}.<br><br>أشكر كل من ساعدني على الإيمان بأن هذا الحلم يستحق السعي وراءه.<br><br>شكراً @SPC Free Zone في الشارقة على مساعدتي في الحصول على رخصة عملي.<br><br>{Refer a Friend line}<br><br>#مشروع_جديد #SPCFreeZone | Some personal news: I've officially started a new role as {role} at {company}, my own business, focusing on {Activity}.<br><br>I'm grateful to everyone who helped me believe that this dream was worth following.<br><br>Thank you @SPC Free Zone, Sharjah for helping me get my business license.<br><br>{Refer a Friend line}<br><br>#NewBusiness #Founder #SPCFreeZone |
+| Warm, The company | خبر سعيد: أصبحت {company} جاهزة للأعمال رسمياً، مع التركيز على {activity}.<br><br>نشكر كل من ساعدنا على الإيمان بأن هذا الحلم يستحق السعي وراءه.<br><br>شكراً @SPC Free Zone في الشارقة على مساعدتنا في الحصول على رخصة أعمالنا.<br><br>{Refer a Friend line}<br><br>#مشروع_جديد #SPCFreeZone | Some news: {company} is now officially in business, focusing on {Activity}.<br><br>We're grateful to everyone who helped us believe that this dream was worth following.<br><br>Thank you @SPC Free Zone, Sharjah for helping us get our business license.<br><br>{Refer a Friend line}<br><br>#NewBusiness #SPCFreeZone |
+| Warm, Just you | خبر شخصي سعيد: بدأت رسمياً دوراً جديداً بصفتي {role} في مشروعي الخاص، مع التركيز على {activity}.<br><br>أشكر كل من ساعدني على الإيمان بأن هذا الحلم يستحق السعي وراءه.<br><br>شكراً @SPC Free Zone في الشارقة على مساعدتي في الحصول على رخصة عملي.<br><br>{Refer a Friend line}<br><br>#مشروع_جديد #SPCFreeZone | Some personal news: I've officially started a new role as {role} of my own business, focusing on {Activity}.<br><br>I'm grateful to everyone who helped me believe that this dream was worth following.<br><br>Thank you @SPC Free Zone, Sharjah for helping me get my business license.<br><br>{Refer a Friend line}<br><br>#NewBusiness #Founder #SPCFreeZone |
+| Professional, You and your company | يسعدني أن أعلن أنني أطلقت مشروعاً باسم {company} في دولة الإمارات. سيكون التركيز على {activity}.<br><br>هل تحتاج إلى دعم في هذا المجال أو إلى رأي خبير؟ أرسل لي طلب تواصل أو رسالة، ويسعدني التواصل معك!<br><br>بترخيص من @SPC Free Zone في الشارقة، بكل فخر.<br><br>{Refer a Friend line}<br><br>#مشروع_جديد #SPCFreeZone | Pleased to announce that I've launched a business named {company} in the UAE. The focus will be on {Activity}.<br><br>Need support with this field or want an expert's opinion? Send me a connection request or drop a message, I'd be glad to connect with you!<br><br>Proudly licensed with @SPC Free Zone, Sharjah.<br><br>{Refer a Friend line}<br><br>#NewBusiness #Founder #SPCFreeZone |
+| Professional, The company | يسعدنا أن نعلن أن {company} أصبحت مرخّصة في دولة الإمارات. سيكون التركيز على {activity}.<br><br>هل تحتاج إلى دعم في هذا المجال أو إلى رأي خبير؟ راسلنا، ويسعدنا التواصل معك!<br><br>بترخيص من @SPC Free Zone في الشارقة، بكل فخر.<br><br>{Refer a Friend line}<br><br>#مشروع_جديد #SPCFreeZone | Pleased to announce that {company} is now licensed in the UAE. The focus will be on {Activity}.<br><br>Need support with this field or want an expert's opinion? Drop us a message, we'd be glad to connect with you!<br><br>Proudly licensed with @SPC Free Zone, Sharjah.<br><br>{Refer a Friend line}<br><br>#NewBusiness #SPCFreeZone |
+| Professional, Just you | يسعدني أن أعلن أنني أطلقت مشروعي الخاص في دولة الإمارات. سيكون التركيز على {activity}.<br><br>هل تحتاج إلى دعم في هذا المجال أو إلى رأي خبير؟ أرسل لي طلب تواصل أو رسالة، ويسعدني التواصل معك!<br><br>بترخيص من @SPC Free Zone في الشارقة، بكل فخر.<br><br>{Refer a Friend line}<br><br>#مشروع_جديد #SPCFreeZone | Pleased to announce that I've launched my own business in the UAE. The focus will be on {Activity}.<br><br>Need support with this field or want an expert's opinion? Send me a connection request or drop a message, I'd be glad to connect with you!<br><br>Proudly licensed with @SPC Free Zone, Sharjah.<br><br>{Refer a Friend line}<br><br>#NewBusiness #Founder #SPCFreeZone |
 
-Added 3 November 2026, drafted by Claude, not yet reviewed: the Refer a Friend line. It goes before the hashtags
-in every suggested caption (the default above and the studio's three tones); Short uses the short form. The
-English and Arabic pages differ, so each links its own.
+The Refer a Friend line (3 November 2026, drafted by Claude, not yet reviewed) goes before the hashtags in every
+suggested caption; the English and Arabic pages differ, so each links its own.
 
 | | Arabic | English |
 |---|---|---|
-| Warm, Professional | هل تعرف شخصاً يخطط لتأسيس عمله في دولة الإمارات؟ رشّحه للمنطقة الحرة لمدينة الشارقة للنشر واكسب ما يصل إلى 1500 درهم إماراتي:<br>https://www.spcfz.ae/ar/refer-a-friend/ | Know someone planning to start a business in the UAE? Refer them to SPC Free Zone and earn up to AED 1,500:<br>https://www.spcfz.ae/refer-a-friend/ |
-| Short | رشّح صديقاً واكسب ما يصل إلى 1500 درهم إماراتي:<br>https://www.spcfz.ae/ar/refer-a-friend/ | Refer a friend and earn up to AED 1,500:<br>https://www.spcfz.ae/refer-a-friend/ |
+| Refer a Friend | هل تعرف شخصاً يخطط لتأسيس عمله في دولة الإمارات؟ رشّحه للمنطقة الحرة لمدينة الشارقة للنشر واكسب ما يصل إلى 1500 درهم إماراتي:<br>https://www.spcfz.ae/ar/refer-a-friend/ | Know someone planning to start a business in the UAE? Refer them to SPC Free Zone and earn up to AED 1,500:<br>https://www.spcfz.ae/refer-a-friend/ |
+
+Headlines on the card (tools/build-studio.mjs, CONTENT_LOGIC), and the email picture's headline
+(src/page/card-image.ts, the first one):
+
+| | Arabic | English |
+|---|---|---|
+| 1 | مفتوحون للأعمال! | Open for business! |
+| 2 | اليوم الأول! | Day one! |
+| 3 | أصبح الأمر رسمياً! | It's official! |
+| 4 | أبوابنا مفتوحة الآن. | Now open for business. |
 
 ## Open wording questions
 

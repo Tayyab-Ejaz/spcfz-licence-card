@@ -1,6 +1,6 @@
 // The customer's card as a picture, for the welcome email and the email's "Post on LinkedIn": the studio's
 // "Daylight" style (SPC's choice, 27 October 2026), square: the kicker, the founder and their role, the photo tile
-// waiting for their photo, "Officially in business.", the company and activity, "Licensed with" and the logo.
+// waiting for their photo, the first headline ("Open for business!"), the company and activity, "Licensed with" and the logo.
 // Drawn by sharp from the design's measurements (design/source/studio/template.html, isDaylight); the customer then
 // makes their own version in the studio. The "Day One" drawing is kept below. Arabic in Noto Kufi Arabic.
 // 1080 x 1080 JPEG.
@@ -31,8 +31,8 @@ const MONTHS_EN = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP'
 const MONTHS_AR = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
 const MONTHS_EN_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const T = {
-  en: { headline: 'Officially in business.', dayOne: 'Day one', licensedWith: 'LICENSED WITH', founder: 'Founder', licensed: 'Licensed', newBusiness: 'New business' },
-  ar: { headline: 'بدأنا العمل رسمياً.', dayOne: 'اليوم الأول', licensedWith: 'بترخيص من', founder: 'المؤسس', licensed: 'تاريخ الترخيص', newBusiness: 'مشروع جديد' },
+  en: { headline: 'Open for business!', dayOne: 'Day one', licensedWith: 'LICENSED WITH', founder: 'Founder', licensed: 'Licensed', newBusiness: 'New business' },
+  ar: { headline: 'مفتوحون للأعمال!', dayOne: 'اليوم الأول', licensedWith: 'بترخيص من', founder: 'المؤسس', licensed: 'تاريخ الترخيص', newBusiness: 'مشروع جديد' },
 };
 
 export interface CardImageInput {
