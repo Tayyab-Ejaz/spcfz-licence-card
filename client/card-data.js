@@ -393,6 +393,9 @@ export function withCardData(Base) {
       const nameAr = cardName(c.name_ar) || nameEn;   // like the company: no Arabic name, the English one
       return {
         ...f,
+        // Portrait first (SPC, 5 November 2026): it takes the most room in the LinkedIn phone feed. The design
+        // starts on Square, which tools/compare-design.mjs (designExact) still gets.
+        format: c.designExact === true ? f.format : 'portrait',
         company: c.company_en,
         name: nameEn, role: c.role_en ?? (nameEn ? 'Founder' : ''),
         activity: c.activity_en || '',
