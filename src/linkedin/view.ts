@@ -36,6 +36,7 @@ export const LI_STRINGS = {
     postedTitle: 'Your announcement is live',
     postedLead: '{company} is now on your LinkedIn feed.',
     viewPost: 'View your post on LinkedIn',
+    viewPostNote: 'LinkedIn can take a minute or two to show a new post. If it says "Post not found", wait a moment and refresh.',
     postedTip: 'Tip: tag your co-founders and team in a comment, so it reaches their networks too.',
     reviewAsk: 'How was getting your licence with SPC Free Zone?',
     reviewBody: 'A short Google review helps other founders find us.',
@@ -78,6 +79,7 @@ export const LI_STRINGS = {
     postedTitle: 'إعلانك منشور الآن',
     postedLead: '{company} الآن على صفحتك في لينكدإن.',
     viewPost: 'شاهد منشورك على لينكدإن',
+    viewPostNote: 'قد يستغرق لينكدإن دقيقة أو دقيقتين لعرض المنشور الجديد. إذا ظهرت رسالة «لم يتم العثور على المنشور»، انتظر قليلاً ثم حدّث الصفحة.',
     postedTip: 'نصيحة: أشِر إلى شركائك وفريقك في تعليق، ليصل المنشور إلى شبكاتهم أيضاً.',
     reviewAsk: 'كيف كانت تجربتك في الحصول على رخصتك من المنطقة الحرة لمدينة الشارقة للنشر؟',
     reviewBody: 'تقييم قصير على Google يساعد روّاد الأعمال الآخرين في العثور علينا.',
@@ -169,6 +171,7 @@ textarea{display:block;width:100%;min-height:150px;border:0;padding:8px 16px 4px
 .mark{width:64px;height:64px;margin:0 auto 16px;border-radius:50%;background:var(--soft);display:grid;place-items:center;color:var(--blue)}
 .mark svg{width:30px;height:30px}
 .thumb{display:block;width:min(260px,70%);height:auto;margin:0 auto 22px;border-radius:12px;border:1px solid var(--line);box-shadow:0 12px 28px -14px rgba(7,19,41,.35);transform:rotate(-2deg)}
+.note{margin:10px auto 0;max-width:360px;font-size:12.5px;color:var(--muted)}
 .tip{margin:20px auto 0;max-width:420px;font-size:13px;color:var(--muted)}
 .review{margin:22px auto 0;max-width:360px;padding-top:20px;border-top:1px solid var(--line);font-size:14px;color:var(--muted)}
 .review b{display:block;color:var(--ink);font-size:15px;margin-bottom:2px}
@@ -319,6 +322,7 @@ ${i.imageUrl ? h`<img class="thumb" src="${i.imageUrl}" alt="">` : ''}
 <a class="btn primary" id="go" href="${i.postUrl}" target="_blank" rel="noopener">${IN_MARK}<span>${s.viewPost}</span></a>
 <a class="btn ghost" href="${i.cardUrl}">${s.backToCard}</a>
 </div>
+<p class="note">${s.viewPostNote}</p>
 <p class="tip">${s.postedTip}</p>
 ${i.review ? h`<div class="review"><p><b>${s.reviewAsk}</b>${s.reviewBody}</p><a class="btn ghost" href="${i.review.href}" target="_blank" rel="noopener">${STAR}<span>${s.reviewButton}</span></a></div>` : ''}
 </div>`;

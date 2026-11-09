@@ -16,7 +16,7 @@ import { domainChecker } from '../src/mail/domain-check.js';
 import type { DomainChecker, MailDns } from '../src/mail/domain-check.js';
 import { randomToken } from '../src/util/crypto.js';
 import { renderWelcome } from '../src/mail/welcome.js';
-import { processOutbox, queuePostAlert, queueWelcome, testRecipientAllowed } from '../src/mail/outbox.js';
+import { POST_ALERT_DELAY_MS, processOutbox, queuePostAlert, queueWelcome, testRecipientAllowed } from '../src/mail/outbox.js';
 import type { MailTransport, OutgoingEmail } from '../src/mail/transport.js';
 import { CARD_DESIGN } from '../src/page/studio.js';
 import { createTestEnv } from './env.js';
@@ -339,7 +339,9 @@ describe('post alert', () => {
     await suppress(env.DB, { email: 'tayyab@spcfz.ae', card_id: card.id, source: 'page', created_at: '2026-11-01T00:00:00.000Z' });
     expect(await queuePostAlert(env, { cardId: card.id, postId: await posted(card) })).toBe(1);
     const t = fakeTransport();
-    expect(await processOutbox(env, t)).toMatchObject({ sent: 1 });
+    // LinkedIn needs a minute or two before the post shows, so the alert waits POST_ALERT_DELAY_MS.
+    expect(await processOutbox(env, t)).toMatchObject({ sent: 0 });
+    expect(await processOutbox(env, t, new Date(Date.now() + POST_ALERT_DELAY_MS + 1000))).toMatchObject({ sent: 1 });
     const m = t.sent[0];
     expect(m).toMatchObject({ to: 'tayyab@spcfz.ae', subject: '[TEST] Like and comment now: Nimbus Publishing FZE just posted on LinkedIn' });
     expect(m?.unsubscribeUrl).toBeUndefined();
@@ -350,6 +352,7 @@ describe('post alert', () => {
       expect(body).toContain('The first hour matters most');
       expect(body).toContain('Comments ready to paste');
       expect(body).toContain('Congratulations, Layla!');
+      expect(body).toContain('it is still preparing the picture');
     }
     const [row] = (await emailsForCard(env.DB, card.id)).filter((e) => e.kind === 'post_alert');
     expect(row).toMatchObject({ status: 'sent', lang: 'en' });

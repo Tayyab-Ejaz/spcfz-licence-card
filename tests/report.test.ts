@@ -104,7 +104,8 @@ describe('sending', () => {
   it('the daily run on the 1st queues the month before for report_to, to go at 09:00 Dubai, once', async () => {
     const env = createTestEnv();
     const first = new Date('2026-11-01T01:15:00.000Z'); // 05:15 Dubai, the daily run
-    expect(await queueMonthlyReport(env, first)).toBe(0); // nobody to send it to yet
+    await setSetting(env.DB, 'report_to', 'off');
+    expect(await queueMonthlyReport(env, first)).toBe(0); // switched off
     await setSetting(env.DB, 'report_to', 'boss@spcfz.ae, team@spcfz.ae');
     expect(await queueMonthlyReport(env, first)).toBe(2);
     expect(await queueMonthlyReport(env, new Date('2026-11-02T01:15:00.000Z'))).toBe(0);
@@ -119,6 +120,12 @@ describe('sending', () => {
     expect(await processReports(env, t, new Date('2026-11-01T05:00:30.000Z'))).toMatchObject({ sent: 2 });
     expect(t.sent.map((m) => m.subject)).toEqual(['Licence cards: October 2026 report', 'Licence cards: October 2026 report']);
     expect((await reportSends(env.DB, '2026-10')).every((x) => x.status === 'sent')).toBe(true);
+  });
+
+  it('goes to tayyab@spcfz.ae when Admin → Settings names nobody', async () => {
+    const env = createTestEnv();
+    expect(await queueMonthlyReport(env, new Date('2026-12-01T01:15:00.000Z'))).toBe(1);
+    expect((await reportSends(env.DB, '2026-11')).map((x) => x.to_email)).toEqual(['tayyab@spcfz.ae']);
   });
 
   it('a late daily run (server down on the 1st) still sends it on the 2nd or 3rd', async () => {

@@ -28,13 +28,18 @@ export interface EmailRow {
 
 export async function insertEmail(
   db: D1Database,
-  e: { card_id: string; kind: EmailKind; to_email: string; cc_email: string | null; lang: string; status: EmailStatus; last_error?: string | null; actor: string | null; ref?: string | null; now: string },
+  e: {
+    card_id: string; kind: EmailKind; to_email: string; cc_email: string | null; lang: string; status: EmailStatus; last_error?: string | null;
+    actor: string | null; ref?: string | null; now: string;
+    /** Send no earlier than this (ISO); default now. */
+    sendAt?: string;
+  },
 ): Promise<string> {
   const id = ulid();
   await db.prepare(
     `INSERT INTO emails (id, card_id, kind, to_email, cc_email, lang, status, attempts, next_attempt_at, last_error, actor, created_at, ref)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0, ?8, ?9, ?10, ?8, ?11)`,
-  ).bind(id, e.card_id, e.kind, e.to_email, e.cc_email, e.lang, e.status, e.now, e.last_error ?? null, e.actor, e.ref ?? null).run();
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0, ?8, ?9, ?10, ?11, ?12)`,
+  ).bind(id, e.card_id, e.kind, e.to_email, e.cc_email, e.lang, e.status, e.sendAt ?? e.now, e.last_error ?? null, e.actor, e.now, e.ref ?? null).run();
   return id;
 }
 

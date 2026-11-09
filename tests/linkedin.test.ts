@@ -211,6 +211,7 @@ describe('sign-in, review and post', () => {
     const done = await (await app.request('/linkedin/done', { headers: { Cookie: cookie } }, env)).text();
     expect(done).toContain('https://www.linkedin.com/feed/update/urn:li:share:7001/');
     // The Google review request (src/page/review.ts), asked once and counted once however often the page loads.
+    expect(done).toContain('LinkedIn can take a minute or two to show a new post.');
     expect(done).toContain('How was getting your licence with SPC Free Zone?');
     expect(done).toContain(`href="/c/${card.token}/review?from=linkedin"`);
     expect(done).toContain(`spc-review:${card.token}`);
@@ -437,9 +438,11 @@ describe('caption as LinkedIn little text', () => {
     const card = { company_name_en: 'Bluefin Publishing FZE', company_name_ar: null, activity_category: 'Publishing', activity_category_ar: null, founder_name_en: 'Layla' };
     for (const lang of ['en', 'ar'] as const) {
       const caption = defaultCaption(card, lang);
-      const url = lang === 'en' ? 'https://www.spcfz.ae/refer-a-friend/' : 'https://www.spcfz.ae/ar/refer-a-friend/';
+      const url = `${lang === 'en' ? 'https://www.spcfz.ae/refer-a-friend/' : 'https://www.spcfz.ae/ar/refer-a-friend/'}?utm_campaign=Linkedin%20Milestone`;
       expect(caption).toContain(`${REFER_LINE[lang]}\n\n#`);
-      expect(toLittleText(caption, 'urn:li:organization:1')).toContain(`\n${url}\n`);
+      expect(caption).toContain(`\n${url}\n`);
+      // LinkedIn's post format reserves "_": escaped for the API, shown as "_" in the post.
+      expect(toLittleText(caption, 'urn:li:organization:1')).toContain(`\n${url.replace('_', '\\_')}\n`);
     }
   });
 

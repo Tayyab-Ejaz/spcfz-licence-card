@@ -1,7 +1,7 @@
 // Sending the monthly impact report (./impact.ts, ./email.ts). Rows in report_emails (migrations/0010_reports.sql),
 // sent by the same 30-second worker as the other emails (src/server.ts), with the same retries.
 //   - The daily run (src/server.ts dailyTask) on the 1st to 3rd of a month queues the month before for the addresses
-//     in Admin → Settings (report_to), once, to go at 09:00 Dubai time. Nothing when report_to is empty.
+//     in Admin → Settings (report_to; empty: DEFAULT_REPORT_TO; "off": nobody), once, to go at 09:00 Dubai time.
 //   - Admin → Report → Send queues the month shown, to those addresses or to the signed-in admin.
 import type { D1Database, Env } from '../types.js';
 import { getSetting } from '../db/cards.js';
@@ -29,9 +29,14 @@ export interface ReportEmailRow {
   sent_at: string | null;
 }
 
-/** The addresses in Admin → Settings (report_to). */
+/** Who gets the report when Admin → Settings names nobody (SPC, 9 November 2026: tayyab@spcfz.ae gets everything). */
+export const DEFAULT_REPORT_TO = 'tayyab@spcfz.ae';
+
+/** The addresses in Admin → Settings (report_to); DEFAULT_REPORT_TO when it is empty; nobody for "off". */
 export async function reportRecipients(db: D1Database): Promise<string[]> {
-  return parseAddressList(await getSetting(db, 'report_to')).list;
+  const v = (await getSetting(db, 'report_to')).trim();
+  if (v.toLowerCase() === 'off') return [];
+  return parseAddressList(v || DEFAULT_REPORT_TO).list;
 }
 
 /** Queue `month` for each address, to go at `at` (default now); returns how many rows were queued. */

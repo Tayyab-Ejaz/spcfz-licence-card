@@ -350,8 +350,8 @@ describe('monthly report', () => {
     expect((await reportSends(env.DB, '2026-10')).map((r) => [r.to_email, r.actor, r.status])).toEqual([[ACTOR, ACTOR, 'queued']]);
   });
 
-  it('with nobody on the report list, says where to add them', async () => {
-    await setSetting(env.DB, 'report_to', '');
+  it('with the report switched off, says so', async () => {
+    await setSetting(env.DB, 'report_to', 'off');
     const { res } = await post('/admin/report/send', { month: '2026-09', to: 'list' });
     expect(res.headers.get('location')).toBe('/admin/report?month=2026-09&m=report-none');
     expect(await reportSends(env.DB, '2026-09')).toEqual([]);

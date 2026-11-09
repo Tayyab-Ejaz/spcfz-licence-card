@@ -69,6 +69,7 @@ export function renderPostAlert(i: { card: CardRow; post: LinkedinPostRow; baseU
   const lead = `${company} just posted their SPC licence card on LinkedIn.`;
   const ask = 'The first hour matters most: likes and comments now are what make LinkedIn show the post to more people. '
     + "Please like it and leave a comment from your own profile, and from SPC's page if you manage it.";
+  const processing = 'If LinkedIn says "Post not found", it is still preparing the picture: try again in a minute.';
   const comments = suggestedComments(card, post.lang);
   const commentsNote = post.lang === 'ar'
     ? 'They posted in Arabic, so these are in Arabic. Pick one, or write your own.'
@@ -91,7 +92,8 @@ export function renderPostAlert(i: { card: CardRow; post: LinkedinPostRow; baseU
 ${card.is_test ? raw('<tr><td style="padding:0 0 14px"><span style="display:inline-block;border:1px solid #004dff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:bold;color:#004dff">TEST CARD</span></td></tr>') : ''}
 <tr><td style="padding:0 0 10px;font-size:20px;line-height:1.3;font-weight:bold">${lead}</td></tr>
 <tr><td style="padding:0 0 22px">${ask}</td></tr>
-<tr><td style="padding:0 0 26px"><a href="${postUrl}" style="display:inline-block;background:#004dff;border-radius:6px;padding:12px 22px;color:#ffffff;font-weight:bold;text-decoration:none">Open the post on LinkedIn</a></td></tr>
+<tr><td style="padding:0 0 8px"><a href="${postUrl}" style="display:inline-block;background:#004dff;border-radius:6px;padding:12px 22px;color:#ffffff;font-weight:bold;text-decoration:none">Open the post on LinkedIn</a></td></tr>
+<tr><td style="padding:0 0 26px;font-size:13px;color:#53617c">${processing}</td></tr>
 <tr><td style="padding:0 0 6px;font-weight:bold">Comments ready to paste</td></tr>
 <tr><td style="padding:0 0 10px;font-size:13px">${commentsNote}</td></tr>
 ${comments.map((t) => raw(html`<tr><td style="padding:0 0 8px"><div dir="${post.lang === 'ar' ? 'rtl' : 'ltr'}" style="border:1px solid #dfe7f4;border-radius:6px;padding:10px 12px;background:#f4f7fc;font-size:14px">${t}</div></td></tr>`))}
@@ -112,6 +114,7 @@ ${details.map(([k, v]) => raw(html`<tr><td style="padding:4px 18px 4px 0;color:#
     ask,
     '',
     `Open the post: ${postUrl}`,
+    processing,
     '',
     'Comments ready to paste:',
     commentsNote,

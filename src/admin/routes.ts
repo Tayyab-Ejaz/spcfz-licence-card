@@ -33,7 +33,7 @@ import { DEFAULT_REVIEW_URL, isReviewUrl } from '../page/review.js';
 import { HEADLINES, buildReport, change, details, dubaiMonth, isMonth, monthLabel, previousMonth } from '../report/impact.js';
 import type { ImpactReport } from '../report/impact.js';
 import { renderReportEmail } from '../report/email.js';
-import { queueReport, reportRecipients, reportSends } from '../report/send.js';
+import { DEFAULT_REPORT_TO, queueReport, reportRecipients, reportSends } from '../report/send.js';
 import { linkedinEnabled } from '../linkedin/client.js';
 import { acceptPayload } from '../intake/accept.js';
 import { isPlainObject } from '../intake/common.js';
@@ -73,7 +73,7 @@ const FLASH: Record<string, string> = {
   unchanged: 'No change: a card with these exact details already exists.',
   saved: 'Settings saved.',
   'report-queued': 'Report queued: it goes out within a minute. The list below shows when it has.',
-  'report-none': 'Nobody to send it to: add addresses under Admin → Settings → Monthly report.',
+  'report-none': 'Nobody to send it to: the monthly report is off in Admin → Settings.',
 };
 
 type Body = Record<string, unknown>;
@@ -371,7 +371,7 @@ async function settingsForm(c: Context<AppEnv>, values: Record<string, string>, 
 <label class="check"><input type="checkbox" name="review_enabled" value="1"${reviewOn ? raw(' checked') : EMPTY}> Ask customers for a Google review <small>(once, after they download, share or post their card)</small></label>
 <label>Review link<input type="url" name="review_url" value="${v('review_url')}" placeholder="${DEFAULT_REVIEW_URL}" autocomplete="off"><small>Empty: SPC Free Zone on Google Maps, where "Write a review" is one tap away. For a link that opens the review form straight away, copy "Ask for reviews" from SPC's Google Business Profile and paste it here.</small></label>
 <h3>Monthly report</h3>
-<label>Goes to<input type="text" name="report_to" value="${v('report_to')}" placeholder="manager@spcfz.ae, team@spcfz.ae" autocomplete="off"><small>On the 1st of each month at 09:00 Dubai time, last month's report (<a href="/admin/report">Admin → Report</a>) goes to these addresses. Comma separated; empty: not emailed.</small></label>
+<label>Goes to<input type="text" name="report_to" value="${v('report_to')}" placeholder="${DEFAULT_REPORT_TO}" autocomplete="off"><small>On the 1st of each month at 09:00 Dubai time, last month's report (<a href="/admin/report">Admin → Report</a>) goes to these addresses. Comma separated; "off" stops it; empty uses ${DEFAULT_REPORT_TO}.</small></label>
 <div><button class="btn" type="submit">Save settings</button></div>
 </form>
 <h2>Keeping data</h2>
@@ -1041,9 +1041,10 @@ ${dryTable(dry)}
 
     const reportTo = field(body, 'report_to');
     submitted['report_to'] = reportTo;
-    const reportBad = parseAddressList(reportTo).bad;
+    const reportOff = reportTo.toLowerCase() === 'off';
+    const reportBad = reportOff ? [] : parseAddressList(reportTo).bad;
     if (reportBad.length) errors.push(`Monthly report: ${reportBad.join(', ')} is not an email address.`);
-    else updates.push(['report_to', parseAddressList(reportTo).list.join(', ')]);
+    else updates.push(['report_to', reportOff ? 'off' : parseAddressList(reportTo).list.join(', ')]);
 
     if (errors.length) return settingsForm(c, submitted, errors, 400);
     for (const [k, v] of updates) await setSetting(c.env.DB, k, v);

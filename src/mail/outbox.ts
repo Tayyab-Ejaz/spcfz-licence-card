@@ -62,14 +62,20 @@ export async function queueWelcome(env: Env, card: CardRow, o: { actor: string |
   return 'queued';
 }
 
+/**
+ * LinkedIn shows "Post not found" for a minute or two while it processes a new post's picture (SPC, 9 November 2026),
+ * so the alert waits this long: when the team opens the link, the post is there.
+ */
+export const POST_ALERT_DELAY_MS = 3 * 60_000;
+
 /** Queue the post alert for a post just made (linkedin_posts id); returns how many addresses it goes to. */
 export async function queuePostAlert(env: Env, o: { cardId: string; postId: string; now?: string }): Promise<number> {
   const now = o.now ?? nowIso();
+  const sendAt = new Date(Date.parse(now) + POST_ALERT_DELAY_MS).toISOString();
   const to = alertRecipients(env, await getSetting(env.DB, 'post_alert_to'));
   for (const address of to) {
-    await insertEmail(env.DB, { card_id: o.cardId, kind: 'post_alert', to_email: address, cc_email: null, lang: 'en', status: 'queued', actor: null, ref: o.postId, now });
+    await insertEmail(env.DB, { card_id: o.cardId, kind: 'post_alert', to_email: address, cc_email: null, lang: 'en', status: 'queued', actor: null, ref: o.postId, now, sendAt });
   }
-  if (to.length) kick?.();
   return to.length;
 }
 

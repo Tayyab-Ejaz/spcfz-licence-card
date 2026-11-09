@@ -68,7 +68,9 @@ const HEADLINES = [
 function shellFor(ds) {
   const card = { token: 'StressTokenStressToken', company_name_en: ds.company_en, company_name_ar: ds.company_ar, licence_number: ds.licence_number,
     issued_on: ds.issued_on, activity_category: ds.activity_en, activity_category_ar: ds.activity_ar, founder_name_en: ds.name_en,
-    founder_name_ar: ds.name_ar, preferred_language: 'en', is_test: false };
+    founder_name_ar: ds.name_ar, preferred_language: 'en', is_test: false,
+    // The shell links the card's preview picture by its content hash (src/page/studio.ts previewPath).
+    content_hash: '0123456789abcdef0123456789abcdef' };
   const data = { token: card.token, company_en: ds.company_en, company_ar: ds.company_ar, licence_number: ds.licence_number, issued_on: ds.issued_on,
     activity_en: ds.activity_en, activity_ar: ds.activity_ar, name_en: ds.name_en, name_ar: ds.name_ar, lang: 'en', is_test: false, debug: true };
   return renderStudioShell({ card, nonce: 'x', gtmContainer: null })

@@ -734,7 +734,8 @@ export function withCardData(Base) {
      * Opening LinkedIn from Post to LinkedIn is not a loss, so it does not ask (this.leaving).
      */
     askBeforeLeaving() {
-      if (this.onLeave) return;
+      // Not for the test tools' cards (tools/stress-cards.mjs reloads after every change).
+      if (this.onLeave || this.props.card.debug === true) return;
       this.onLeave = (e) => {
         if (!this.state.unsaved || this.leaving) return;
         e.preventDefault();
