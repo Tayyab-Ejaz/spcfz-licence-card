@@ -587,6 +587,10 @@ const MOBILE_CSS = [
   '[data-screen-label="Sheet"]{animation:m-sheet-in .34s cubic-bezier(.2,.8,.2,1) both;transition:height .25s var(--ease-standard)}',
   '[data-screen-label="Sheet"].m-closing{animation:m-sheet-out .22s cubic-bezier(.4,0,1,1) both;pointer-events:none}',
   '.m-in{animation:m-rise .3s cubic-bezier(.2,.8,.2,1) both}',
+  // iPhone Safari zooms the page into a text field whose type is under 16px when it is tapped (SPC, 9 November 2026:
+  // the details fields were 15px). On phones and touch tablets the fields' text is 16px, so it does not; pinch zoom
+  // stays available (no maximum-scale in the viewport).
+  '@media (max-width:759px),(hover:none) and (pointer:coarse){input:not([type=range]):not([type=checkbox]):not([type=radio]):not([type=file]),textarea,select{font-size:16px!important}}',
   '@media (prefers-reduced-motion:reduce){[data-screen-label="Sheet"],[data-screen-label="Sheet"].m-closing,.m-in{animation:none!important}.m-frame,.m-frame>*{transition:none!important}}',
 ].join('');
 function cleanCss(css) {
