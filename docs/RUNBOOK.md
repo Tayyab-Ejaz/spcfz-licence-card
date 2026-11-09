@@ -302,7 +302,10 @@ the customer's own photo and edits, so it starts from the studio.)
 
    30196206 is SPC's page ("Sharjah Publishing City - SPC Free Zone",
    linkedin.com/company/spcfreezone). With `LINKEDIN_ORG_URN`, "@SPC Free
-   Zone" in the caption becomes a real mention of the page. `LINKEDIN_API_VERSION` (YYYYMM) is optional; the
+   Zone" in the caption becomes a real mention of the page (urn:li:organization:30196206). LinkedIn tags a page
+   only when the mention uses its exact name, so the service writes it as "Sharjah Publishing City - SPC Free
+   Zone" (`SPC_PAGE_NAME` in src/linkedin/caption.ts): if the page is renamed, change it there and deploy.
+   `LINKEDIN_API_VERSION` (YYYYMM) is optional; the
    built-in one is 202606, and LinkedIn retires a version after about a year,
    so set a newer one by mid-2027.
 5. Apply the env-file change (see Secrets) and post from a TEST card to your

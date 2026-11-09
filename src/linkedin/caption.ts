@@ -33,11 +33,19 @@ export function orgUrn(raw: string | undefined): string | null {
   return /^urn:li:organization:\d{1,20}$/.test(v) ? v : null;
 }
 
-const TOKEN = /(@SPC Free Zone)|#([\p{L}\p{N}_]+)/gu;
+/**
+ * SPC's LinkedIn page name, exactly as LinkedIn shows it (SPC, 9 November 2026). LinkedIn tags a page only when the
+ * mention's text matches its name exactly; "SPC Free Zone" alone went out as plain text.
+ */
+export const SPC_PAGE_NAME = 'Sharjah Publishing City - SPC Free Zone';
+
+// "@SPC Free Zone", with the ", Sharjah" (English) or " في الشارقة" (Arabic) the captions follow it with: the page
+// name already says Sharjah, so the tag takes their place.
+const TOKEN = /(@SPC Free Zone(?:, Sharjah| في الشارقة)?)|#([\p{L}\p{N}_]+)/gu;
 
 /**
- * The caption as LinkedIn little text. "@SPC Free Zone" becomes a mention of `org` when given (else plain text);
- * "#Word" becomes a hashtag; everything else is escaped so it shows exactly as typed.
+ * The caption as LinkedIn little text. "@SPC Free Zone" becomes a mention of `org` under SPC_PAGE_NAME when given
+ * (else plain text, as typed); "#Word" becomes a hashtag; everything else is escaped so it shows exactly as typed.
  */
 export function toLittleText(caption: string, org: string | null): string {
   let out = '';
@@ -45,7 +53,7 @@ export function toLittleText(caption: string, org: string | null): string {
   for (const m of caption.matchAll(TOKEN)) {
     const at = m.index ?? 0;
     out += escapeLittle(caption.slice(last, at));
-    if (m[1]) out += org ? `@[SPC Free Zone](${org})` : escapeLittle(m[1]);
+    if (m[1]) out += org ? `@[${SPC_PAGE_NAME}](${org})` : escapeLittle(m[1]);
     else out += `{hashtag|\\#|${escapeLittle(m[2] ?? '')}}`;
     last = at + m[0].length;
   }

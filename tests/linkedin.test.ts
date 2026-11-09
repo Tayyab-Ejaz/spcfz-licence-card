@@ -205,7 +205,7 @@ describe('sign-in, review and post', () => {
     expect(res.headers.get('Location')).toBe('/linkedin/done');
     expect(fake.posts).toHaveLength(1);
     expect(fake.posts[0]?.author).toBe('urn:li:person:abc123');
-    expect(fake.posts[0]?.commentary).toBe('Edited \\<b\\>text\\</b\\> by {hashtag|\\#|Layla}.\n\nLicensed with @[SPC Free Zone](urn:li:organization:1234567).');
+    expect(fake.posts[0]?.commentary).toBe('Edited \\<b\\>text\\</b\\> by {hashtag|\\#|Layla}.\n\nLicensed with @[Sharjah Publishing City - SPC Free Zone](urn:li:organization:1234567).');
     expect(fake.posts[0]?.altText).toBe('Nimbus Publishing FZE is officially licensed with SPC Free Zone');
 
     const done = await (await app.request('/linkedin/done', { headers: { Cookie: cookie } }, env)).text();
@@ -429,6 +429,17 @@ describe('LinkedIn API client', () => {
 });
 
 describe('caption as LinkedIn little text', () => {
+  it('tags SPC\'s page by its exact LinkedIn name, in place of the "Sharjah" the captions add', () => {
+    const org = 'urn:li:organization:30196206';
+    const tag = '@[Sharjah Publishing City - SPC Free Zone](urn:li:organization:30196206)';
+    expect(toLittleText('Thank you @SPC Free Zone, Sharjah for helping me.', org)).toBe(`Thank you ${tag} for helping me.`);
+    expect(toLittleText('Proudly licensed with @SPC Free Zone, Sharjah.', org)).toBe(`Proudly licensed with ${tag}.`);
+    expect(toLittleText('شكراً @SPC Free Zone في الشارقة على مساعدتي', org)).toBe(`شكراً ${tag} على مساعدتي`);
+    expect(toLittleText('Thanks @SPC Free Zone!', org)).toBe(`Thanks ${tag}!`);
+    // Without SPC's page id it stays as typed.
+    expect(toLittleText('Thank you @SPC Free Zone, Sharjah.', null)).toBe('Thank you \\@SPC Free Zone, Sharjah.');
+  });
+
   it('escapes reserved characters and keeps Arabic hashtags', () => {
     expect(toLittleText('a_b (c) [d] *e* ~f~ <g> {h} |i| \\j', null)).toBe('a\\_b \\(c\\) \\[d\\] \\*e\\* \\~f\\~ \\<g\\> \\{h\\} \\|i\\| \\\\j');
     expect(toLittleText('#مشروع_جديد #SPCFreeZone', null)).toBe('{hashtag|\\#|مشروع\\_جديد} {hashtag|\\#|SPCFreeZone}');
