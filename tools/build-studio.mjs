@@ -401,11 +401,14 @@ const NAV_CSS = [
   '[data-portal-link]:hover i{transform:translateX(-3px)}',
   '[data-portal-link]:active{transform:scale(.97)}',
   // Phones: the help link is a round phone button; both keep a 40px touch target.
+  // Phone logo 25% larger (SPC, 9 November 2026: 34 -> 42px), but never closer than 12px to the buttons: on narrower
+  // phones it takes the room there is (187px = the header's 32px of padding, the buttons' 143px, the 12px gap).
+  '@media (max-width:759px){header img{height:42px!important;max-width:calc(100vw - 187px);object-fit:contain;object-position:left center}}',
   '@media (max-width:759px){[data-nav-actions]{gap:8px}[data-help-link] span{display:none}'
     + '[data-help-link]{width:40px;height:40px;justify-content:center;border:1px solid var(--spc-border);border-radius:50%;color:var(--spc-ink)}'
     + '[data-portal-link]{min-height:40px!important;padding-top:0!important;padding-bottom:0!important}}',
   // The smallest phones (320px): a slightly smaller logo and a tighter button, so the header stays on screen.
-  '@media (max-width:359px){header img{height:28px!important}[data-portal-link]{padding-left:10px!important;padding-right:12px!important}}',
+  '@media (max-width:359px){header img{height:28px!important;max-width:calc(100vw - 178px)}[data-portal-link]{padding-left:10px!important;padding-right:12px!important}}',
   '@media (hover:none){[data-portal-link]:hover i,[data-help-link]:hover i{transform:none}}',
   '@media (prefers-reduced-motion:reduce){[data-portal-link],[data-portal-link] i,[data-help-link]{transition:none!important}}',
 ].join('');

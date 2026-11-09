@@ -20,6 +20,11 @@ window.htmlToImage = htmlToImage;
 const card = JSON.parse(document.getElementById('card-data').textContent);
 // No right-click menu or developer-tools keys on the card page (./guard.js); the stress and compare tools set debug.
 if (card.debug !== true) installGuard();
+// iPhone and iPad: Safari zooms into a tapped field under 16px and the layout breaks (SPC, 9 November 2026). The
+// fields are 16px on touch screens (tools/build-studio.mjs); this makes sure nothing zooms on focus. Safari keeps
+// pinch zoom whatever the viewport says, so people can still zoom by hand.
+const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+if (iOS) document.querySelector('meta[name=viewport]')?.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1');
 const DesktopLogic = withCardData(makeStudioLogic(StreamableLogic, React));
 const MobileLogic = withCardData(makeMobileLogic(StreamableLogic, React));
 const userProps = { prefillFromLicense: false, samplePhoto: false, startTemplate: 'dayone', card };

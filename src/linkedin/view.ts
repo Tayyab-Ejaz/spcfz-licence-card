@@ -182,6 +182,7 @@ footer{max-width:640px;margin:0 auto;padding:0 16px 28px;font-size:12px;color:va
 footer a{color:var(--muted)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.tick path{stroke-dashoffset:0}}
 @media (max-width:420px){.bar{flex-direction:column-reverse}.bar .btn{width:100%}}
+@media (max-width:760px),(hover:none) and (pointer:coarse){textarea{font-size:16px}}
 @media (max-width:440px){.steps{column-gap:6px;font-size:13.5px}.steps li{gap:6px}.steps b{width:26px;height:26px;font-size:12.5px}.steps li+li::before{width:16px}
 [dir=rtl] .steps{column-gap:5px;font-size:min(13px,3.5vw)}[dir=rtl] .steps li{gap:5px}[dir=rtl] .steps b{width:24px;height:24px;font-size:12px}[dir=rtl] .steps li+li::before{width:10px}}
 @media (max-width:340px){.steps,[dir=rtl] .steps{column-gap:4px;font-size:12px}.steps li,[dir=rtl] .steps li{gap:4px}.steps b,[dir=rtl] .steps b{width:22px;height:22px;font-size:11px}.steps li+li::before,[dir=rtl] .steps li+li::before{width:8px;margin-inline-end:0}[dir=rtl] .steps{font-size:11px}}
