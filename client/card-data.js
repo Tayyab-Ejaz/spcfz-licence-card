@@ -168,6 +168,11 @@ export function withCardData(Base) {
       this.askKeys = null;
       if (this.onLeave) window.removeEventListener('beforeunload', this.onLeave);
       this.onLeave = null;
+      if (this.kbWatch && window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', this.kbWatch);
+        window.visualViewport.removeEventListener('scroll', this.kbWatch);
+      }
+      this.kbWatch = null;
       if (this.reviewKeys) document.removeEventListener('keydown', this.reviewKeys);
       this.reviewKeys = null;
       clearTimeout(this.reviewTimer);
@@ -744,6 +749,27 @@ export function withCardData(Base) {
       window.addEventListener('beforeunload', this.onLeave);
     }
 
+    /**
+     * Phone layout, iPhone keyboard (SPC, 9 November 2026). Safari lays the keyboard over the page instead of
+     * shrinking it, and slides the page up to show the field: the drawer, pinned to the bottom of the screen, sat
+     * behind the keyboard, and the preview slid off the top, leaving white. The design already sizes everything to
+     * the visible area (visualViewport); with the keyboard open the drawer now sits at the bottom of that area and
+     * the page is pinned to its top (tools/build-studio.mjs: sheetBottom, wrapPos, wrapTop).
+     */
+    watchKeyboard() {
+      const vv = window.visualViewport;
+      if (!vv || this.kbWatch) return;
+      this.kbWatch = () => {
+        const open = window.innerHeight - vv.height > 120;
+        const below = open ? Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)) : 0;
+        const top = open ? Math.max(0, Math.round(vv.offsetTop)) : 0;
+        const st = this.state;
+        if (!!st.kbOpen !== open || (st.kbBelow || 0) !== below || (st.kbTop || 0) !== top) this.setState({ kbOpen: open, kbBelow: below, kbTop: top });
+      };
+      vv.addEventListener('resize', this.kbWatch);
+      vv.addEventListener('scroll', this.kbWatch);
+    }
+
     trackEdits(prev) {
       if (!prev || this.state.unsaved) return;
       if (EDIT_FIELDS.some((k) => prev[k] !== this.state[k])) this.setState({ unsaved: true });
@@ -758,6 +784,7 @@ export function withCardData(Base) {
     componentDidMount() {
       super.componentDidMount();
       this.askBeforeLeaving();
+      this.watchKeyboard();
       this.fitStub();
       this.fitChrome();
       this.fitDesk();
@@ -900,6 +927,10 @@ export function withCardData(Base) {
         // Desktop Share step intro (tools/build-studio.mjs DESKTOP_SHARE_ACTIONS); the phone layout does not use it.
         shareIntro: 'Share your card with your network on LinkedIn, WhatsApp, or any other social media app of your choice.',
         captionPlaceholder: (s.tone || 'warm') === 'custom' ? 'Write your own caption' : '',
+        // Phone layout with the iPhone keyboard open (watchKeyboard): the drawer on the keyboard, the page pinned.
+        sheetBottom: s.sheet && s.kbOpen ? s.kbBelow || 0 : 0,
+        wrapPos: s.sheet && s.kbOpen ? 'fixed' : 'relative',
+        wrapTop: s.sheet && s.kbOpen ? s.kbTop || 0 : 0,
         // Desktop "See more" chip (watchPanel shows it): scroll the panel's step content on by most of a screen.
         moreBelow: () => {
           const pane = document.querySelector('[data-step-panel]');

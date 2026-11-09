@@ -29,7 +29,7 @@ const DesktopLogic = withCardData(makeStudioLogic(StreamableLogic, React));
 const MobileLogic = withCardData(makeMobileLogic(StreamableLogic, React));
 const userProps = { prefillFromLicense: false, samplePhoto: false, startTemplate: 'dayone', card };
 const MOBILE_QUERY = '(max-width: 759px)';
-const TRANSIENT = new Set(['sheet', 'toast', 'busy', 'drag', 'stageW', 'vw', 'vh', 'canShare', 'chromeH']);
+const TRANSIENT = new Set(['sheet', 'toast', 'busy', 'drag', 'stageW', 'vw', 'vh', 'canShare', 'chromeH', 'kbOpen', 'kbBelow', 'kbTop']);
 
 const keep = (st) => Object.fromEntries(Object.entries(st).filter(([k]) => !TRANSIENT.has(k)));
 

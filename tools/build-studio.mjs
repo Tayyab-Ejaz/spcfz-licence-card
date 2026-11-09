@@ -206,6 +206,16 @@ DATA_PATCHES.studio.push(
 );
 DATA_PATCHES.mobile.push([ZOOM_ICON('minus'), zoomBtn('minus', 40)], [ZOOM_ICON('plus'), zoomBtn('plus', 40)]);
 
+// Phone layout, iPhone keyboard (SPC, 9 November 2026): the drawer sits at the bottom of the visible area, on top of
+// the keyboard, and the page is pinned to the top of it while the keyboard is open (client/card-data.js
+// watchKeyboard). Without the keyboard both are as before (bottom 0; relative with no offset).
+DATA_PATCHES.mobile.push(
+  ['<div data-screen-label="Sheet" style="position:fixed;left:50%;bottom:0;transform:translateX(-50%);',
+    '<div data-screen-label="Sheet" style="position:fixed;left:50%;bottom:{{ sheetBottom }}px;transform:translateX(-50%);'],
+  ['<div style="position:relative;max-width:480px;margin:0 auto;min-height:{{ vhPx }}px;height:{{ wrapH }};',
+    '<div style="position:{{ wrapPos }};top:{{ wrapTop }}px;left:0;right:0;max-width:480px;margin:0 auto;min-height:{{ vhPx }}px;height:{{ wrapH }};'],
+);
+
 // Logic patches: the same exactly-once rule, applied to design/source/<layout>/logic.js before it is wrapped.
 // Share (SPC, 19 October 2026): hand the share menu the image only. With text alongside, LinkedIn's app keeps the
 // text and drops the image. The caption is still copied to the clipboard first; after sharing, a toast says to paste
