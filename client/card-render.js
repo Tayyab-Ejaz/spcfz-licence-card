@@ -131,16 +131,96 @@ export function cardFontCSS(node) {
 }
 
 /**
+ * Safari's engine (every browser on iPhone and iPad, and Safari on a Mac) draws two things wrongly when the card
+ * becomes an image (SPC, 9 November 2026, an iPhone 16 Pro Max; reproduced in WebKit 18):
+ *   - a ring made of box-shadows (0 0 0 Npx) around a rounded, clipped box comes out as a squared-off bracket
+ *     (the avatar rings, the white edge round the Standard diamonds);
+ *   - a soft (blurred) shadow on a tilted box comes out as a hard grey slab (the Day One calendar).
+ * So on those browsers the image is made from a hidden copy of the card where each ring is drawn as a border
+ * (and an outline for a second ring), which looks the same, and soft shadows on tilted boxes are left out.
+ * Chrome and Android draw the card as it is.
+ */
+export function needsSafeCopy(ua = navigator.userAgent, platform = navigator.platform, touch = navigator.maxTouchPoints) {
+  const iOS = /iPad|iPhone|iPod/.test(ua) || (platform === 'MacIntel' && touch > 1);
+  const safari = /safari/i.test(ua) && !/chrome|chromium|crios|fxios|edg|android/i.test(ua);
+  return iOS || safari;
+}
+
+/** One box-shadow list as parts. */
+function parseShadows(value) {
+  return value.split(/,(?![^(]*\))/).map((part) => {
+    const color = (part.match(/rgba?\([^)]*\)|#[0-9a-f]{3,8}/i) || ['transparent'])[0];
+    const n = (part.replace(/rgba?\([^)]*\)/g, '').match(/-?\d+(\.\d+)?px/g) || []).map(parseFloat);
+    return { color, x: n[0] || 0, y: n[1] || 0, blur: n[2] || 0, spread: n[3] || 0, inset: /\binset\b/.test(part) };
+  });
+}
+
+/** The hidden copy described above; the caller removes `holder` when the image is made. */
+function safeCopy(card) {
+  const holder = document.createElement('div');
+  holder.setAttribute('aria-hidden', 'true');
+  holder.style.cssText = 'position:fixed;left:-30000px;top:0;pointer-events:none;';
+  const copy = card.cloneNode(true);
+  copy.style.transform = 'none';
+  holder.appendChild(copy);
+  document.body.appendChild(holder);
+  const from = [card, ...card.querySelectorAll('*')];
+  const to = [copy, ...copy.querySelectorAll('*')];
+  from.forEach((el, i) => {
+    const cs = getComputedStyle(el);
+    if (!cs.boxShadow || cs.boxShadow === 'none') return;
+    const shadows = parseShadows(cs.boxShadow);
+    const rings = shadows.filter((s) => !s.inset && !s.x && !s.y && !s.blur && s.spread > 0).sort((a, b) => a.spread - b.spread);
+    const d = to[i];
+    const margins = ['Top', 'Right', 'Bottom', 'Left'].map((k) => cs[`margin${k}`]);
+    const ringable = rings.length > 0 && rings.length <= 2 && parseFloat(cs.borderTopWidth) === 0
+      && margins.every((m) => /^-?\d+(\.\d+)?px$/.test(m));
+    if (ringable) {
+      const [inner, outer] = rings;
+      const s = inner.spread;
+      const grow = (v) => (/%/.test(v) ? v : `${parseFloat(v) + s}px`);
+      d.style.boxSizing = 'border-box';
+      d.style.width = `${el.offsetWidth + 2 * s}px`;
+      d.style.height = `${el.offsetHeight + 2 * s}px`;
+      d.style.margin = margins.map((m) => `${parseFloat(m) - s}px`).join(' ');
+      d.style.border = `${s}px solid ${inner.color}`;
+      d.style.borderRadius = [cs.borderTopLeftRadius, cs.borderTopRightRadius, cs.borderBottomRightRadius, cs.borderBottomLeftRadius].map(grow).join(' ');
+      d.style.backgroundClip = 'padding-box';
+      if (outer) { d.style.outline = `${outer.spread - s}px solid ${outer.color}`; d.style.outlineOffset = '0px'; }
+    }
+    let tilted = false;
+    for (let n = el; n && n !== card.parentElement; n = n.parentElement) {
+      if (n !== card && getComputedStyle(n).transform !== 'none') { tilted = true; break; }
+    }
+    const keep = shadows.filter((sh) => !(ringable && rings.includes(sh)) && !(tilted && sh.blur > 0));
+    d.style.boxShadow = keep.length
+      ? keep.map((sh) => `${sh.inset ? 'inset ' : ''}${sh.x}px ${sh.y}px ${sh.blur}px ${sh.spread}px ${sh.color}`).join(', ')
+      : 'none';
+  });
+  return { copy, holder };
+}
+
+/**
  * The card as an image: a PNG data URL for Download, a JPEG Blob for Share (photos travel as JPEG; it is also
  * a third of the size). Falls back to no embedded fonts rather than failing.
  */
 export async function renderCardImage(node, lib, { width, height, asBlob }) {
   const base = { width, height, pixelRatio: 2, cacheBust: false, style: { transform: 'none' } };
+  const safe = needsSafeCopy() ? safeCopy(node) : null;
+  const target = safe ? safe.copy : node;
+  // Safari's engine leaves the embedded fonts, so all the text, out of the first drawing after the page opens
+  // (WebKit 18): draw once to warm it up and keep the second.
+  const draw = async (opts) => {
+    if (safe) await lib.toCanvas(target, opts).catch(() => {});
+    return lib.toCanvas(target, opts);
+  };
   let canvas;
   try {
-    canvas = await lib.toCanvas(node, { ...base, fontEmbedCSS: await cardFontCSS(node) });
+    canvas = await draw({ ...base, fontEmbedCSS: await cardFontCSS(node) });
   } catch {
-    canvas = await lib.toCanvas(node, { ...base, skipFonts: true });
+    canvas = await draw({ ...base, skipFonts: true });
+  } finally {
+    if (safe) safe.holder.remove();
   }
   if (!asBlob) return canvas.toDataURL('image/png');
   return new Promise((resolve, reject) => {
