@@ -53,6 +53,7 @@ export function Input({ label, placeholder, type = 'text', value, onChange, erro
   }, label && React.createElement('label', { style: { fontSize: 13, fontWeight: 600, color: 'var(--text-heading)' } }, label),
   React.createElement('input', {
     type, placeholder, value, onChange,
+    'aria-invalid': error ? 'true' : undefined,
     onFocus: () => setFocus(true),
     onBlur: () => setFocus(false),
     style: {

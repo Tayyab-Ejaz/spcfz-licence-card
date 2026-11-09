@@ -136,8 +136,12 @@ DATA_PATCHES.mobile.push(
   // Post to LinkedIn (27 October 2026): beside it, Share (or Download) steps down to the secondary style.
   ['variant="primary" size="lg" sc-camel-on-click="{{ shareCard }}" style="display:block" hint-size="100%,54px"><i class="ph-bold ph-share-network" style="font-size:18px"></i><span>{{ shareLabel }}</span>',
     'variant="{{ shareVariant }}" size="lg" sc-camel-on-click="{{ shareCard }}" style="display:block;min-width:0" hint-size="100%,54px"><i class="ph-bold ph-share-network" style="font-size:18px"></i><span>{{ mShareLabel }}</span>'],
-  ['variant="primary" size="lg" sc-camel-on-click="{{ download }}" style="display:block" hint-size="100%,54px">',
-    'variant="{{ mDlVariant }}" size="lg" sc-camel-on-click="{{ download }}" style="display:block;min-width:0" hint-size="100%,54px">'],
+  // Half width beside LinkedIn, "Download card" broke onto two lines (SPC, 9 November 2026): there it says Download.
+  ['variant="primary" size="lg" sc-camel-on-click="{{ download }}" style="display:block" hint-size="100%,54px"><i class="ph-bold ph-download-simple" style="font-size:18px"></i><span>{{ downloadLabel }}</span>',
+    'variant="{{ mDlVariant }}" size="lg" sc-camel-on-click="{{ download }}" style="display:block;min-width:0" hint-size="100%,54px"><i class="ph-bold ph-download-simple" style="font-size:18px"></i><span>{{ mDlLabel }}</span>'],
+  // The style dots under the card are 8 px tall: a larger invisible area to tap (MOBILE_CSS .m-dot).
+  ['<span sc-camel-on-click="{{ d.onClick }}" style="width:{{ d.w }}px;height:8px;',
+    '<span class="m-dot" sc-camel-on-click="{{ d.onClick }}" style="width:{{ d.w }}px;height:8px;'],
 );
 
 // Both layouts (SPC, 5 November 2026): Post, Share or Download pressed while the card still waits for a photo (or
@@ -287,6 +291,11 @@ const MOBILE_CONTENT_LOGIC = [
   ["styleName: names[s.tpl] || 'Daylight'", "styleName: names[s.tpl] || 'Standard'"],
   ["fmtOpts: [['square', 'Square', 12, 12], ['portrait', 'Portrait', 10, 13], ['landscape', 'Landscape', 15, 9]]",
     "fmtOpts: [['portrait', 'Portrait', 10, 13], ['square', 'Square', 12, 12], ['landscape', 'Landscape', 15, 9]]"],
+  // A drawer is only as tall as what it holds (SPC, 9 November 2026), up to the design's 55% or 62% of the screen,
+  // so the card above it shows as large as it can (client/card-data.js fitSheet measures state.sheetFit).
+  ["const sheetH = sheet ? Math.round(Math.min(vh * (sheet === 'caption' || sheet === 'details' ? .62 : .55), vh - 160)) : 0;",
+    "const sheetCap = sheet ? Math.round(Math.min(vh * (sheet === 'caption' || sheet === 'details' ? .62 : .55), vh - 160)) : 0;\n"
+    + '    const sheetH = sheet ? Math.min(sheetCap, (s.sheetFit && s.sheetFit[sheet]) || sheetCap) : 0;'],
 ];
 
 // One canvas height for every format (SPC, 5 November 2026). In the card preview the desktop stage keeps the height a
@@ -597,7 +606,11 @@ const MOBILE_CSS = [
   '@keyframes m-sheet-in{from{transform:translate(-50%,100%)}to{transform:translate(-50%,0)}}',
   '@keyframes m-sheet-out{from{transform:translate(-50%,0)}to{transform:translate(-50%,100%)}}',
   '@keyframes m-rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}',
-  '[data-screen-label="Sheet"]{animation:m-sheet-in .34s cubic-bezier(.2,.8,.2,1) both;transition:height .25s var(--ease-standard)}',
+  // Its height eases only once it has slid in (client/card-data.js fitSheet adds .m-settled): the first fit to its
+  // content lands before it is painted, later ones (a custom headline field appearing) glide.
+  '[data-screen-label="Sheet"]{animation:m-sheet-in .34s cubic-bezier(.2,.8,.2,1) both}',
+  '[data-screen-label="Sheet"].m-settled{transition:height .25s var(--ease-standard)}',
+  '.m-dot{position:relative}.m-dot::after{content:"";position:absolute;inset:-14px -3px}',
   '[data-screen-label="Sheet"].m-closing{animation:m-sheet-out .22s cubic-bezier(.4,0,1,1) both;pointer-events:none}',
   '.m-in{animation:m-rise .3s cubic-bezier(.2,.8,.2,1) both}',
   // Typing in a drawer (client/card-data.js, sheetFull): the drawer fills the visible screen with square corners and

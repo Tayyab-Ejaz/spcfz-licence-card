@@ -102,6 +102,7 @@ export function calDaySizes(day) {
 
 const EASE_OUT = 'cubic-bezier(.2,.8,.2,1)';
 const PART_MS = 380;   // a Details part opening or closing
+const EMPTY_HEADLINE = 'Write your headline, or pick one above.';
 // What the customer makes: a change to any of these is work a refresh would lose (askBeforeLeaving).
 const EDIT_FIELDS = ['tpl', 'format', 'lang', 'focus', 'imgMode', 'photo', 'logo', 'photoPos', 'photoZoom', 'hIdx',
   'customHead', 'name', 'role', 'activity', 'ar', 'tone', 'caption'];
@@ -117,6 +118,53 @@ export function withCardData(Base) {
         const close = this.closeSheet;
         this.closeSheet = () => this.closeSheetSmoothly(close);
       }
+      // Desktop step bar: Share is a way past the headline too (tryHeadline).
+      if (typeof this.goStep === 'function') {
+        const go = this.goStep;
+        this.goStep = (i) => {
+          if (i === 2) this.tryHeadline();
+          const from = this.state.step;
+          go(i);
+          const e = i === 2 ? this.cardIssues() : {};
+          if (e.headline || e.name || e.role || e.activity) this.showProblem(from !== 1);
+        };
+      }
+    }
+
+    /**
+     * "Write your own" headline left empty (SPC, 9 November 2026): the card shows "Your headline" as a placeholder,
+     * and Share, Download and Post made an image that said so. Leaving the headline (Done, Next, Share) with the
+     * field empty now stops there with EMPTY_HEADLINE under the field, the way rejected wording does. The message
+     * waits for that attempt, so the field is not red the moment it appears.
+     */
+    emptyHeadline() {
+      const s = this.state;
+      return s.hIdx === 6 && !String(s.customHead || '').trim();
+    }
+
+    tryHeadline() {
+      if (this.emptyHeadline()) this.headTried = true;
+    }
+
+    cardIssues() {
+      const e = super.cardIssues();
+      return this.headTried && this.emptyHeadline() && !e.headline ? { ...e, headline: EMPTY_HEADLINE } : e;
+    }
+
+    /**
+     * Desktop: when Next, Done, Share or Download stops on a field to fix, bring that field and its message into
+     * view and put the cursor in it. In the side-by-side panel the field could sit below the fold with only the
+     * toast showing. `later`: the Details parts are opening first (from the Share step). Phones keep the drawer.
+     */
+    showProblem(later = false) {
+      if (frameEl()) return;
+      clearTimeout(this.problemT);
+      this.problemT = setTimeout(() => {
+        const el = document.querySelector('input[aria-invalid="true"]');
+        if (!el) return;
+        el.scrollIntoView({ block: 'center', behavior: reducedMotion() ? 'auto' : 'smooth' });
+        el.focus({ preventScroll: true });
+      }, later ? PART_MS + 60 : 60);
     }
 
     /**
@@ -263,10 +311,15 @@ export function withCardData(Base) {
         this.showToast('This card was changed outside the studio. Reload the page to continue.');
         return false;
       }
+      this.tryHeadline();
       const st = this.state;
       const e = this.cardIssues();
       const waiting = (st.imgMode === 'photo' && !st.photo) || (st.imgMode === 'logo' && !st.logo);
-      if (!waiting || e.headline || e.name || e.role || e.activity || !this.pressed) return super.preflight();
+      if (!waiting || e.headline || e.name || e.role || e.activity || !this.pressed) {
+        const go = super.preflight();
+        if (!go && (e.headline || e.name || e.role || e.activity)) this.showProblem(st.step !== 1);
+        return go;
+      }
       this.setState({ imgAsk: st.imgMode });
       return false;
     }
@@ -519,6 +572,7 @@ export function withCardData(Base) {
       const LABELS = ['Next: Photo', 'Next: Your details', 'Next: Headline', 'Next: Share'];
       const i = typeof s.sub === 'number' ? s.sub : null;
       const blocked = (k) => {
+        if (k === 3) this.tryHeadline();
         const e = this.cardIssues();
         return (k === 2 && (e.name || e.role || e.activity)) || (k === 3 && e.headline);
       };
@@ -531,7 +585,7 @@ export function withCardData(Base) {
         nextLabel: i === null ? 'Next: Share' : LABELS[i],
         next: () => {
           if (i === null) { v.next(); return; }
-          if (blocked(i)) { this.showToast('Please fix the highlighted text first.'); return; }
+          if (blocked(i)) { this.showToast('Please fix the highlighted text first.'); this.showProblem(); return; }
           if (i < 3) { open(i + 1, i); return; }
           open(null, 3);
           v.next();
@@ -675,6 +729,7 @@ export function withCardData(Base) {
     closeSheetSmoothly(close) {
       if (this.sheetClosing) return;
       const s = this.state;
+      if (s.sheet === 'headline') this.tryHeadline();
       const e = typeof this.cardIssues === 'function' ? this.cardIssues() : {};
       const blocked = (s.sheet === 'headline' && e.headline) || (s.sheet === 'details' && (e.name || e.role || e.activity));
       const sheet = document.querySelector('[data-screen-label="Sheet"]');
@@ -812,7 +867,9 @@ export function withCardData(Base) {
       this.fitStub();
       this.fitChrome();
       this.fitDesk();
-      this.animateFrame(args[1]);
+      if (args[1] && args[1].hIdx === 6 && this.state.hIdx !== 6) this.headTried = false;
+      // A drawer that changes height re-renders at once; the frame glides from there, to where it ends up.
+      if (!this.fitSheet()) this.animateFrame(args[1]);
       this.animateStage(args[1]);
       this.animateStep(args[1]);
       const settling = this.animateParts(args[1], args[2]);
@@ -856,6 +913,40 @@ export function withCardData(Base) {
       if (!row || (this.state.vw || window.innerWidth) < 760) return;   // the desktop layout, side by side or stacked
       const top = Math.round(row.getBoundingClientRect().top + window.scrollY);
       if (Math.abs(top - (this.state.deskTop || 0)) > 1) this.setState({ deskTop: top });
+    }
+
+    /**
+     * Phone layout: the open drawer is only as tall as what it holds (SPC, 9 November 2026), up to the design's
+     * height (tools/build-studio.mjs), so the card above it is as large as it can be while the customer picks a
+     * headline, photo, focus or language. Measured after each render into state.sheetFit; for a drawer that has
+     * just opened this lands before it is painted. Returns whether the height changed.
+     */
+    fitSheet() {
+      const s = this.state;
+      if (!s.sheet || s.typing || this.sheetClosing) return false;
+      const sheet = document.querySelector('[data-screen-label="Sheet"]');
+      const head = sheet && sheet.children[0];
+      const body = sheet && sheet.children[1];
+      if (!head || !body) return false;
+      if (!sheet.classList.contains('m-settled') && !this.settleT) {
+        this.settleT = setTimeout(() => {
+          this.settleT = null;
+          const el = document.querySelector('[data-screen-label="Sheet"]');
+          if (el) el.classList.add('m-settled');
+        }, 360);
+      }
+      let bottom = 0;
+      for (const el of body.querySelectorAll('*')) {
+        const r = el.getBoundingClientRect();
+        if (r.height && r.bottom > bottom) bottom = r.bottom;
+      }
+      if (!bottom) return false;
+      const need = Math.ceil(head.offsetHeight + bottom - body.getBoundingClientRect().top + body.scrollTop
+        + (parseFloat(getComputedStyle(body).paddingBottom) || 0));
+      const fit = s.sheetFit || {};
+      if (Math.abs((fit[s.sheet] || 0) - need) <= 2) return false;
+      this.setState({ sheetFit: { ...fit, [s.sheet]: need } });
+      return true;
     }
 
     fitChrome() {
@@ -965,6 +1056,15 @@ export function withCardData(Base) {
         dlVariant: liOn ? 'secondary' : v.dlVariant,
         mDlVariant: liOn ? 'secondary' : 'primary',
         mShareLabel: liOn ? (s.busy ? 'Preparing…' : 'Share') : v.shareLabel,
+        mDlLabel: liOn ? (s.busy ? 'Preparing…' : 'Download') : v.downloadLabel,
+        // Desktop headline part: its Done stops on an empty "Write your own" too (tryHeadline).
+        ...(v.sq && v.sq.headline ? {
+          sq: { ...v.sq, headline: { ...v.sq.headline, onDone: () => {
+            this.tryHeadline();
+            if (this.cardIssues().headline) { this.setState({}); this.showProblem(); return; }
+            v.sq.headline.onDone();
+          } } },
+        } : {}),
         mBarCols: liOn ? 'minmax(0,1fr) minmax(0,1fr)' : 'minmax(0,1fr)',
         portalUrl: PORTAL_URL,
         goPortal: () => window.location.assign(PORTAL_URL),

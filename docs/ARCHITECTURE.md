@@ -297,6 +297,20 @@ client/card-data.js):
   closes it and is absorbed, so it never follows a link underneath; while the
   photo is being adjusted, touches on the card stay with the card. All motion
   is skipped under the system's reduce-motion setting.
+- **Phone drawers fit their content** (9 November 2026): a drawer is only as
+  tall as what it holds, up to the design's 55% (62% for Details and Caption)
+  of the screen, so the card above it is as large as it can be (`fitSheet` in
+  client/card-data.js, `sheetFit` in the design's logic). The first fit lands
+  before the drawer is painted; later changes (the custom headline field
+  appearing) glide. While a field in the drawer is being typed in, the drawer
+  fills the visible screen instead (the iPhone keyboard, 9 November 2026).
+- **Empty custom headline** (9 November 2026): "Write custom headline" left
+  empty showed "Your headline" on the card, and an export said so. Leaving the
+  headline with the field empty (Done or a tap outside on phones; Next, the
+  headline's Done or the Share step on desktop; Share, Download and Post on
+  both) stops with "Write your headline, or pick one above." under the field.
+  The message waits for that first attempt. On desktop the field with a
+  problem is scrolled into view with the cursor in it (`showProblem`).
 - **No LinkedIn shortcuts** (17 October 2026): the desktop Share step has no
   "Open LinkedIn" button, and neither layout shows the "@SPC Free Zone"
   tagging tip. The desktop Share step leads with Share and stacks a
