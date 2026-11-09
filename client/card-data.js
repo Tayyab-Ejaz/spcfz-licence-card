@@ -173,6 +173,8 @@ export function withCardData(Base) {
         window.visualViewport.removeEventListener('scroll', this.kbWatch);
       }
       this.kbWatch = null;
+      if (this.typeIn) document.removeEventListener('focusin', this.typeIn);
+      if (this.typeOut) document.removeEventListener('focusout', this.typeOut);
       if (this.reviewKeys) document.removeEventListener('keydown', this.reviewKeys);
       this.reviewKeys = null;
       clearTimeout(this.reviewTimer);
@@ -765,9 +767,21 @@ export function withCardData(Base) {
         const top = open ? Math.max(0, Math.round(vv.offsetTop)) : 0;
         const st = this.state;
         if (!!st.kbOpen !== open || (st.kbBelow || 0) !== below || (st.kbTop || 0) !== top) this.setState({ kbOpen: open, kbBelow: below, kbTop: top });
+        // Keep the field being typed in on screen inside the drawer once the keyboard has moved.
+        const f = document.activeElement;
+        if (open && f && f.closest && f.closest('[data-screen-label="Sheet"]')) requestAnimationFrame(() => f.scrollIntoView({ block: 'nearest' }));
       };
       vv.addEventListener('resize', this.kbWatch);
       vv.addEventListener('scroll', this.kbWatch);
+      // Typing in a drawer (SPC, 9 November 2026: "make the drawer full height"): while a text field in it has the
+      // focus, the drawer fills the visible screen, its title and Done at the top, so the keyboard coming and going
+      // moves nothing but the drawer's bottom edge. It returns to its usual height when the typing ends.
+      const field = (el) => !!el && el.matches && el.matches('input:not([type=range]):not([type=file]):not([type=checkbox]), textarea')
+        && !!el.closest('[data-screen-label="Sheet"]');
+      this.typeIn = (e) => { if (field(e.target) && !this.state.typing) this.setState({ typing: true }); };
+      this.typeOut = () => setTimeout(() => { if (!field(document.activeElement) && this.state.typing) this.setState({ typing: false }); }, 60);
+      document.addEventListener('focusin', this.typeIn);
+      document.addEventListener('focusout', this.typeOut);
     }
 
     trackEdits(prev) {
@@ -927,7 +941,10 @@ export function withCardData(Base) {
         // Desktop Share step intro (tools/build-studio.mjs DESKTOP_SHARE_ACTIONS); the phone layout does not use it.
         shareIntro: 'Share your card with your network on LinkedIn, WhatsApp, or any other social media app of your choice.',
         captionPlaceholder: (s.tone || 'warm') === 'custom' ? 'Write your own caption' : '',
-        // Phone layout with the iPhone keyboard open (watchKeyboard): the drawer on the keyboard, the page pinned.
+        // Phone layout with the iPhone keyboard open (watchKeyboard): the drawer on the keyboard, the page pinned;
+        // while typing in the drawer it fills the visible screen (its height is the visible height).
+        sheetFull: !!(s.sheet && s.typing),
+        ...(s.sheet && s.typing ? { sheetH: Math.round(s.vh || window.innerHeight) } : {}),
         sheetBottom: s.sheet && s.kbOpen ? s.kbBelow || 0 : 0,
         wrapPos: s.sheet && s.kbOpen ? 'fixed' : 'relative',
         wrapTop: s.sheet && s.kbOpen ? s.kbTop || 0 : 0,

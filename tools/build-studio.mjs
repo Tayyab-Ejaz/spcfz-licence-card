@@ -211,7 +211,7 @@ DATA_PATCHES.mobile.push([ZOOM_ICON('minus'), zoomBtn('minus', 40)], [ZOOM_ICON(
 // watchKeyboard). Without the keyboard both are as before (bottom 0; relative with no offset).
 DATA_PATCHES.mobile.push(
   ['<div data-screen-label="Sheet" style="position:fixed;left:50%;bottom:0;transform:translateX(-50%);',
-    '<div data-screen-label="Sheet" style="position:fixed;left:50%;bottom:{{ sheetBottom }}px;transform:translateX(-50%);'],
+    '<div data-screen-label="Sheet" data-full="{{ sheetFull }}" style="position:fixed;left:50%;bottom:{{ sheetBottom }}px;transform:translateX(-50%);'],
   ['<div style="position:relative;max-width:480px;margin:0 auto;min-height:{{ vhPx }}px;height:{{ wrapH }};',
     '<div style="position:{{ wrapPos }};top:{{ wrapTop }}px;left:0;right:0;max-width:480px;margin:0 auto;min-height:{{ vhPx }}px;height:{{ wrapH }};'],
 );
@@ -600,6 +600,9 @@ const MOBILE_CSS = [
   '[data-screen-label="Sheet"]{animation:m-sheet-in .34s cubic-bezier(.2,.8,.2,1) both;transition:height .25s var(--ease-standard)}',
   '[data-screen-label="Sheet"].m-closing{animation:m-sheet-out .22s cubic-bezier(.4,0,1,1) both;pointer-events:none}',
   '.m-in{animation:m-rise .3s cubic-bezier(.2,.8,.2,1) both}',
+  // Typing in a drawer (client/card-data.js, sheetFull): the drawer fills the visible screen with square corners and
+  // follows the keyboard without easing, so nothing drifts while the keyboard moves.
+  '[data-screen-label="Sheet"][data-full="true"]{border-radius:0!important;transition:none!important;box-shadow:none!important}',
   // iPhone Safari zooms the page into a text field whose type is under 16px when it is tapped (SPC, 9 November 2026:
   // the details fields were 15px). On phones and touch tablets the fields' text is 16px, so it does not; pinch zoom
   // stays available (no maximum-scale in the viewport).
