@@ -1023,7 +1023,7 @@ export function withCardData(Base) {
           ? `Arabic name as registered on license ${c.licence_number}. It can't be changed here.`
           : `As registered on license ${c.licence_number}. It can't be changed here.`,
         t: { ...v.t, estYear: ar ? `تأسست ${D.year}` : `EST. ${D.year}` },
-        hdrTitle: `${c.company_en} is licensed.`,
+        hdrTitle: `${c.company_en} is officially licensed!`,
         hdrDate: D.fullEn,
         hdrDateShort: D.shortEn,
         hasHdrActivity: !!c.activity_en,
