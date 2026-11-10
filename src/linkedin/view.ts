@@ -38,7 +38,7 @@ export const LI_STRINGS = {
     viewPost: 'View your post on LinkedIn',
     viewPostNote: 'LinkedIn can take a minute or two to show a new post. If it says "Post not found", wait a moment and refresh.',
     postedTip: 'Tip: tag your co-founders and team in a comment, so it reaches their networks too.',
-    reviewAsk: 'How was getting your licence with SPC Free Zone?',
+    reviewAsk: 'How was getting your license with SPC Free Zone?',
     reviewBody: 'A short Google review helps other founders find us.',
     reviewButton: 'Leave a Google review',
     problemTitle: 'Your post was not published',

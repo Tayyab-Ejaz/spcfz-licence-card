@@ -174,7 +174,7 @@ const REVIEW_ASK = `<sc-if value="{{ hasReviewAsk }}" hint-placeholder-val="{{ f
   <div sc-camel-on-click="{{ reviewClose }}" style="position:fixed;inset:0;z-index:60;display:flex;align-items:{{ reviewAskAlign }};justify-content:center;padding:16px 16px calc(16px + env(safe-area-inset-bottom));background:rgba(7,19,41,.45)">
     <div data-review-ask="" role="dialog" aria-modal="true" aria-labelledby="review-ask-title" style="width:100%;max-width:400px;box-sizing:border-box;display:flex;flex-direction:column;gap:16px;padding:22px 20px 20px;border-radius:20px;background:#fff;box-shadow:0 18px 48px rgba(7,19,41,.22)">
       <div style="display:flex;flex-direction:column;gap:6px">
-        <p id="review-ask-title" style="margin:0;font-size:18px;font-weight:700;line-height:1.3;color:var(--spc-ink)">How was getting your licence with SPC Free Zone?</p>
+        <p id="review-ask-title" style="margin:0;font-size:18px;font-weight:700;line-height:1.3;color:var(--spc-ink)">How was getting your license with SPC Free Zone?</p>
         <p style="margin:0;font-size:14.5px;line-height:1.5;color:var(--spc-muted);text-wrap:pretty">A short Google review helps other founders find us. It takes a minute.</p>
       </div>
       <div style="display:flex;flex-direction:column;gap:10px">

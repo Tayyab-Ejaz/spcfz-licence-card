@@ -212,7 +212,7 @@ describe('sign-in, review and post', () => {
     expect(done).toContain('https://www.linkedin.com/feed/update/urn:li:share:7001/');
     // The Google review request (src/page/review.ts), asked once and counted once however often the page loads.
     expect(done).toContain('LinkedIn can take a minute or two to show a new post.');
-    expect(done).toContain('How was getting your licence with SPC Free Zone?');
+    expect(done).toContain('How was getting your license with SPC Free Zone?');
     expect(done).toContain(`href="/c/${card.token}/review?from=linkedin"`);
     expect(done).toContain(`spc-review:${card.token}`);
     await app.request('/linkedin/done', { headers: { Cookie: cookie } }, env);

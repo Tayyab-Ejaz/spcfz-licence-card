@@ -155,7 +155,7 @@ the LinkedIn caption. Generated from the source; `{company}` and `{first name}` 
 | errUpstream | تعذّر الوصول إلى لينكدإن. حاول مرة أخرى بعد قليل. | We could not reach LinkedIn. Try again in a moment. |
 | errImage | تعذّر تجهيز صورة بطاقتك. عد إلى بطاقتك وحاول مرة أخرى. | Your card picture could not be prepared. Go back to your card and try again. |
 | title | النشر على لينكدإن · المنطقة الحرة لمدينة الشارقة للنشر | Post to LinkedIn · SPC Free Zone |
-| reviewAsk | كيف كانت تجربتك في الحصول على رخصتك من المنطقة الحرة لمدينة الشارقة للنشر؟ | How was getting your licence with SPC Free Zone? |
+| reviewAsk | كيف كانت تجربتك في الحصول على رخصتك من المنطقة الحرة لمدينة الشارقة للنشر؟ | How was getting your license with SPC Free Zone? |
 | reviewBody | تقييم قصير على Google يساعد روّاد الأعمال الآخرين في العثور علينا. | A short Google review helps other founders find us. |
 | reviewButton | اكتب تقييماً على Google | Leave a Google review |
 
