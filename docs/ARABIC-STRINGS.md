@@ -83,36 +83,35 @@ numbers use Latin digits in both languages.
 Added 27 October 2026, drafted by Claude, not yet reviewed: the welcome email, the Post to LinkedIn pages and
 the LinkedIn caption. Generated from the source; `{company}` and `{first name}` are filled in per card.
 
-## Welcome email (src/mail/welcome.ts, COPY; English is SPC's copy of 27 October 2026, verbatim except readyBody, reordered)
+## Welcome email (src/mail/welcome.ts, COPY; English is SPC's copy of 10 November 2026, "LI Milestone Email.docx", verbatim; subject and button kept)
+
+Rewritten 10 November 2026 to SPC's new copy; the Arabic is Claude's draft, not yet reviewed.
 
 | Key | Arabic | English |
 |---|---|---|
 | subject | أعمالك أصبحت رسمية. شارك الخبر مع العالم! | Your Business Is Official. Let the World Know! |
-| preheader | إنجاز يستحق الاحتفال، وقصة تستحق المشاركة. | A milestone worth celebrating. A story worth sharing. |
-| h1 | أعمالك أصبحت رسمية. شارك الخبر مع العالم! | Your Business Is Official. Let the World Know! |
-| sub | إنجاز يستحق الاحتفال، وقصة تستحق المشاركة. | A milestone worth celebrating. A story worth sharing. |
+| preheader | رسمياً، أصبح لديك عملك الخاص. شارك الفرحة! | You’re Officially a Business Owner. Spread the Joy! |
+| h1 | رسمياً، أصبح لديك عملك الخاص. | You’re Officially a Business Owner. |
+| sub | شارك الفرحة! | Spread the Joy! |
 | hello | مرحباً {first name}، | Hi {first name}, |
-| congrats | تهانينا على حصولك على رخصتك التجارية من | Congratulations on receiving your business license with |
-| congratsBold | المنطقة الحرة لمدينة الشارقة للنشر! | SPC Free Zone! |
-| milestone | إنها محطة مميزة في رحلتك الريادية، ونؤمن أنها تستحق المشاركة. | This is an exciting milestone in your entrepreneurial journey, and we believe it's worth sharing. |
-| prepared | جهّزنا لك صورة إعلان خاصة لتحتفل بهذا الإنجاز مع شبكة معارفك. | We've prepared a special announcement image to help you celebrate this achievement with your network. |
+| intro 1 | الحصول على رخصتك التجارية محطة شخصية مهمة. إنها اللحظة التي أصبح فيها حلمك حقيقة، وهذا يستحق أكثر من تهنئة عابرة. | Getting your business license is a significant personal milestone. It’s the moment your dream became a reality, and that deserves more than a polite nod. |
+| intro 2 | قد يكون عميلك أو شريكك أو مستثمرك القادم موجوداً بالفعل بين متابعيك على وسائل التواصل الاجتماعي، ينتظر سبباً ليهنئك ويبدأ حديثاً معك. | Your next customer, partner, or investor may already be out there on your social media feeds, waiting for a reason to congratulate you and start a conversation with you. |
+| intro 3 | ولمساعدتك على مشاركة الخبر مع شبكة معارفك ومتابعيك، صمّمنا لك بطاقة إعلان مخصصة! | To help you break the news with your network and followers, we’ve built a personalised announcement card for you! |
 | cardAlt | إعلان الرخصة التجارية لشركة {company} | Business license announcement for {company} |
 | draftBar | بطاقة إعلانك | Your announcement card |
 | draft | مسودة | Draft |
 | customise | خصّصها ← | Customise → |
-| makeYours | قبل النشر، اجعلها بطابعك: | Before you post, make it yours: |
-| chips | + أضف صورتك / غيّر العنوان / جرّب تصميماً آخر | + Add your photo / Change the headline / Try another style |
-| readyTitle | إعلانك جاهز للمشاركة! | Your announcement is ready to share! |
-| readyBody | ما عليك سوى إضافة لمستك الخاصة، ثم تنزيل صورتك ومشاركتها على لينكدإن أو منصتك المفضلة. | Simply add your personal touch, then download your image and share it on LinkedIn or your favourite social media platform. |
+| makeYours | خصّص منشورك: | Customise your post: |
+| chips | + أضف صورة / غيّر العنوان / جرّب تصميماً آخر | + Add a photo / Change headline / Try another style |
+| readyTitle | شارك إعلانك! | Share Your Announcement! |
+| readyBody | أضف لمستك الخاصة، ونزّل الصورة، وشاركها على لينكدإن ومنصات التواصل الاجتماعي الأخرى! | Add your personal touch, download the image, and share it on LinkedIn and other social media platforms! |
 | make | شارك إنجازك | Share Your Milestone |
-| network | أخبر شبكتك عن مشروعك الجديد. قد يكون عميلك القادم أو شريكك التجاري أو فرصتك المقبلة على بُعد منشور واحد! | Let your network know about your new venture. Your next customer, business partner, or opportunity could be just one post away! |
-| cheers | نتمنى لك بدايات جديدة وفرصاً أكبر. | Here's to new beginnings and bigger opportunities ahead. |
-| welcome | أهلاً بك في مجتمع الأعمال في المنطقة الحرة لمدينة الشارقة للنشر! | Welcome to the SPC Free Zone business community! |
-| regards | مع أطيب التحيات، | Best regards, |
-| team | فريق المنطقة الحرة لمدينة الشارقة للنشر | Team SPC Free Zone |
+| closing | يسعدنا انضمامك إلى عائلة المنطقة الحرة لمدينة الشارقة للنشر. لقد حققت أول إنجاز كبير، ونتمنى لك المزيد! | We’re thrilled to have you in the SPC Free Zone family. You’ve already earned your first big win. Here’s to many more! |
+| regards | مع أطيب التحيات، | Best Regards, |
+| team | المنطقة الحرة لمدينة الشارقة للنشر | SPC Free Zone |
 | tollFree | الرقم المجاني | Toll Free Number |
 | emailLabel | البريد الإلكتروني | Email |
-| copyright | © {company} المنطقة الحرة لمدينة الشارقة للنشر | © {company} Sharjah Publishing City (SPC) Free Zone |
+| copyright | © {year} المنطقة الحرة لمدينة الشارقة للنشر | © {year} Sharjah Publishing City (SPC) Free Zone |
 | location | الشارقة، الإمارات العربية المتحدة. | Sharjah, United Arab Emirates. |
 | unsubscribe | إلغاء الاشتراك | Unsubscribe |
 

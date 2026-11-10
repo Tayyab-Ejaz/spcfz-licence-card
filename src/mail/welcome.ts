@@ -1,5 +1,5 @@
-// The welcome email: "Your Business Is Official. Let the World Know!" (SPC's copy), the customer's own card (the
-// Daylight picture, shown as a draft), and one button, "Share Your Milestone", into the studio, where they make it
+// The welcome email: "You’re Officially a Business Owner." (SPC's copy), the customer's own card (shown as a
+// draft), and one button, "Share Your Milestone", into the studio, where they make it
 // theirs and post it (Post to LinkedIn is there). No LinkedIn shortcut here: it would post the card un-personalised.
 // Built for real inboxes: tables and inline styles, a hidden preheader, Outlook (VML) buttons, a dark-mode
 // palette for clients that honour it, right-to-left Arabic, alt text on every image and a plain-text part.
@@ -24,35 +24,36 @@ export interface WelcomeInput {
 }
 
 /**
- * The words, from SPC's copy of 27 October 2026 ("Your Business Is Official. Let the World Know!"), English
- * verbatim except readyBody, reordered so the personal touch comes before the download (SPC, 27 October 2026);
- * the Arabic is Claude's draft for review. Exported for docs/ARABIC-STRINGS.md.
+ * The words. English is SPC's copy of 10 November 2026 ("LI Milestone Email.docx": "You’re Officially a Business
+ * Owner." / "Spread the Joy!"), verbatim; the subject stays "Your Business Is Official. Let the World Know!" and the
+ * button "Share Your Milestone" (SPC, 10 November 2026). The card window's bar ("Your announcement card · Draft",
+ * "Customise →") and the footer are not in that copy and stay. The Arabic is Claude's draft for review. Exported
+ * for docs/ARABIC-STRINGS.md.
  */
 export const COPY = {
   en: {
     subject: 'Your Business Is Official. Let the World Know!',
-    preheader: 'A milestone worth celebrating. A story worth sharing.',
-    h1: 'Your Business Is Official. Let the World Know!',
-    sub: 'A milestone worth celebrating. A story worth sharing.',
+    preheader: 'You’re Officially a Business Owner. Spread the Joy!',
+    h1: 'You’re Officially a Business Owner.',
+    sub: 'Spread the Joy!',
     hello: (first: string | null) => (first ? `Hi ${first},` : 'Hello,'),
-    congrats: 'Congratulations on receiving your business license with',
-    congratsBold: 'SPC Free Zone!',
-    milestone: "This is an exciting milestone in your entrepreneurial journey, and we believe it's worth sharing.",
-    prepared: "We've prepared a special announcement image to help you celebrate this achievement with your network.",
+    intro: [
+      'Getting your business license is a significant personal milestone. It’s the moment your dream became a reality, and that deserves more than a polite nod.',
+      'Your next customer, partner, or investor may already be out there on your social media feeds, waiting for a reason to congratulate you and start a conversation with you.',
+      'To help you break the news with your network and followers, we’ve built a personalised announcement card for you!',
+    ],
     cardAlt: (co: string) => `Business license announcement for ${co}`,
     draftBar: 'Your announcement card',
     draft: 'Draft',
     customise: 'Customise →',
-    makeYours: 'Before you post, make it yours:',
-    chips: ['+ Add your photo', 'Change the headline', 'Try another style'],
-    readyTitle: 'Your announcement is ready to share!',
-    readyBody: 'Simply add your personal touch, then download your image and share it on LinkedIn or your favourite social media platform.',
+    makeYours: 'Customise your post:',
+    chips: ['+ Add a photo', 'Change headline', 'Try another style'],
+    readyTitle: 'Share Your Announcement!',
+    readyBody: 'Add your personal touch, download the image, and share it on LinkedIn and other social media platforms!',
     make: 'Share Your Milestone',
-    network: 'Let your network know about your new venture. Your next customer, business partner, or opportunity could be just one post away!',
-    cheers: "Here's to new beginnings and bigger opportunities ahead.",
-    welcome: 'Welcome to the SPC Free Zone business community!',
-    regards: 'Best regards,',
-    team: 'Team SPC Free Zone',
+    closing: 'We’re thrilled to have you in the SPC Free Zone family. You’ve already earned your first big win. Here’s to many more!',
+    regards: 'Best Regards,',
+    team: 'SPC Free Zone',
     tollFree: 'Toll Free Number',
     emailLabel: 'Email',
     copyright: (year: string) => `© ${year} Sharjah Publishing City (SPC) Free Zone`,
@@ -61,28 +62,27 @@ export const COPY = {
   },
   ar: {
     subject: 'أعمالك أصبحت رسمية. شارك الخبر مع العالم!',
-    preheader: 'إنجاز يستحق الاحتفال، وقصة تستحق المشاركة.',
-    h1: 'أعمالك أصبحت رسمية. شارك الخبر مع العالم!',
-    sub: 'إنجاز يستحق الاحتفال، وقصة تستحق المشاركة.',
+    preheader: 'رسمياً، أصبح لديك عملك الخاص. شارك الفرحة!',
+    h1: 'رسمياً، أصبح لديك عملك الخاص.',
+    sub: 'شارك الفرحة!',
     hello: (first: string | null) => (first ? `مرحباً ${first}،` : 'مرحباً،'),
-    congrats: 'تهانينا على حصولك على رخصتك التجارية من',
-    congratsBold: 'المنطقة الحرة لمدينة الشارقة للنشر!',
-    milestone: 'إنها محطة مميزة في رحلتك الريادية، ونؤمن أنها تستحق المشاركة.',
-    prepared: 'جهّزنا لك صورة إعلان خاصة لتحتفل بهذا الإنجاز مع شبكة معارفك.',
+    intro: [
+      'الحصول على رخصتك التجارية محطة شخصية مهمة. إنها اللحظة التي أصبح فيها حلمك حقيقة، وهذا يستحق أكثر من تهنئة عابرة.',
+      'قد يكون عميلك أو شريكك أو مستثمرك القادم موجوداً بالفعل بين متابعيك على وسائل التواصل الاجتماعي، ينتظر سبباً ليهنئك ويبدأ حديثاً معك.',
+      'ولمساعدتك على مشاركة الخبر مع شبكة معارفك ومتابعيك، صمّمنا لك بطاقة إعلان مخصصة!',
+    ],
     cardAlt: (co: string) => `إعلان الرخصة التجارية لشركة ${co}`,
     draftBar: 'بطاقة إعلانك',
     draft: 'مسودة',
     customise: 'خصّصها ←',
-    makeYours: 'قبل النشر، اجعلها بطابعك:',
-    chips: ['+ أضف صورتك', 'غيّر العنوان', 'جرّب تصميماً آخر'],
-    readyTitle: 'إعلانك جاهز للمشاركة!',
-    readyBody: 'ما عليك سوى إضافة لمستك الخاصة، ثم تنزيل صورتك ومشاركتها على لينكدإن أو منصتك المفضلة.',
+    makeYours: 'خصّص منشورك:',
+    chips: ['+ أضف صورة', 'غيّر العنوان', 'جرّب تصميماً آخر'],
+    readyTitle: 'شارك إعلانك!',
+    readyBody: 'أضف لمستك الخاصة، ونزّل الصورة، وشاركها على لينكدإن ومنصات التواصل الاجتماعي الأخرى!',
     make: 'شارك إنجازك',
-    network: 'أخبر شبكتك عن مشروعك الجديد. قد يكون عميلك القادم أو شريكك التجاري أو فرصتك المقبلة على بُعد منشور واحد!',
-    cheers: 'نتمنى لك بدايات جديدة وفرصاً أكبر.',
-    welcome: 'أهلاً بك في مجتمع الأعمال في المنطقة الحرة لمدينة الشارقة للنشر!',
+    closing: 'يسعدنا انضمامك إلى عائلة المنطقة الحرة لمدينة الشارقة للنشر. لقد حققت أول إنجاز كبير، ونتمنى لك المزيد!',
     regards: 'مع أطيب التحيات،',
-    team: 'فريق المنطقة الحرة لمدينة الشارقة للنشر',
+    team: 'المنطقة الحرة لمدينة الشارقة للنشر',
     tollFree: 'الرقم المجاني',
     emailLabel: 'البريد الإلكتروني',
     copyright: (year: string) => `© ${year} المنطقة الحرة لمدينة الشارقة للنشر`,
@@ -185,9 +185,7 @@ a{text-decoration:none}
 <h1 class="h1" style="margin:0 0 8px;color:#071329;font-size:26px;line-height:33px;font-weight:800;letter-spacing:${ar ? '0' : '-.01em'};">${t.h1}</h1>
 <p class="accent" style="margin:0 0 28px;color:#004dff;font-size:16px;line-height:24px;font-weight:600;">${t.sub}</p>
 <p class="text" style="margin:0 0 16px;color:#1f2a44;font-size:16px;line-height:26px;">${t.hello(first)}</p>
-<p class="text" style="margin:0 0 16px;color:#1f2a44;font-size:16px;line-height:26px;">${t.congrats} <strong style="white-space:nowrap;">${t.congratsBold}</strong></p>
-<p class="text" style="margin:0 0 16px;color:#1f2a44;font-size:16px;line-height:26px;">${t.milestone}</p>
-<p class="text" style="margin:0;color:#1f2a44;font-size:16px;line-height:26px;">${t.prepared}</p>
+${raw(t.intro.map((line, k) => html`<p class="text" style="margin:${k === t.intro.length - 1 ? '0' : '0 0 16px'};color:#1f2a44;font-size:16px;line-height:26px;">${line}</p>`).join('\n'))}
 </td></tr>
 
 <tr><td class="pad" style="padding:26px 32px 0;">
@@ -218,9 +216,7 @@ ${raw(t.chips.map((label) => html`<a class="chip" href="${studio}" target="_blan
 </td></tr>
 
 <tr><td class="pad" style="padding:30px 32px 0;text-align:${align};">
-<p class="text" style="margin:0 0 16px;color:#1f2a44;font-size:16px;line-height:26px;">${t.network}</p>
-<p class="text" style="margin:0 0 16px;color:#1f2a44;font-size:16px;line-height:26px;">${t.cheers}</p>
-<p class="text" style="margin:0;color:#071329;font-size:16px;line-height:26px;font-weight:700;">${t.welcome}</p>
+<p class="text" style="margin:0;color:#1f2a44;font-size:16px;line-height:26px;">${t.closing}</p>
 <p class="text" style="margin:28px 0 0;color:#1f2a44;font-size:16px;line-height:26px;">${t.regards}<br><strong class="text" style="color:#071329;">${t.team}</strong></p>
 </td></tr>
 
@@ -259,22 +255,13 @@ ${raw(t.chips.map((label) => html`<a class="chip" href="${studio}" target="_blan
     '',
     t.hello(first),
     '',
-    `${t.congrats} ${t.congratsBold}`,
-    '',
-    t.milestone,
-    '',
-    t.prepared,
-    '',
+    ...t.intro.flatMap((line) => [line, '']),
     t.readyTitle,
     t.readyBody,
     '',
     `${t.make}: ${studio}`,
     '',
-    t.network,
-    '',
-    t.cheers,
-    '',
-    t.welcome,
+    t.closing,
     '',
     t.regards,
     t.team,

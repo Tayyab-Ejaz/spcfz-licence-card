@@ -515,19 +515,23 @@ What the customer gets, in their preferred language (English or Arabic, right to
 
 - A plain white email under SPC's header banner (white logo on brand blue, `assets/email/spc-header-<hash>.jpg`,
   served at `/static/email/` and cached for good; a new banner gets a new file name).
-- SPC's copy (27 October 2026), English verbatim: subject and headline "Your Business Is Official. Let the World
-  Know!", "A milestone worth celebrating. A story worth sharing.", "Hi <first name>," and the congratulations.
+- SPC's copy (10 November 2026, "LI Milestone Email.docx"), English verbatim: headline "You’re Officially a
+  Business Owner.", "Spread the Joy!", "Hi <first name>,", three short paragraphs (the milestone, your next customer
+  may already be in your feed, we built you a card), and after the button "We’re thrilled to have you in the SPC
+  Free Zone family…". The subject stays "Your Business Is Official. Let the World Know!" (SPC's choice); the
+  preheader is the headline and "Spread the Joy!".
 - Their own card as a picture (the Daylight style since 27 October 2026, SPC's choice: kicker, founder and role,
-  the empty photo tile, "Officially in business.", company and activity, "Licensed with"; 1080x1080, drawn by the
+  the empty photo tile, "Open for business!", company and activity, "Licensed with"; 1080x1080, drawn by the
   server: `/c/<token>/card/<hash>-v<n>[-ar].jpg`), linked to their studio. It sits in a small editor window: a bar
-  with "Your announcement card · Draft" and "Customise →", and under the card "Before you post, make it yours:" with
-  three chips (Add your photo, Change the headline, Try another style), all opening the studio, so it reads as a
+  with "Your announcement card · Draft" and "Customise →", and under the card "Customise your post:" with
+  three chips (+ Add a photo, Change headline, Try another style), all opening the studio, so it reads as a
   draft to personalise rather than a finished picture. The picture itself stays clean. Without a founder, the company and
   activity take the top (the design's company-only layout).
-- One button, "Share Your Milestone" (the studio, `?via=email`, counted as a view from email), where they make the
+- Under "Share Your Announcement!" and "Add your personal touch, download the image, and share it…", one button,
+  "Share Your Milestone" (the studio, `?via=email`, counted as a view from email), where they make the
   card theirs and post it (Post to LinkedIn is the studio's first button). The email has no LinkedIn shortcut
   (removed 27 October 2026): it would post the card un-personalised, with the empty photo slot.
-- The closing lines, "Best regards, Team SPC Free Zone", and a black footer band (SPC, 27 October 2026): the SPC logo
+- "Best Regards, SPC Free Zone", and a black footer band (SPC, 27 October 2026): the SPC logo
   in white and social icons on dark circles (LinkedIn, Instagram, Facebook, YouTube, as on www.spcfz.ae; PNGs from
   tools/email-icons.mjs); one line,
   Toll Free Number 800 77239 | Email marketing@spcfz.ae; a hairline; "© <year> Sharjah Publishing City (SPC) Free
