@@ -337,6 +337,16 @@ client/card-data.js):
   card's text uses, fetched once from the browser cache, and never run twice
   at once; the images are pixel-identical. Share sends a JPEG (about 210 KB),
   Download a PNG.
+- **Photo in iPhone exports** (11 November 2026, client/card-render.js
+  drawSettled): on an iPhone the customer's photo showed on screen but not in
+  the downloaded or shared card. Safari's engine decodes a photo inside the
+  card's SVG only once that SVG is drawn, in the background, so the first
+  drawing has an empty frame; any photo larger than a thumbnail was affected
+  (Download, Share and the "Add your photo?" path; Safari on a Mac too).
+  Drawing a fresh SVG twice did not help, as each new SVG starts the decoding
+  over. On Safari's engine the SVG is now made once and drawn at full size
+  every 100 ms until two drawings agree (at least 400 ms, at most 4 s), and
+  the last drawing is kept. Chrome and Android are unchanged.
 - **Link preview** (19 October 2026): the card page carries Open Graph and
   Twitter tags, so a pasted link shows a preview in WhatsApp, LinkedIn,
   iMessage and Slack: "<company> is officially licensed", the issue date, and

@@ -200,6 +200,58 @@ function safeCopy(card) {
   return { copy, holder };
 }
 
+/** How often, at least and at most, drawSettled draws the card before it keeps a drawing (milliseconds). */
+export const SETTLE = { stepMs: 100, minMs: 400, maxMs: 4000 };
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('the card could not be drawn'));
+    img.src = src;
+  });
+}
+
+/**
+ * Safari's engine decodes a photo inside the card's SVG only once that SVG is drawn, and in the background, so the
+ * first drawing has an empty photo frame (SPC, 11 November 2026: on an iPhone the photo was on screen but not in
+ * the downloaded or shared card; any photo larger than a thumbnail, reproduced in WebKit 18). Drawing the same SVG
+ * again a moment later has it. A fresh SVG starts the decoding over, which is why drawing the card twice did not
+ * help. The embedded fonts arrive late the same way. So the SVG is made once and drawn at full size until two
+ * drawings agree (compared on a small copy), and the last drawing is kept.
+ */
+async function drawSettled(lib, target, opts) {
+  const ratio = opts.pixelRatio || 1;
+  const img = await loadImage(await lib.toSvg(target, opts));
+  const canvas = document.createElement('canvas');
+  canvas.width = opts.width * ratio;
+  canvas.height = opts.height * ratio;
+  const ctx = canvas.getContext('2d');
+  const probe = document.createElement('canvas');
+  probe.width = Math.ceil(opts.width / 8);
+  probe.height = Math.ceil(opts.height / 8);
+  const pctx = probe.getContext('2d', { willReadFrequently: true });
+  const draw = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    pctx.clearRect(0, 0, probe.width, probe.height);
+    pctx.drawImage(canvas, 0, 0, probe.width, probe.height);
+    return pctx.getImageData(0, 0, probe.width, probe.height).data;
+  };
+  const same = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
+  const start = Date.now();
+  let last = draw();
+  while (Date.now() - start < SETTLE.maxMs) {
+    await sleep(SETTLE.stepMs);
+    const now = draw();
+    if (same(now, last) && Date.now() - start >= SETTLE.minMs) break;
+    last = now;
+  }
+  return canvas;
+}
+
 /**
  * The card as an image: a PNG data URL for Download, a JPEG Blob for Share (photos travel as JPEG; it is also
  * a third of the size). Falls back to no embedded fonts rather than failing.
@@ -208,12 +260,7 @@ export async function renderCardImage(node, lib, { width, height, asBlob }) {
   const base = { width, height, pixelRatio: 2, cacheBust: false, style: { transform: 'none' } };
   const safe = needsSafeCopy() ? safeCopy(node) : null;
   const target = safe ? safe.copy : node;
-  // Safari's engine leaves the embedded fonts, so all the text, out of the first drawing after the page opens
-  // (WebKit 18): draw once to warm it up and keep the second.
-  const draw = async (opts) => {
-    if (safe) await lib.toCanvas(target, opts).catch(() => {});
-    return lib.toCanvas(target, opts);
-  };
+  const draw = (opts) => (safe ? drawSettled(lib, target, opts) : lib.toCanvas(target, opts));
   let canvas;
   try {
     canvas = await draw({ ...base, fontEmbedCSS: await cardFontCSS(node) });
