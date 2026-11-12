@@ -1,6 +1,7 @@
 // The welcome email: "You’re Officially a Business Owner." (SPC's copy), the customer's own card (shown as a
-// draft), and one button, "Share Your Milestone", into the studio, where they make it
-// theirs and post it (Post to LinkedIn is there). No LinkedIn shortcut here: it would post the card un-personalised.
+// draft), and two buttons, "Share on LinkedIn" and "Download My Announcement", both into the studio, where they make
+// it theirs and post or download it (SPC, 12 November 2026). No LinkedIn shortcut here: it would post the card
+// un-personalised.
 // Built for real inboxes: tables and inline styles, a hidden preheader, Outlook (VML) buttons, a dark-mode
 // palette for clients that honour it, right-to-left Arabic, alt text on every image and a plain-text part.
 import type { CardRow, Lang } from '../types.js';
@@ -24,11 +25,12 @@ export interface WelcomeInput {
 }
 
 /**
- * The words. English is SPC's copy of 10 November 2026 ("LI Milestone Email.docx": "You’re Officially a Business
- * Owner." / "Spread the Joy!"), verbatim; the subject stays "Your Business Is Official. Let the World Know!" and the
- * button "Share Your Milestone" (SPC, 10 November 2026). The card window's bar ("Your announcement card · Draft",
- * "Customise →") and the footer are not in that copy and stay. The Arabic is Claude's draft for review. Exported
- * for docs/ARABIC-STRINGS.md.
+ * The words. English is SPC's copy of 12 November 2026 ("LI Milestone Email (1).docx": "You’re Officially a Business
+ * Owner." / "Spread the Joy!"), verbatim, including "download it directly by clicking the link below" although both
+ * buttons open the studio (SPC's choice). The subject stays "Your Business Is Official. Let the World Know!" (not in
+ * that copy; SPC, 10 November 2026). The pills under the card are gone (SPC, 12 November 2026). The card window's
+ * bar ("Your announcement card · Draft", "Customise →") and the footer are not in that copy and stay. The Arabic is
+ * Claude's draft for review. Exported for docs/ARABIC-STRINGS.md.
  */
 export const COPY = {
   en: {
@@ -38,20 +40,18 @@ export const COPY = {
     sub: 'Spread the Joy!',
     hello: (first: string | null) => (first ? `Hi ${first},` : 'Hello,'),
     intro: [
-      'Getting your business license is a significant personal milestone. It’s the moment your dream became a reality, and that deserves more than a polite nod.',
-      'Your next customer, partner, or investor may already be out there on your social media feeds, waiting for a reason to congratulate you and start a conversation with you.',
-      'To help you break the news with your network and followers, we’ve built a personalised announcement card for you!',
+      'Your dream is officially a reality. Congratulations on starting your business!',
+      'Your first customer, partner, or investor is already out there on your social media feeds, waiting for a reason to reach out. Let them know that you’re now open for business!',
+      'We’ve built a personalised announcement card to help you break the news.',
     ],
     cardAlt: (co: string) => `Business license announcement for ${co}`,
     draftBar: 'Your announcement card',
     draft: 'Draft',
     customise: 'Customise →',
-    makeYours: 'Customise your post:',
-    chips: ['+ Add a photo', 'Change headline', 'Try another style'],
-    readyTitle: 'Share Your Announcement!',
-    readyBody: 'Add your personal touch, download the image, and share it on LinkedIn and other social media platforms!',
-    make: 'Share Your Milestone',
-    closing: 'We’re thrilled to have you in the SPC Free Zone family. You’ve already earned your first big win. Here’s to many more!',
+    shareLine: 'Share the card with your network on LinkedIn or download it directly by clicking the link below.',
+    shareLinkedIn: 'Share on LinkedIn',
+    download: 'Download My Announcement',
+    closing: 'We’re thrilled to have you in the SPC Free Zone family. Here’s to many more wins to come!',
     regards: 'Best Regards,',
     team: 'SPC Free Zone',
     tollFree: 'Toll Free Number',
@@ -67,20 +67,18 @@ export const COPY = {
     sub: 'شارك الفرحة!',
     hello: (first: string | null) => (first ? `مرحباً ${first}،` : 'مرحباً،'),
     intro: [
-      'الحصول على رخصتك التجارية محطة شخصية مهمة. إنها اللحظة التي أصبح فيها حلمك حقيقة، وهذا يستحق أكثر من تهنئة عابرة.',
-      'قد يكون عميلك أو شريكك أو مستثمرك القادم موجوداً بالفعل بين متابعيك على وسائل التواصل الاجتماعي، ينتظر سبباً ليهنئك ويبدأ حديثاً معك.',
-      'ولمساعدتك على مشاركة الخبر مع شبكة معارفك ومتابعيك، صمّمنا لك بطاقة إعلان مخصصة!',
+      'أصبح حلمك حقيقة رسمياً. تهانينا على بدء عملك الخاص!',
+      'عميلك أو شريكك أو مستثمرك الأول موجود بالفعل بين متابعيك على وسائل التواصل الاجتماعي، ينتظر سبباً للتواصل معك. أخبرهم أن أبوابك أصبحت مفتوحة للأعمال!',
+      'صمّمنا لك بطاقة إعلان مخصصة لتساعدك على مشاركة الخبر.',
     ],
     cardAlt: (co: string) => `إعلان الرخصة التجارية لشركة ${co}`,
     draftBar: 'بطاقة إعلانك',
     draft: 'مسودة',
     customise: 'خصّصها ←',
-    makeYours: 'خصّص منشورك:',
-    chips: ['+ أضف صورة', 'غيّر العنوان', 'جرّب تصميماً آخر'],
-    readyTitle: 'شارك إعلانك!',
-    readyBody: 'أضف لمستك الخاصة، ونزّل الصورة، وشاركها على لينكدإن ومنصات التواصل الاجتماعي الأخرى!',
-    make: 'شارك إنجازك',
-    closing: 'يسعدنا انضمامك إلى عائلة المنطقة الحرة لمدينة الشارقة للنشر. لقد حققت أول إنجاز كبير، ونتمنى لك المزيد!',
+    shareLine: 'شارك البطاقة مع شبكة معارفك على لينكدإن أو نزّلها مباشرة بالنقر على الرابط أدناه.',
+    shareLinkedIn: 'شارك على لينكدإن',
+    download: 'نزّل إعلاني',
+    closing: 'يسعدنا انضمامك إلى عائلة المنطقة الحرة لمدينة الشارقة للنشر. نتمنى لك المزيد من النجاحات!',
     regards: 'مع أطيب التحيات،',
     team: 'المنطقة الحرة لمدينة الشارقة للنشر',
     tollFree: 'الرقم المجاني',
@@ -120,8 +118,8 @@ export function renderWelcome(i: WelcomeInput): WelcomeEmail {
   const year = todayInDubai().slice(0, 4);
   const logo = `${base}/static/email/${FOOTER_LOGO}`;
   const social = SOCIAL.map((n, k) => html`<a href="${n.href}" target="_blank" style="display:inline-block;${k ? (ar ? 'margin-right:8px;' : 'margin-left:8px;') : ''}"><img class="ft-icon" src="${base}/static/email/${n.icon}" width="38" height="38" alt="${n.name}" style="display:inline-block;width:38px;height:38px;"></a>`).join('');
-  // The card sits in a small editor window (a bar with "Draft" and "Customise", then chips under it), so it reads as
-  // a draft to make their own before posting rather than a finished picture (SPC, 27 October 2026).
+  // The card sits in a small editor window (a bar with "Draft" and "Customise"), so it reads as a draft to make their
+  // own before posting rather than a finished picture (SPC, 27 October 2026; the pills under it went 12 November).
   const out = html`<!doctype html>
 <html lang="${langQ}" dir="${dir}" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
@@ -152,7 +150,6 @@ a{text-decoration:none}
   .bar-title{display:none!important}
   .ft-logo{width:128px!important}
   .ft-icon{width:32px!important;height:32px!important}
-  .chip{padding:6px 10px!important;font-size:12.5px!important}
 }
 @media (prefers-color-scheme:dark){
   .page,.outer,.wrap{background:#0b1220!important}
@@ -163,7 +160,6 @@ a{text-decoration:none}
   .shot{border-color:#22304d!important}
   .studio{border-color:#22304d!important}
   .studio-bar{background:#111a2c!important;border-color:#22304d!important}
-  .chip{background:#16244a!important;border-color:#2b3f73!important;color:#8fb0ff!important}
   .btn-secondary{background:#0b1220!important;color:#8fb0ff!important;border-color:#3b5bb0!important}
   .foot{background:#000000!important}
 }
@@ -197,21 +193,17 @@ ${raw(t.intro.map((line, k) => html`<p class="text" style="margin:${k === t.intr
 <td width="96" style="text-align:${ar ? 'left' : 'right'};white-space:nowrap;"><a class="accent" href="${studio}" target="_blank" style="color:#004dff;font-size:12px;line-height:16px;font-weight:700;text-decoration:none;">${t.customise}</a></td>
 </tr></table>
 </td></tr>
-<tr><td style="padding:16px 16px 0;">
+<tr><td style="padding:16px;">
 <a href="${studio}" target="_blank" style="display:block;"><img class="shot" src="${cardImg}" width="502" alt="${t.cardAlt(company)}" style="width:100%;max-width:502px;height:auto;border-radius:8px;border:1px solid #edf1f8;background:#eef3ff;"></a>
-</td></tr>
-<tr><td style="padding:14px 16px 10px;text-align:${align};">
-<p class="text" style="margin:0 0 10px;color:#1f2a44;font-size:13px;line-height:18px;font-weight:600;">${t.makeYours}</p>
-${raw(t.chips.map((label) => html`<a class="chip" href="${studio}" target="_blank" style="display:inline-block;margin:0 ${ar ? '0' : '6px'} 8px ${ar ? '6px' : '0'};padding:7px 13px;border:1px solid #d6e1ff;background:#eef3ff;border-radius:999px;color:#004dff;font-size:13px;line-height:18px;font-weight:600;text-decoration:none;white-space:nowrap;">${label}</a>`).join(''))}
 </td></tr>
 </table>
 </td></tr>
 
 <tr><td class="pad" style="padding:28px 32px 0;text-align:${align};">
-<p class="text" style="margin:0 0 6px;color:#071329;font-size:17px;line-height:26px;font-weight:700;">${t.readyTitle}</p>
-<p class="text" style="margin:0 0 20px;color:#1f2a44;font-size:16px;line-height:26px;">${t.readyBody}</p>
+<p class="text" style="margin:0 0 20px;color:#1f2a44;font-size:16px;line-height:26px;">${t.shareLine}</p>
 <table role="presentation" class="btn-table" cellpadding="0" cellspacing="0" align="${align}"><tr>
-<td class="btn-cell" style="padding:0;${ar ? 'padding-left:10px;' : 'padding-right:10px;'}">${raw(button({ href: studio, label: t.make, bg: '#004dff', fg: '#ffffff', border: '#004dff', width: 220, cls: 'btn-primary' }))}</td>
+<td class="btn-cell" style="padding:0;${ar ? 'padding-left:10px;' : 'padding-right:10px;'}">${raw(button({ href: studio, label: t.shareLinkedIn, bg: '#004dff', fg: '#ffffff', border: '#004dff', width: ar ? 190 : 200, cls: 'btn-primary' }))}</td>
+<td class="btn-cell" style="padding:0;">${raw(button({ href: studio, label: t.download, bg: '#ffffff', fg: '#004dff', border: '#004dff', width: ar ? 150 : 270, cls: 'btn-secondary' }))}</td>
 </tr></table>
 </td></tr>
 
@@ -256,10 +248,10 @@ ${raw(t.chips.map((label) => html`<a class="chip" href="${studio}" target="_blan
     t.hello(first),
     '',
     ...t.intro.flatMap((line) => [line, '']),
-    t.readyTitle,
-    t.readyBody,
+    t.shareLine,
     '',
-    `${t.make}: ${studio}`,
+    `${t.shareLinkedIn}: ${studio}`,
+    `${t.download}: ${studio}`,
     '',
     t.closing,
     '',

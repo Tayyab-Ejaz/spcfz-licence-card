@@ -84,16 +84,20 @@ describe('the welcome email', () => {
     expect(m.html).toContain('Hi Layla,');
     expect(m.html).toContain('You’re Officially a Business Owner.</h1>');
     expect(m.html).toContain('Spread the Joy!</p>');
-    expect(m.html).toContain('Getting your business license is a significant personal milestone.');
-    expect(m.html).toContain('we’ve built a personalised announcement card for you!');
-    expect(m.html).toContain('Customise your post:');
-    expect(m.html).toContain('Share Your Milestone');
-    expect(m.html).toContain('Here’s to many more!');
+    expect(m.html).toContain('Your dream is officially a reality. Congratulations on starting your business!');
+    expect(m.html).toContain('Let them know that you’re now open for business!');
+    expect(m.html).toContain('We’ve built a personalised announcement card to help you break the news.');
+    expect(m.html).toContain('Share the card with your network on LinkedIn or download it directly by clicking the link below.');
+    expect(m.html).toContain('Share on LinkedIn');
+    expect(m.html).toContain('Download My Announcement');
+    expect(m.html).toContain('We’re thrilled to have you in the SPC Free Zone family. Here’s to many more wins to come!');
+    expect(m.html).not.toContain('Customise your post:');
+    expect(m.html).not.toContain('class="chip"');
     expect(m.html).toContain('Best Regards,<br><strong class="text" style="color:#071329;">SPC Free Zone</strong>');
     expect(m.html).toContain('Sharjah, United Arab Emirates.');
     expect(m.html).not.toContain('Prefer Arabic?');
-    expect(m.text).toContain('Share Your Announcement!');
-    expect(m.html).toContain('Add your personal touch, download the image, and share it on LinkedIn and other social media platforms!');
+    expect(m.text).toContain('Share the card with your network on LinkedIn or download it directly by clicking the link below.');
+    expect(m.text).toContain(`Download My Announcement: https://licensed.test/c/${card.token}?lang=en&via=email`);
     expect(m.html).not.toContain('Congratulations on receiving');
     expect(m.html).toContain(`https://licensed.test/c/${card.token}/card/${card.content_hash.slice(0, 10)}-v${CARD_DESIGN}.jpg`);
     expect(m.html).toContain(`https://licensed.test/c/${card.token}?lang=en&amp;via=email`);
@@ -138,10 +142,14 @@ describe('the welcome email', () => {
     expect([meta.format, meta.width, meta.height]).toEqual(['jpeg', 1080, 1080]);
   }, 30_000);
 
-  it('has one button, Share Your Milestone, and no LinkedIn shortcut (it would post the card un-personalised)', async () => {
+  it('has two buttons, Share on LinkedIn and Download My Announcement, both into the studio; no LinkedIn shortcut (it would post the card un-personalised)', async () => {
     const card = await seedCard();
     const m = renderWelcome({ card, lang: 'en', baseUrl: 'https://licensed.test' });
     expect(m.html.match(/class="btn-primary"/g)).toHaveLength(1);
+    expect(m.html.match(/class="btn-secondary"/g)).toHaveLength(1);
+    const studio = `https://licensed.test/c/${card.token}?lang=en&amp;via=email`;
+    expect(m.html).toMatch(new RegExp(`class="btn-primary" href="${studio.replace(/[.?]/g, '\\$&')}"[^>]*>Share on LinkedIn</a>`));
+    expect(m.html).toMatch(new RegExp(`class="btn-secondary" href="${studio.replace(/[.?]/g, '\\$&')}"[^>]*>Download My Announcement</a>`));
     expect(m.html).not.toContain('Post on LinkedIn');
     expect(m.html).not.toContain('/linkedin?');
     expect(m.text).not.toContain('/linkedin?');
