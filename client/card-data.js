@@ -129,6 +129,27 @@ export function withCardData(Base) {
           if (e.headline || e.name || e.role || e.activity) this.showProblem(from !== 1);
         };
       }
+      // Who it is about, there and back (SPC, 12 November 2026): "The company" swaps the photo for the logo or the
+      // initials (a company card shows no person), and coming back left the card on that although the photo was
+      // still there. Coming back now brings the photo back, unless another image was chosen in between.
+      if (typeof this.setFocus === 'function') {
+        const set = this.setFocus;
+        this.setFocus = (focus) => {
+          const s = this.state;
+          const swap = this.photoSwap;
+          if (focus === 'company' && s.focus !== 'company' && s.imgMode === 'photo' && s.photo) {
+            this.photoSwap = s.logo ? 'logo' : 'initials';
+          } else if (focus !== 'company' && swap) {
+            this.photoSwap = null;
+            if (s.photo && s.imgMode === swap) {
+              set(focus);
+              this.setState({ imgMode: 'photo' });
+              return;
+            }
+          }
+          set(focus);
+        };
+      }
     }
 
     /**

@@ -347,6 +347,13 @@ client/card-data.js):
   over. On Safari's engine the SVG is now made once and drawn at full size
   every 100 ms until two drawings agree (at least 400 ms, at most 4 s), and
   the last drawing is kept. Chrome and Android are unchanged.
+- **Who it is about, there and back** (12 November 2026, client/card-data.js
+  setFocus): "The company" swaps the photo for the logo or the initials, as
+  the design does (a company card shows no person). Coming back to "You and
+  your company" or "Just you" left the card on that, so a customer could
+  share a card without the photo they had added. The photo now comes back,
+  unless another image was chosen in between (a logo added on the company
+  card stays).
 - **Link preview** (19 October 2026): the card page carries Open Graph and
   Twitter tags, so a pasted link shows a preview in WhatsApp, LinkedIn,
   iMessage and Slack: "<company> is officially licensed", the issue date, and
