@@ -361,13 +361,17 @@ client/card-data.js):
   simpleVals). The card is finished when the customer arrives: Standard,
   Portrait, "Open for business!", their licence details, and their initials
   until they add a photo, so nothing asks for a photo before sharing. Desktop
-  opens on the Share step without the step bar: "Add your photo" above Post
-  to LinkedIn and Download card, and "Customise card" in the Back button's
-  place, which opens Style and Details (Back in Style returns to Share; Next
-  through Details leads back to it). The Share step shows the card itself,
-  not the feed mock-up. Phones open on the card, "Add photo" and "Customise",
-  and the LinkedIn / Share bar; Customise shows the size switch, the style
-  switcher and the six-button toolbar, and Done folds them away. One caption:
+  opens on the Share step without the step bar: the template picker (18
+  November 2026: the Style step's own picture tiles, copied from the design
+  at build time), "Add your photo" (one line on windows under 820px tall),
+  then Post to LinkedIn and Download card (SPC's order; on laptop-height
+  windows the panel scrolls to them, "See more"), and
+  "Customise card" in the Back button's place, which opens Style and Details
+  (Back in Style returns to Share; Next through Details leads back to it).
+  The Share step shows the card itself, not the feed mock-up. Phones open on
+  the card with its style switcher (18 November 2026), "Add photo" and
+  "Customise", and the LinkedIn / Share bar; Customise shows the size switch
+  and the six-button toolbar, and Done folds them away. One caption:
   the Warm / Professional / Custom tabs are gone. On a tablet held upright
   (760-1079px, the panel under the card) the card takes 55% of the height and
   the panel the full width, so the Share buttons are on the first screen. The

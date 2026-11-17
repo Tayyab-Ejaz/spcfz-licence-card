@@ -72,19 +72,47 @@ DATA_PATCHES.studio.push(...ROBUSTNESS_PATCHES);
 // Post to LinkedIn (SPC, 27 October 2026): when the service has LinkedIn set up (card data `linkedin`), a first,
 // primary button posts the card straight to the customer's LinkedIn (src/linkedin/); Share and Download follow.
 // The simple journey (SPC, 17 November 2026): this step is the first screen, so the photo, the one thing worth adding
-// before sharing, is offered here, above the buttons (client/card-data.js photoRow*).
+// before sharing, is offered here (client/card-data.js photoRow*). Order (SPC, 18 November 2026): the template, the
+// photo, then Post / Share / Download; on laptop-height windows the panel scrolls to the buttons ("See more").
 const PHOTO_ROW = `<sc-if value="{{ showPhotoRow }}" hint-placeholder-val="{{ false }}">
-          <div data-photo-row="" style="display:flex;align-items:center;gap:12px;padding:12px 12px 12px 14px;border-radius:16px;background:var(--spc-soft);border:1px solid var(--spc-border)">
+          <div data-photo-row="" style="display:flex;align-items:center;gap:12px;padding:{{ photoRowPad }};border-radius:16px;background:var(--spc-soft);border:1px solid var(--spc-border)">
             <span style="width:40px;height:40px;flex-shrink:0;border-radius:50%;background:#fff;box-shadow:inset 0 0 0 1px var(--spc-border);display:flex;align-items:center;justify-content:center;color:var(--spc-blue)"><i class="ph-bold {{ photoRowIcon }}" style="font-size:19px"></i></span>
             <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
               <span style="font-size:14.5px;font-weight:700;color:var(--spc-ink)">{{ photoRowTitle }}</span>
-              <span style="font-size:12.5px;line-height:1.4;color:var(--spc-muted)">{{ photoRowNote }}</span>
+              <sc-if value="{{ photoRowNoteShow }}" hint-placeholder-val="{{ true }}"><span style="font-size:12.5px;line-height:1.4;color:var(--spc-muted)">{{ photoRowNote }}</span></sc-if>
             </div>
             <x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="secondary" size="md" sc-camel-on-click="{{ photoRowGo }}" hint-size="110px,46px"><span>{{ photoRowAction }}</span></x-import>
           </div>
           </sc-if>`;
+// The template, too, on this first screen (SPC, 18 November 2026: "allow user to choose the template in this new
+// variant too", then "the selector should be like this old one"): the Style step's own picker, the three picture tiles
+// with their names and lines, copied from the design at build time so the two stay identical. The card beside it is
+// the preview.
+function sliceElement(html, start) {
+  const re = /<div\b|<\/div>/g;
+  re.lastIndex = start;
+  let depth = 0;
+  for (let m = re.exec(html); m; m = re.exec(html)) {
+    depth += m[0] === '</div>' ? -1 : 1;
+    if (depth === 0) return html.slice(start, re.lastIndex);
+  }
+  throw new Error('studio: unclosed element');
+}
+const STUDIO_SRC = readFileSync(path.join(SRC, 'studio', 'template.html'), 'utf8');
+const pickAt = STUDIO_SRC.indexOf('sc-camel-on-click="{{ pickDaylight }}"');
+const gridAt = STUDIO_SRC.lastIndexOf('<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">', pickAt);
+if (pickAt < 0 || gridAt < 0 || pickAt - gridAt > 200) throw new Error('studio: the Style step template picker moved');
+const TILE_GRID = sliceElement(STUDIO_SRC, gridAt).replace('">Daylight</span>', '">Standard</span>');
+if (!/pickPass[\s\S]*pickDayone/.test(TILE_GRID)) throw new Error('studio: the template picker lost a template');
+const TEMPLATE_TILES = `<sc-if value="{{ showTplTabs }}" hint-placeholder-val="{{ false }}">
+          <div data-tpl-tiles="" style="display:flex;flex-direction:column;gap:8px">
+            <span style="font-size:13px;font-weight:600;color:var(--spc-ink)">Template</span>
+            ${TILE_GRID}
+          </div>
+          </sc-if>`;
 const DESKTOP_SHARE_ACTIONS = `<p style="font-size:14.5px;line-height:1.5;color:var(--spc-muted);text-wrap:pretty">{{ shareIntro }}</p>
           </div>
+          ${TEMPLATE_TILES}
           ${PHOTO_ROW}
           <div style="display:flex;flex-direction:column;gap:10px">
             <sc-if value="{{ liOn }}" hint-placeholder-val="{{ false }}">
@@ -239,8 +267,8 @@ DATA_PATCHES.mobile.push(
 // - desktop: the Share step is the first screen, without the step bar; "Add your photo" sits above the buttons
 //   (PHOTO_ROW) and the Back button's place says "Customise card", which opens Style and Details; their Next leads
 //   back to Share;
-// - phones: the format switch, the style switcher and the toolbar wait behind "Customise"; the first screen is the
-//   card, "Add photo" and "Customise", and the LinkedIn / Share bar;
+// - phones: the format switch and the toolbar wait behind "Customise"; the first screen is the card, its style
+//   switcher (SPC, 18 November 2026), "Add photo" and "Customise", and the LinkedIn / Share bar;
 // - both: one caption, without the Warm / Professional / Custom tabs.
 // Every change hangs on a binding that is off for tools/compare-design.mjs (designExact), so the design comparison
 // still sees the design.

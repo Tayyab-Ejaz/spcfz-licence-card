@@ -115,6 +115,7 @@ function helpers(p) {
     return r.width && r.height && r.bottom > 0 && r.top < innerHeight && getComputedStyle(x).visibility !== 'hidden' && (x.textContent || '').trim() === t;
   }), t);
   const bodyText = () => p.evaluate(() => document.body.innerText);
+  const exists = (t) => p.evaluate((t) => [...document.querySelectorAll('*')].some((x) => { const r = x.getBoundingClientRect(); return r.width && r.height && (x.textContent || '').trim() === t; }), t);
   // The card itself: the element the studio turns into the image (div[data-lang][dir]), not the hidden copy it draws from.
   const card = () => p.evaluate(() => {
     const n = [...document.querySelectorAll('div[data-lang][dir]')].filter((x) => { const r = x.getBoundingClientRect(); return r.width > 0 && r.left > -1000; })
@@ -152,7 +153,7 @@ function helpers(p) {
     }
     return false;
   };
-  return { tap, tapRe, visible, bodyText, card, photoSlot, overflow, sheetOpen, closeSheet, getShared, closeReview };
+  return { tap, tapRe, visible, exists, bodyText, card, photoSlot, overflow, sheetOpen, closeSheet, getShared, closeReview };
 }
 
 async function runDevice(key, dev) {
@@ -238,7 +239,10 @@ async function runDevice(key, dev) {
     if (simple) {
       await step('simple first screen', async () => {
         ok('first screen: Add photo and Customise', (await H.visible('Add photo')) && (await H.visible('Customise')));
-        ok('first screen: no toolbar, style or size switches', !(await H.visible('Headline')) && !(await H.visible('Square')) && !/Standard ·/.test(await H.bodyText()));
+        ok('first screen: the style switcher, but no toolbar or size switch', /Standard · 1 of 3/.test(await H.bodyText()) && !(await H.visible('Headline')) && !(await H.visible('Square')));
+        await p.evaluate(() => document.querySelectorAll('.m-dot')[1]?.click()); await sleep(600);
+        ok('first screen: the style switcher changes the template', /Launch Pass ·/.test(await H.bodyText()));
+        await p.evaluate(() => document.querySelectorAll('.m-dot')[0]?.click()); await sleep(500);
         const c = await H.card(); ok('starts on the finished card (Standard, initials)', c && !(await H.photoSlot()) && /Open for business!/.test(c.text));
       });
       await step('simple add photo', async () => {
@@ -338,9 +342,14 @@ async function runDevice(key, dev) {
       await step('simple share screen', async () => {
         ok('opens on Share the Joy!', /Share the Joy!/.test(await H.bodyText()));
         ok('no step bar on the first screen', !(await H.visible('Details')) && !(await H.visible('Choose a template')));
-        ok('Add your photo, Post to LinkedIn and Download card there', (await H.visible('Add your photo')) && (await H.visible('Download card')));
+        ok('Template, Add your photo, Post to LinkedIn and Download card there', (await H.exists('Template')) && (await H.exists('Add your photo')) && (await H.exists('Download card')));
         ok('one caption, no tone tabs', !(await H.visible('Professional')));
         const c = await H.card(); ok('starts on the finished card (Standard, initials)', c && !(await H.photoSlot()) && /Open for business!/.test(c.text));
+        // The template switch on this screen (18 November 2026): Standard, Launch Pass, Day One.
+        const tpl = async () => { const t = (await H.card()).text; return /launch pass/i.test(t) ? 'Launch Pass' : /day one/i.test(t) ? 'Day One' : 'Standard'; };
+        const seen = [];
+        for (const name of ['Launch Pass', 'Day One', 'Standard']) { await H.tap(name); await sleep(600); seen.push(await tpl()); }
+        ok('the Template switch changes the card', seen.join(' > ') === 'Launch Pass > Day One > Standard', seen.join(' > '));
       });
       await step('one-click download', async () => {
         await exportImage('first-click', layout, false);
@@ -351,7 +360,7 @@ async function runDevice(key, dev) {
         const [fc] = await Promise.all([p.waitForEvent('filechooser', { timeout: 10000 }), H.tapRe('^Add photo$')]);
         await fc.setFiles(PHOTO); await sleep(1500);
         ok('the photo is on the card', !!(await H.photoSlot()));
-        ok('the row says so', await H.visible('Your photo is on the card'));
+        ok('the row says so', await H.exists('Your photo is on the card'));
         await H.tapRe('^Adjust$'); await sleep(900);
         ok('Adjust opens the crop view', /Drag the frame to choose/.test(await H.bodyText()));
         await shot('02-simple-adjust');
@@ -498,7 +507,22 @@ async function shortestPath(dev, name) {
   try {
     await p.goto(url, { waitUntil: 'networkidle' }); await sleep(900);
     const phone = await p.evaluate(() => matchMedia('(max-width: 759px)').matches);
-    const press = async (label, re = false) => { const hit = re ? await H.tapRe(label) : await H.tap(label); if (hit) steps.push(re ? String(hit) : label); await sleep(800); return !!hit; };
+    // A control below what its scrolling panel (or the window) shows needs a scroll first: count it as a step.
+    const reach = async (label) => {
+      const hidden = await p.evaluate((t) => {
+        const el = [...document.querySelectorAll('*')].filter((x) => (x.textContent || '').trim() === t && x.getBoundingClientRect().width).sort((a, c) => a.querySelectorAll('*').length - c.querySelectorAll('*').length)[0];
+        if (!el) return false;
+        const box = el.closest('button') || el; const r = box.getBoundingClientRect();
+        let bottom = innerHeight;
+        const pane = box.closest('[data-step-panel]');
+        if (pane) bottom = Math.min(bottom, pane.getBoundingClientRect().bottom - (pane.hasAttribute('data-more') ? 40 : 0));
+        if (r.bottom <= bottom + 1 && r.top >= 0) return false;
+        box.scrollIntoView({ block: 'center' });
+        return true;
+      }, label);
+      if (hidden) { steps.push(`(scroll to ${label})`); await sleep(500); }
+    };
+    const press = async (label, re = false) => { if (!re) await reach(label); const hit = re ? await H.tapRe(label) : await H.tap(label); if (hit) steps.push(re ? String(hit) : label); await sleep(800); return !!hit; };
     const answer = async () => { if (await H.visible('Continue with initials')) await press('Continue with initials'); };
     const savedOrShared = async () => {
       for (let i = 0; i < 120; i++) { if (await p.evaluate(() => !!window.__shared)) return true; if (file) return true; await sleep(250); }
@@ -521,7 +545,8 @@ async function shortestPath(dev, name) {
     let chose = false;
     const choose = async (labels) => {
       for (const l of labels) {
-        if (!(await H.visible(l))) continue;
+        if (!(await H.exists(l))) continue;
+        await reach(l);
         const [fc] = await Promise.all([p.waitForEvent('filechooser', { timeout: 8000 }), press(l)]);
         await fc.setFiles(PHOTO); await sleep(1500); chose = true; return true;
       }

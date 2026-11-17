@@ -1067,6 +1067,11 @@ export function withCardData(Base) {
         navBackLabel: !exact && s.step === 2 ? 'Customise card' : 'Back',
         navBackIcon: !exact && s.step === 2 ? 'ph-sliders-horizontal' : 'ph-arrow-left',
         showPhotoRow: !exact,
+        // On laptop-height windows (under 820px) the row is one line, so Post and Download stay on the first screen.
+        photoRowNoteShow: (s.vh || 900) >= 820,
+        photoRowPad: (s.vh || 900) >= 820 ? '12px 12px 12px 14px' : '8px 8px 8px 12px',
+        // The template on the first screen too (SPC, 18 November 2026): the Style step's picker (tools/build-studio.mjs).
+        showTplTabs: !exact,
         photoRowIcon: shown ? (company ? 'ph-buildings' : 'ph-image') : company ? 'ph-buildings' : 'ph-camera-plus',
         photoRowTitle: company ? (shown ? 'Your logo is on the card' : 'Add your logo') : shown ? 'Your photo is on the card' : 'Add your photo',
         photoRowNote: shown ? (company ? 'Use another logo any time.' : 'Choose what shows, or use another photo.') : 'It makes the card yours. You can skip it.',
@@ -1075,7 +1080,8 @@ export function withCardData(Base) {
         // Phones
         mSimple: !exact,
         mShowFmt: !!v.noSheet && (exact || !!s.mCustom),
-        mShowStyle: !!v.noSheet && (exact || !!s.mCustom),
+        // The style switcher stays on the first screen (SPC, 18 November 2026: choose the template here too).
+        mShowStyle: !!v.noSheet,
         mShowChips: exact || !!s.mCustom,
         mRowPhoto: !s.mCustom,
         mRowCols: s.mCustom ? 'minmax(0,1fr)' : 'minmax(0,1fr) minmax(0,1fr)',
