@@ -71,8 +71,21 @@ DATA_PATCHES.studio.push(...ROBUSTNESS_PATCHES);
 // shortcut. The phone layout is untouched.
 // Post to LinkedIn (SPC, 27 October 2026): when the service has LinkedIn set up (card data `linkedin`), a first,
 // primary button posts the card straight to the customer's LinkedIn (src/linkedin/); Share and Download follow.
+// The simple journey (SPC, 17 November 2026): this step is the first screen, so the photo, the one thing worth adding
+// before sharing, is offered here, above the buttons (client/card-data.js photoRow*).
+const PHOTO_ROW = `<sc-if value="{{ showPhotoRow }}" hint-placeholder-val="{{ false }}">
+          <div data-photo-row="" style="display:flex;align-items:center;gap:12px;padding:12px 12px 12px 14px;border-radius:16px;background:var(--spc-soft);border:1px solid var(--spc-border)">
+            <span style="width:40px;height:40px;flex-shrink:0;border-radius:50%;background:#fff;box-shadow:inset 0 0 0 1px var(--spc-border);display:flex;align-items:center;justify-content:center;color:var(--spc-blue)"><i class="ph-bold {{ photoRowIcon }}" style="font-size:19px"></i></span>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+              <span style="font-size:14.5px;font-weight:700;color:var(--spc-ink)">{{ photoRowTitle }}</span>
+              <span style="font-size:12.5px;line-height:1.4;color:var(--spc-muted)">{{ photoRowNote }}</span>
+            </div>
+            <x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="secondary" size="md" sc-camel-on-click="{{ photoRowGo }}" hint-size="110px,46px"><span>{{ photoRowAction }}</span></x-import>
+          </div>
+          </sc-if>`;
 const DESKTOP_SHARE_ACTIONS = `<p style="font-size:14.5px;line-height:1.5;color:var(--spc-muted);text-wrap:pretty">{{ shareIntro }}</p>
           </div>
+          ${PHOTO_ROW}
           <div style="display:flex;flex-direction:column;gap:10px">
             <sc-if value="{{ liOn }}" hint-placeholder-val="{{ false }}">
               <x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="primary" size="lg" sc-camel-on-click="{{ postLinkedIn }}" style="display:block" hint-size="100%,54px"><i class="ph-bold ph-linkedin-logo" style="font-size:19px"></i><span>{{ liLabel }}</span></x-import>
@@ -220,6 +233,44 @@ DATA_PATCHES.mobile.push(
     '<div style="position:{{ wrapPos }};top:{{ wrapTop }}px;left:0;right:0;max-width:480px;margin:0 auto;min-height:{{ vhPx }}px;height:{{ wrapH }};'],
 );
 
+// The simple journey (SPC, 17 November 2026: "simplify the user journey, currently it's too complex"). The studio
+// opens on a finished card (client/card-data.js fresh: Standard, Portrait, "Open for business!", the licence details,
+// initials until a photo is added) and asks only for the photo:
+// - desktop: the Share step is the first screen, without the step bar; "Add your photo" sits above the buttons
+//   (PHOTO_ROW) and the Back button's place says "Customise card", which opens Style and Details; their Next leads
+//   back to Share;
+// - phones: the format switch, the style switcher and the toolbar wait behind "Customise"; the first screen is the
+//   card, "Add photo" and "Customise", and the LinkedIn / Share bar;
+// - both: one caption, without the Warm / Professional / Custom tabs.
+// Every change hangs on a binding that is off for tools/compare-design.mjs (designExact), so the design comparison
+// still sees the design.
+const TONE_TABS = /(<div style="display:grid;grid-template-columns:repeat\(3,minmax\(0,1fr\)\);gap:3px;padding:4px;background:var\(--spc-soft\);border:1px solid var\(--spc-border\);border-radius:999px">\s*<sc-for list="\{\{ tones \}\}"[\s\S]*?<\/sc-for>\s*<\/div>)/;
+for (const layout of ['studio', 'mobile']) {
+  DATA_PATCHES[layout].push([TONE_TABS, '<sc-if value="{{ showTones }}" hint-placeholder-val="{{ false }}">$1</sc-if>']);
+}
+DATA_PATCHES.studio.push(
+  [/(<div style="display:flex;align-items:center;gap:10px">\s*<sc-for list="\{\{ steps \}\}"[\s\S]*?<\/sc-for>\s*<\/div>)/,
+    '<sc-if value="{{ showSteps }}" hint-placeholder-val="{{ true }}">$1</sc-if>'],
+  ['<i class="ph-bold ph-arrow-left" style="font-size:15px"></i><span>Back</span></x-import></sc-if>',
+    '<i class="ph-bold {{ navBackIcon }}" style="font-size:15px"></i><span>{{ navBackLabel }}</span></x-import></sc-if>'],
+);
+const PHONE_ROW = `<sc-if value="{{ mSimple }}" hint-placeholder-val="{{ false }}">
+      <div class="m-row m-in" style="display:grid;grid-template-columns:{{ mRowCols }};gap:8px;padding:2px 16px 12px">
+        <sc-if value="{{ mRowPhoto }}" hint-placeholder-val="{{ true }}">
+          <x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="secondary" size="md" sc-camel-on-click="{{ mPhotoGo }}" style="display:block;min-width:0" hint-size="100%,46px"><i class="ph-bold {{ mPhotoIcon }}" style="font-size:17px"></i><span>{{ mPhotoLabel }}</span></x-import>
+        </sc-if>
+        <x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="secondary" size="md" sc-camel-on-click="{{ toggleCustom }}" style="display:block;min-width:0" hint-size="100%,46px"><i class="ph-bold {{ mCustomIcon }}" style="font-size:17px"></i><span>{{ mCustomLabel }}</span></x-import>
+      </div>
+    </sc-if>`;
+DATA_PATCHES.mobile.push(
+  [/<sc-if value="\{\{ noSheet \}\}" hint-placeholder-val="\{\{ true \}\}">(\s*<div class="m-in" style="display:grid;grid-template-columns:repeat\(3,minmax\(0,1fr\)\);gap:3px;padding:4px;width:100%)/,
+    '<sc-if value="{{ mShowFmt }}" hint-placeholder-val="{{ true }}">$1'],
+  [/<sc-if value="\{\{ noSheet \}\}" hint-placeholder-val="\{\{ true \}\}">(\s*<div class="m-in" style="display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%">)/,
+    '<sc-if value="{{ mShowStyle }}" hint-placeholder-val="{{ true }}">$1'],
+  [/(<div class="m-chips m-in"[\s\S]*?<\/sc-for>\s*<\/div>)/,
+    `<sc-if value="{{ mShowChips }}" hint-placeholder-val="{{ true }}">$1</sc-if>\n    ${PHONE_ROW}`],
+);
+
 // Logic patches: the same exactly-once rule, applied to design/source/<layout>/logic.js before it is wrapped.
 // Share (SPC, 19 October 2026): hand the share menu the image only. With text alongside, LinkedIn's app keeps the
 // text and drops the image. The caption is still copied to the clipboard first; after sharing, a toast says to paste
@@ -269,7 +320,7 @@ const CONTENT_LOGIC = [
   ["const chips = [...presets, 'Write your own'].map((label, i) => {",
     "const chips = [...presets, 'Write custom headline'].map((label, i) => [label, i]).filter(([, i]) => i < 4 || i === 6).map(([label, i]) => {"],
   ["['short', 'Short']", "['custom', 'Custom']"],
-  ["'Suggested from your details. Edit it however you like.'", "'Edit these captions to add or remove details.'"],
+  ["'Suggested from your details. Edit it however you like.'", "'Edit the caption to add or remove details.'"],
   ["LinkedIn\\'s standard wide image size, good for desktop feeds.", 'Best for laptops.'],
   ['Works in any feed.', 'Good on any device.'],
   ['Fills more of the screen on phones.', 'Best for phones.'],

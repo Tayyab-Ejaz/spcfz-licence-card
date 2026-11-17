@@ -125,6 +125,7 @@ export function withCardData(Base) {
           if (i === 2) this.tryHeadline();
           const from = this.state.step;
           go(i);
+          if (i === 2 && !this.props.card.designExact) this.setState({ view: 'card' });
           const e = i === 2 ? this.cardIssues() : {};
           if (e.headline || e.name || e.role || e.activity) this.showProblem(from !== 1);
         };
@@ -409,15 +410,20 @@ export function withCardData(Base) {
       const key = `spc-review:${c.token}`;
       const asked = () => { try { return !!localStorage.getItem(key); } catch (e) { return false; } };
       if (asked()) return;
-      this.reviewTimer = setTimeout(() => {
+      // One message at a time (SPC, 17 November 2026): it waits until the "downloaded" or "caption copied" toast has
+      // gone, up to a few seconds more.
+      let waits = 0;
+      const fire = () => {
         this.reviewTimer = null;
+        if (this.state.toast && waits++ < 8) { this.reviewTimer = setTimeout(fire, 500); return; }
         // Something else is open (the photo prompt, a phone drawer): ask after the next download or share instead.
         if (this.state.imgAsk || this.state.sheet || asked()) return;
         this.reviewAsked = true;
         try { localStorage.setItem(key, 'asked'); } catch (e) { /* this visit only, then */ }
         this.setState({ reviewAsk: true });
         beacon(c.token, { kind: 'review_ask', lang: this.state.lang, size: this.state.format });
-      }, 1600);
+      };
+      this.reviewTimer = setTimeout(fire, 1600);
     }
 
     reviewVals() {
@@ -581,6 +587,7 @@ export function withCardData(Base) {
     detailsNav(v) {
       if (v.mChips || !v.sq || typeof v.next !== 'function') return {};
       const s = this.state;
+      if (s.step === 2 && !this.props.card.designExact) return { back: () => this.openCustomise() };
       if (s.step === 2) {
         // Back from Share lands on the last part, so Back keeps walking through the parts.
         return { back: () => { v.back(); clearTimeout(this.subT); this.setState({ sub: 3 }); this.partScroll = 3; this.scrollToPart(); } };
@@ -806,6 +813,10 @@ export function withCardData(Base) {
         activity: c.activity_en || '',
         lang: c.lang === 'ar' ? 'ar' : 'en',
         photo: null, photoNote: '',
+        // The simple journey (SPC, 17 November 2026; tools/build-studio.mjs): a finished card on arrival. The Standard
+        // style (the one the welcome email pictures), the customer's initials until they add a photo (so nothing asks
+        // for one before sharing), and on desktop the Share step first, with Style and Details behind "Customise card".
+        ...(c.designExact === true ? {} : { tpl: 'daylight', imgMode: 'initials', step: 2, view: 'card', mCustom: false }),
         ar: { company: c.company_ar || c.company_en, name: nameAr, role: c.role_ar ?? (nameAr ? 'المؤسس' : ''), activity: c.activity_ar || '' },
       };
     }
@@ -972,17 +983,18 @@ export function withCardData(Base) {
 
     fitChrome() {
       if (this.state.sheet || this.flipping) return;   // mid-glide the frame is transformed; measure once it lands
-      const tools = document.querySelector('.m-chips');
+      // The toolbar and, in the simple journey, the Add photo / Customise row under it (either can be hidden).
+      const tools = [...document.querySelectorAll('.m-chips, .m-row')];
       const bar = document.querySelector('.m-bar');
       const card = document.querySelector('[data-lang]');
       const section = card && card.closest('section');
-      if (!tools || !bar || !section) return;
+      if (!tools.length || !bar || !section) return;
       let stage = card;
       while (stage.parentElement && stage.parentElement !== section) stage = stage.parentElement;
       const st = stage.getBoundingClientRect();
       const sec = section.getBoundingClientRect();
       if (!st.height) return;
-      const chrome = Math.round(st.top + window.scrollY + (sec.bottom - st.bottom) + tools.getBoundingClientRect().height + bar.getBoundingClientRect().height);
+      const chrome = Math.round(st.top + window.scrollY + (sec.bottom - st.bottom) + tools.reduce((h, el) => h + el.getBoundingClientRect().height, 0) + bar.getBoundingClientRect().height);
       if (Math.abs(chrome - (this.state.chromeH || 0)) > 1) this.setState({ chromeH: chrome });
     }
 
@@ -1007,6 +1019,70 @@ export function withCardData(Base) {
       if (lines === 2) { this.setState({ stubFit: { key, size, lines: 3 } }); return; }
       if (size > Math.round(base * 0.6)) { this.setState({ stubFit: { key, size: size - 1, lines: 3 } }); return; }
       if (!this.state.stubFit || !this.state.stubFit.lastResort) this.setState({ stubFit: { key, size, lines: 3, lastResort: true } });
+    }
+
+    /**
+     * The simple journey's photo button (SPC, 17 November 2026): the photo prompt's file input, which is on the page
+     * in both layouts, so the "Photo added" note follows (watchImgAsk). A company card takes a logo instead.
+     */
+    addImage(target) {
+      this.target = target;
+      const input = (this.askFileRef && this.askFileRef.current) || (this.fileRef && this.fileRef.current);
+      if (!input) return;
+      if (input === (this.askFileRef && this.askFileRef.current)) this.askedFile = true;
+      input.click();
+    }
+
+    /** Desktop: from the Share step into Style, then Details, whose Next comes back to Share. */
+    openCustomise() {
+      clearTimeout(this.subT);
+      this.setState({ sub: 0 });
+      this.goStep(0);
+    }
+
+    /** Desktop: the photo part of Details, where the crop view is. */
+    adjustPhotoDesk() {
+      this.goStep(1);
+      clearTimeout(this.subT);
+      this.setState({ sub: 1 });
+      this.partScroll = 1;
+      this.scrollToPart();
+    }
+
+    /** What the simple journey's photo buttons say and do, for both layouts. */
+    simpleVals(v, exact) {
+      const s = this.state;
+      const company = s.focus === 'company';
+      const shown = company ? s.imgMode === 'logo' && !!s.logo : s.imgMode === 'photo' && !!s.photo;
+      const add = () => this.addImage(company ? 'logo' : 'photo');
+      return {
+        // Desktop
+        showSteps: exact || s.step < 2,
+        showTones: exact,
+        // In Style (opened from Share by "Customise card"), Back returns to Share instead of "Step 1 of 3".
+        ...(!exact && s.step === 0 ? { canBack: true, noBack: false, back: () => this.goStep(2) } : {}),
+        navBackLabel: !exact && s.step === 2 ? 'Customise card' : 'Back',
+        navBackIcon: !exact && s.step === 2 ? 'ph-sliders-horizontal' : 'ph-arrow-left',
+        showPhotoRow: !exact,
+        photoRowIcon: shown ? (company ? 'ph-buildings' : 'ph-image') : company ? 'ph-buildings' : 'ph-camera-plus',
+        photoRowTitle: company ? (shown ? 'Your logo is on the card' : 'Add your logo') : shown ? 'Your photo is on the card' : 'Add your photo',
+        photoRowNote: shown ? (company ? 'Use another logo any time.' : 'Choose what shows, or use another photo.') : 'It makes the card yours. You can skip it.',
+        photoRowAction: shown ? (company ? 'Change' : 'Adjust') : company ? 'Add logo' : 'Add photo',
+        photoRowGo: shown && !company ? () => this.adjustPhotoDesk() : add,
+        // Phones
+        mSimple: !exact,
+        mShowFmt: !!v.noSheet && (exact || !!s.mCustom),
+        mShowStyle: !!v.noSheet && (exact || !!s.mCustom),
+        mShowChips: exact || !!s.mCustom,
+        mRowPhoto: !s.mCustom,
+        mRowCols: s.mCustom ? 'minmax(0,1fr)' : 'minmax(0,1fr) minmax(0,1fr)',
+        mPhotoIcon: shown ? (company ? 'ph-buildings' : 'ph-crop') : company ? 'ph-buildings' : 'ph-camera-plus',
+        mPhotoLabel: company ? (shown ? 'Change logo' : 'Add logo') : shown ? 'Adjust photo' : 'Add photo',
+        mPhotoGo: shown ? () => this.setState({ sheet: 'photo' }) : add,
+        mCustomIcon: s.mCustom ? 'ph-check' : 'ph-sliders-horizontal',
+        mCustomLabel: s.mCustom ? 'Done' : 'Customise',
+        toggleCustom: () => this.setState((st) => ({ mCustom: !st.mCustom })),
+      };
     }
 
     renderVals() {
@@ -1089,6 +1165,7 @@ export function withCardData(Base) {
         mBarCols: liOn ? 'minmax(0,1fr) minmax(0,1fr)' : 'minmax(0,1fr)',
         portalUrl: PORTAL_URL,
         goPortal: () => window.location.assign(PORTAL_URL),
+        ...this.simpleVals(v, exact),
         ...this.detailsNav(v),
         ...this.imgAskVals(),
         ...this.reviewVals(),

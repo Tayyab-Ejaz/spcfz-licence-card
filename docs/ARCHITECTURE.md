@@ -354,6 +354,24 @@ client/card-data.js):
   share a card without the photo they had added. The photo now comes back,
   unless another image was chosen in between (a logo added on the company
   card stays).
+- **The simple journey** (17 November 2026, SPC: "simplify the user journey,
+  currently it's too complex"; tools/build-studio.mjs and client/card-data.js
+  simpleVals). The card is finished when the customer arrives: Standard,
+  Portrait, "Open for business!", their licence details, and their initials
+  until they add a photo, so nothing asks for a photo before sharing. Desktop
+  opens on the Share step without the step bar: "Add your photo" above Post
+  to LinkedIn and Download card, and "Customise card" in the Back button's
+  place, which opens Style and Details (Back in Style returns to Share; Next
+  through Details leads back to it). The Share step shows the card itself,
+  not the feed mock-up. Phones open on the card, "Add photo" and "Customise",
+  and the LinkedIn / Share bar; Customise shows the size switch, the style
+  switcher and the six-button toolbar, and Done folds them away. One caption:
+  the Warm / Professional / Custom tabs are gone. The review request waits
+  until the confirmation toast has gone. Shortest paths: download with no
+  changes, 1 click or tap (was 7 on desktop with the photo question, 2 on
+  phones); add a photo and post to LinkedIn, 2 (was 7 on desktop, 4 on
+  phones). The journey before it is tagged `journey-before-simplify`.
+  `tools/journey-test.mjs` drives either journey on 14 device profiles.
 - **Link preview** (19 October 2026): the card page carries Open Graph and
   Twitter tags, so a pasted link shows a preview in WhatsApp, LinkedIn,
   iMessage and Slack: "<company> is officially licensed", the issue date, and
