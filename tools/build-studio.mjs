@@ -433,7 +433,8 @@ const FIT_LOGIC = [
   ["const budget = side ? (s.vh || 900) - 32 - 2 * Math.min(40, Math.max(16, (s.vw || 1280) * .035)) - 60 - (feed ? 200 : 0) : ",
     "const budget = side ? fitH - stagePadPx - (feed ? 236 : 0) : "],
   // Stacked (under 1080px, e.g. a tablet held sideways) the card is no taller than the window either.
-  ["mStick ? Math.min((s.vh || 800) * .34, 300) : 9999;", "mStick ? Math.min((s.vh || 800) * .34, 300) : Math.max(320, (s.vh || 900) - (s.deskTop || 200) - 24 - stagePadPx - (feed ? 236 : 0));"],
+  // The simple journey (client/card-data.js stackFit) keeps it to part of that, so the Share buttons under it show.
+  ["mStick ? Math.min((s.vh || 800) * .34, 300) : 9999;", "mStick ? Math.min((s.vh || 800) * .34, 300) : Math.max(320, ((s.vh || 900) - (s.deskTop || 200) - 24 - stagePadPx - (feed ? 236 : 0)) * (s.stackFit || 1));"],
   ["stagePad: mobile ? '14px 16px 16px' : 'clamp(16px,3.5vw,40px)'", "stagePad: mobile ? '14px 16px 16px' : 'clamp(16px,2.4vw,32px)'"],
   ["sizeRowDisp: mobile ? 'none' : 'flex'", "sizeRowDisp: 'none'"],
   ["navPos: mobile ? 'fixed' : 'static'", "navPos: mobile ? 'fixed' : 'relative'"],

@@ -345,7 +345,9 @@ client/card-data.js):
   (Download, Share and the "Add your photo?" path; Safari on a Mac too).
   Drawing a fresh SVG twice did not help, as each new SVG starts the decoding
   over. On Safari's engine the SVG is now made once and drawn at full size
-  every 100 ms until two drawings agree (at least 400 ms, at most 4 s), and
+  every 100 ms until two drawings agree (at least 400 ms, at most 5 s) and,
+  since 17 November 2026, every photo or logo place shows a picture rather
+  than one flat colour (two empty drawings could agree on a busy machine);
   the last drawing is kept. Chrome and Android are unchanged.
 - **Who it is about, there and back** (12 November 2026, client/card-data.js
   setFocus): "The company" swaps the photo for the logo or the initials, as
@@ -366,7 +368,10 @@ client/card-data.js):
   not the feed mock-up. Phones open on the card, "Add photo" and "Customise",
   and the LinkedIn / Share bar; Customise shows the size switch, the style
   switcher and the six-button toolbar, and Done folds them away. One caption:
-  the Warm / Professional / Custom tabs are gone. The review request waits
+  the Warm / Professional / Custom tabs are gone. On a tablet held upright
+  (760-1079px, the panel under the card) the card takes 55% of the height and
+  the panel the full width, so the Share buttons are on the first screen. The
+  review request waits
   until the confirmation toast has gone. Shortest paths: download with no
   changes, 1 click or tap (was 7 on desktop with the photo question, 2 on
   phones); add a photo and post to LinkedIn, 2 (was 7 on desktop, 4 on

@@ -201,7 +201,47 @@ function safeCopy(card) {
 }
 
 /** How often, at least and at most, drawSettled draws the card before it keeps a drawing (milliseconds). */
-export const SETTLE = { stepMs: 100, minMs: 400, maxMs: 4000 };
+export const SETTLE = { stepMs: 100, minMs: 400, maxMs: 5000 };
+
+/**
+ * Where the card's pictures are (the photo or logo, CSS background images), as boxes in a canvas of `width` pixels
+ * across drawn from `card`: the middle 60% of each, where the picture is whatever its position and zoom.
+ */
+export function pictureBoxes(card, width) {
+  const c = card.getBoundingClientRect();
+  if (!c.width) return [];
+  const k = width / c.width;
+  return [...card.querySelectorAll('*')]
+    .filter((el) => /url\(/.test(getComputedStyle(el).backgroundImage) && el.getBoundingClientRect().width > 10)
+    .map((el) => {
+      // A zoomed photo is larger than its frame: only the part inside the frame that clips it shows.
+      let r = el.getBoundingClientRect();
+      for (let a = el.parentElement; a && a !== card; a = a.parentElement) {
+        if (getComputedStyle(a).overflow === 'visible') continue;
+        const f = a.getBoundingClientRect();
+        const left = Math.max(r.left, f.left), top = Math.max(r.top, f.top);
+        r = { left, top, width: Math.max(0, Math.min(r.right, f.right) - left), height: Math.max(0, Math.min(r.bottom, f.bottom) - top) };
+        break;
+      }
+      return { x: Math.round((r.left - c.left + r.width * 0.2) * k), y: Math.round((r.top - c.top + r.height * 0.2) * k), w: Math.max(1, Math.round(r.width * 0.6 * k)), h: Math.max(1, Math.round(r.height * 0.6 * k)) };
+    });
+}
+
+/** Is a box of RGBA pixels one flat colour (an empty picture frame) rather than a picture? */
+export function isFlat(data, stride, box) {
+  let n = 0, sum = 0, sq = 0;
+  for (let y = box.y; y < box.y + box.h; y++) {
+    for (let x = box.x; x < box.x + box.w; x++) {
+      const i = (y * stride + x) * 4;
+      if (i < 0 || i + 2 >= data.length) continue;
+      const v = (data[i] + data[i + 1] + data[i + 2]) / 3;
+      sum += v; sq += v * v; n++;
+    }
+  }
+  if (!n) return false;
+  const m = sum / n;
+  return Math.sqrt(Math.max(0, sq / n - m * m)) < 3;
+}
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -220,7 +260,7 @@ function loadImage(src) {
  * the downloaded or shared card; any photo larger than a thumbnail, reproduced in WebKit 18). Drawing the same SVG
  * again a moment later has it. A fresh SVG starts the decoding over, which is why drawing the card twice did not
  * help. The embedded fonts arrive late the same way. So the SVG is made once and drawn at full size until two
- * drawings agree (compared on a small copy), and the last drawing is kept.
+ * drawings agree (compared on a small copy) and every picture's place shows a picture, and the last drawing is kept.
  */
 async function drawSettled(lib, target, opts) {
   const ratio = opts.pixelRatio || 1;
@@ -241,12 +281,17 @@ async function drawSettled(lib, target, opts) {
     return pctx.getImageData(0, 0, probe.width, probe.height).data;
   };
   const same = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
+  // Two drawings can also agree while the photo is still being decoded (both with an empty frame; seen on a busy
+  // machine in WebKit, 17 November 2026), so a drawing is kept only once each picture's place shows a picture. A
+  // picture that really is one flat colour just waits for maxMs.
+  const boxes = pictureBoxes(target, probe.width);
+  const pictured = (data) => boxes.every((b) => !isFlat(data, probe.width, b));
   const start = Date.now();
   let last = draw();
   while (Date.now() - start < SETTLE.maxMs) {
     await sleep(SETTLE.stepMs);
     const now = draw();
-    if (same(now, last) && Date.now() - start >= SETTLE.minMs) break;
+    if (same(now, last) && Date.now() - start >= SETTLE.minMs && pictured(now)) break;
     last = now;
   }
   return canvas;

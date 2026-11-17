@@ -816,7 +816,9 @@ export function withCardData(Base) {
         // The simple journey (SPC, 17 November 2026; tools/build-studio.mjs): a finished card on arrival. The Standard
         // style (the one the welcome email pictures), the customer's initials until they add a photo (so nothing asks
         // for one before sharing), and on desktop the Share step first, with Style and Details behind "Customise card".
-        ...(c.designExact === true ? {} : { tpl: 'daylight', imgMode: 'initials', step: 2, view: 'card', mCustom: false }),
+        // Stacked (a tablet held upright, 760-1079px) the card takes a little over half the height, so the Share
+        // buttons below it are on the first screen (tools/build-studio.mjs FIT_LOGIC).
+        ...(c.designExact === true ? {} : { tpl: 'daylight', imgMode: 'initials', step: 2, view: 'card', mCustom: false, stackFit: 0.55 }),
         ar: { company: c.company_ar || c.company_en, name: nameAr, role: c.role_ar ?? (nameAr ? 'المؤسس' : ''), activity: c.activity_ar || '' },
       };
     }
@@ -1056,7 +1058,8 @@ export function withCardData(Base) {
       const shown = company ? s.imgMode === 'logo' && !!s.logo : s.imgMode === 'photo' && !!s.photo;
       const add = () => this.addImage(company ? 'logo' : 'photo');
       return {
-        // Desktop
+        // Desktop. Stacked under the card (under 1080px wide), the panel takes the full width instead of 460px.
+        ...(!exact && (s.vw || 1280) < 1080 && !v.mChips ? { asideMax: 'none' } : {}),
         showSteps: exact || s.step < 2,
         showTones: exact,
         // In Style (opened from Share by "Customise card"), Back returns to Share instead of "Step 1 of 3".
