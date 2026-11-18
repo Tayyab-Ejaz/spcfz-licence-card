@@ -196,7 +196,7 @@ async function runDevice(key, dev) {
       ok(`${label}: Share hands over the image`, !!s, s ? `${s.name} ${s.type}` : 'nothing shared');
       if (s) { file = path.join(out, `${tag}-${label}.${s.type === 'image/jpeg' ? 'jpg' : 'png'}`); writeFileSync(file, Buffer.from(s.b64, 'base64')); }
     } else {
-      const label2 = layout === 'phone' ? '^(Download|Download card)$' : '^(Download card|تنزيل البطاقة)$';
+      const label2 = '^(Download|Download card|تنزيل البطاقة)$';
       const dlP = p.waitForEvent('download', { timeout: 90000 });
       await H.tapRe(label2);
       await sleep(400);
@@ -342,7 +342,7 @@ async function runDevice(key, dev) {
       await step('simple share screen', async () => {
         ok('opens on Share the Joy!', /Share the Joy!/.test(await H.bodyText()));
         ok('no step bar on the first screen', !(await H.visible('Details')) && !(await H.visible('Choose a template')));
-        ok('Template, Add your photo, Post to LinkedIn and Download card there', (await H.exists('Template')) && (await H.exists('Add your photo')) && (await H.exists('Download card')));
+        ok('Template, Add your photo, Post to LinkedIn and Download there', (await H.exists('Template')) && (await H.exists('Add your photo')) && ((await H.exists('Download card')) || (await H.exists('Download'))));
         ok('one caption, no tone tabs', !(await H.visible('Professional')));
         const c = await H.card(); ok('starts on the finished card (Standard, initials)', c && !(await H.photoSlot()) && /Open for business!/.test(c.text));
         // The template switch on this screen (18 November 2026): Standard, Launch Pass, Day One.
@@ -426,7 +426,7 @@ async function runDevice(key, dev) {
       const cd = await H.card(); ok('Arabic card', cd && cd.lang === 'ar' && cd.dir === 'rtl');
       ok('no sideways scroll in Arabic', (await H.overflow()) <= 1);
       await H.tap('Share'); await sleep(900);
-      for (let i = 0; i < 6 && !/Download card/.test(await H.bodyText()); i++) { await H.tapRe('^Next'); await sleep(700); }
+      for (let i = 0; i < 6 && !/Download/.test(await H.bodyText()); i++) { await H.tapRe('^Next'); await sleep(700); }
       await exportImage('ar-portrait', layout);
       await H.closeReview();
     });
@@ -534,8 +534,9 @@ async function shortestPath(dev, name) {
         if (dev.share) await press('Share'); else if (!(await press('Download'))) await press('Download card');
         await answer();
       } else {
-        for (let i = 0; i < 8 && !(await H.visible('Download card')); i++) if (!(await press('^Next', true))) break;
-        await press('Download card'); await answer();
+        const dl = async () => ((await H.exists('Download card')) ? 'Download card' : (await H.exists('Download')) ? 'Download' : null);
+        for (let i = 0; i < 8 && !(await dl()); i++) if (!(await press('^Next', true))) break;
+        await press(await dl()); await answer();
       }
       const done = await savedOrShared();
       await b.close();

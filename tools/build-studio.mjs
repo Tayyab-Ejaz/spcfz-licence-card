@@ -73,7 +73,10 @@ DATA_PATCHES.studio.push(...ROBUSTNESS_PATCHES);
 // primary button posts the card straight to the customer's LinkedIn (src/linkedin/); Share and Download follow.
 // The simple journey (SPC, 17 November 2026): this step is the first screen, so the photo, the one thing worth adding
 // before sharing, is offered here (client/card-data.js photoRow*). Order (SPC, 18 November 2026): the template, the
-// photo, then Post / Share / Download; on laptop-height windows the panel scrolls to the buttons ("See more").
+// photo, then Post / Share / Download; on laptop-height windows the panel scrolls to the buttons ("See more"). Share
+// and Download share one row under Post (SPC, 18 November 2026: not three buttons in a stack); a panel too narrow for
+// both labels stacks them again, and where the browser cannot share files Download takes the whole row. Side by side
+// they read "Share" and "Download", as on phones ("Download card" broke onto two lines at half width).
 const PHOTO_ROW = `<sc-if value="{{ showPhotoRow }}" hint-placeholder-val="{{ false }}">
           <div data-photo-row="" style="display:flex;align-items:center;gap:12px;padding:{{ photoRowPad }};border-radius:16px;background:var(--spc-soft);border:1px solid var(--spc-border)">
             <span style="width:40px;height:40px;flex-shrink:0;border-radius:50%;background:#fff;box-shadow:inset 0 0 0 1px var(--spc-border);display:flex;align-items:center;justify-content:center;color:var(--spc-blue)"><i class="ph-bold {{ photoRowIcon }}" style="font-size:19px"></i></span>
@@ -118,10 +121,12 @@ const DESKTOP_SHARE_ACTIONS = `<p style="font-size:14.5px;line-height:1.5;color:
             <sc-if value="{{ liOn }}" hint-placeholder-val="{{ false }}">
               <x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="primary" size="lg" sc-camel-on-click="{{ postLinkedIn }}" style="display:block" hint-size="100%,54px"><i class="ph-bold ph-linkedin-logo" style="font-size:19px"></i><span>{{ liLabel }}</span></x-import>
             </sc-if>
-            <sc-if value="{{ canShare }}" hint-placeholder-val="{{ false }}">
-              <x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="{{ shareVariant }}" size="lg" sc-camel-on-click="{{ shareCard }}" style="display:block" hint-size="100%,54px"><i class="ph-bold ph-share-network" style="font-size:18px"></i><span>{{ shareLabel }}</span></x-import>
-            </sc-if>
-            <x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="{{ dlVariant }}" size="lg" sc-camel-on-click="{{ download }}" style="display:block" hint-size="100%,54px"><i class="ph-bold ph-download-simple" style="font-size:18px"></i><span>{{ downloadLabel }}</span></x-import>
+            <div data-share-row="" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px">
+              <sc-if value="{{ canShare }}" hint-placeholder-val="{{ false }}">
+                <x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="{{ shareVariant }}" size="lg" sc-camel-on-click="{{ shareCard }}" style="display:block;min-width:0" hint-size="100%,54px"><i class="ph-bold ph-share-network" style="font-size:18px"></i><span>{{ dShareLabel }}</span></x-import>
+              </sc-if>
+              <x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="{{ dlVariant }}" size="lg" sc-camel-on-click="{{ download }}" style="display:block;min-width:0" hint-size="100%,54px"><i class="ph-bold ph-download-simple" style="font-size:18px"></i><span>{{ dDlLabel }}</span></x-import>
+            </div>
           </div>`;
 // Desktop, last step (SPC, 18 October 2026): a Done button that takes the customer back to the portal, in place
 // of the "Step 3 of 3" label. Same tab, like the header's "Back to Customer Portal" link.

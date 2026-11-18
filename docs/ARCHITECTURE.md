@@ -364,8 +364,11 @@ client/card-data.js):
   opens on the Share step without the step bar: the template picker (18
   November 2026: the Style step's own picture tiles, copied from the design
   at build time), "Add your photo" (one line on windows under 820px tall),
-  then Post to LinkedIn and Download card (SPC's order; on laptop-height
-  windows the panel scrolls to them, "See more"), and
+  then Post to LinkedIn, with Share and Download side by side under it
+  (short labels, as on phones; they stack when the panel is too narrow, and
+  where the browser cannot share files "Download card" takes the row). SPC's
+  order; on laptop-height windows the panel scrolls to the buttons ("See
+  more"). And
   "Customise card" in the Back button's place, which opens Style and Details
   (Back in Style returns to Share; Next through Details leads back to it).
   The Share step shows the card itself, not the feed mock-up. Phones open on

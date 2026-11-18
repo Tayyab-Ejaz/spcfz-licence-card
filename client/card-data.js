@@ -1072,6 +1072,9 @@ export function withCardData(Base) {
         photoRowPad: (s.vh || 900) >= 820 ? '12px 12px 12px 14px' : '8px 8px 8px 12px',
         // The template on the first screen too (SPC, 18 November 2026): the Style step's picker (tools/build-studio.mjs).
         showTplTabs: !exact,
+        // Share and Download in one row under Post (SPC, 18 November 2026): short labels there, as on phones.
+        dShareLabel: !exact && s.canShare ? (s.busy ? 'Preparing…' : 'Share') : v.shareLabel,
+        dDlLabel: !exact && s.canShare ? (s.busy ? 'Preparing…' : 'Download') : v.downloadLabel,
         photoRowIcon: shown ? (company ? 'ph-buildings' : 'ph-image') : company ? 'ph-buildings' : 'ph-camera-plus',
         photoRowTitle: company ? (shown ? 'Your logo is on the card' : 'Add your logo') : shown ? 'Your photo is on the card' : 'Add your photo',
         photoRowNote: shown ? (company ? 'Use another logo any time.' : 'Choose what shows, or use another photo.') : 'It makes the card yours. You can skip it.',
