@@ -369,11 +369,12 @@ client/card-data.js):
   where the browser cannot share files "Download card" takes the row). SPC's
   order; on laptop-height windows the panel scrolls to the buttons ("See
   more"). And
-  "Customise card" in the Back button's place, which opens Style and Details
+  "More options" (named by SPC, 18 November 2026; first "Customise card") in
+  the Back button's place, which opens Style and Details
   (Back in Style returns to Share; Next through Details leads back to it).
   The Share step shows the card itself, not the feed mock-up. Phones open on
   the card with its style switcher (18 November 2026), "Add photo" and
-  "Customise", and the LinkedIn / Share bar; Customise shows the size switch
+  "More options", and the LinkedIn / Share bar; More options shows the size switch
   and the six-button toolbar, and Done folds them away. One caption:
   the Warm / Professional / Custom tabs are gone. On a tablet held upright
   (760-1079px, the panel under the card) the card takes 55% of the height and

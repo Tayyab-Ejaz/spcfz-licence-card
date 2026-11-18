@@ -815,7 +815,7 @@ export function withCardData(Base) {
         photo: null, photoNote: '',
         // The simple journey (SPC, 17 November 2026; tools/build-studio.mjs): a finished card on arrival. The Standard
         // style (the one the welcome email pictures), the customer's initials until they add a photo (so nothing asks
-        // for one before sharing), and on desktop the Share step first, with Style and Details behind "Customise card".
+        // for one before sharing), and on desktop the Share step first, with Style and Details behind "More options" (SPC's name, 18 November 2026).
         // Stacked (a tablet held upright, 760-1079px) the card takes a little over half the height, so the Share
         // buttons below it are on the first screen (tools/build-studio.mjs FIT_LOGIC).
         ...(c.designExact === true ? {} : { tpl: 'daylight', imgMode: 'initials', step: 2, view: 'card', mCustom: false, stackFit: 0.55 }),
@@ -1062,9 +1062,9 @@ export function withCardData(Base) {
         ...(!exact && (s.vw || 1280) < 1080 && !v.mChips ? { asideMax: 'none' } : {}),
         showSteps: exact || s.step < 2,
         showTones: exact,
-        // In Style (opened from Share by "Customise card"), Back returns to Share instead of "Step 1 of 3".
+        // In Style (opened from Share by "More options"), Back returns to Share instead of "Step 1 of 3".
         ...(!exact && s.step === 0 ? { canBack: true, noBack: false, back: () => this.goStep(2) } : {}),
-        navBackLabel: !exact && s.step === 2 ? 'Customise card' : 'Back',
+        navBackLabel: !exact && s.step === 2 ? 'More options' : 'Back',
         navBackIcon: !exact && s.step === 2 ? 'ph-sliders-horizontal' : 'ph-arrow-left',
         showPhotoRow: !exact,
         // On laptop-height windows (under 820px) the row is one line, so Post and Download stay on the first screen.
@@ -1092,7 +1092,7 @@ export function withCardData(Base) {
         mPhotoLabel: company ? (shown ? 'Change logo' : 'Add logo') : shown ? 'Adjust photo' : 'Add photo',
         mPhotoGo: shown ? () => this.setState({ sheet: 'photo' }) : add,
         mCustomIcon: s.mCustom ? 'ph-check' : 'ph-sliders-horizontal',
-        mCustomLabel: s.mCustom ? 'Done' : 'Customise',
+        mCustomLabel: s.mCustom ? 'Done' : 'More options',
         toggleCustom: () => this.setState((st) => ({ mCustom: !st.mCustom })),
       };
     }

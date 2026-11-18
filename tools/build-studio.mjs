@@ -270,10 +270,10 @@ DATA_PATCHES.mobile.push(
 // opens on a finished card (client/card-data.js fresh: Standard, Portrait, "Open for business!", the licence details,
 // initials until a photo is added) and asks only for the photo:
 // - desktop: the Share step is the first screen, without the step bar; "Add your photo" sits above the buttons
-//   (PHOTO_ROW) and the Back button's place says "Customise card", which opens Style and Details; their Next leads
+//   (PHOTO_ROW) and the Back button's place says "More options" (named 18 November 2026), which opens Style and Details; their Next leads
 //   back to Share;
-// - phones: the format switch and the toolbar wait behind "Customise"; the first screen is the card, its style
-//   switcher (SPC, 18 November 2026), "Add photo" and "Customise", and the LinkedIn / Share bar;
+// - phones: the format switch and the toolbar wait behind "More options"; the first screen is the card, its style
+//   switcher (SPC, 18 November 2026), "Add photo" and "More options", and the LinkedIn / Share bar;
 // - both: one caption, without the Warm / Professional / Custom tabs.
 // Every change hangs on a binding that is off for tools/compare-design.mjs (designExact), so the design comparison
 // still sees the design.
@@ -696,6 +696,10 @@ const MOBILE_CSS = [
   '[data-screen-label="Sheet"]{animation:m-sheet-in .34s cubic-bezier(.2,.8,.2,1) both}',
   '[data-screen-label="Sheet"].m-settled{transition:height .25s var(--ease-standard)}',
   '.m-dot{position:relative}.m-dot::after{content:"";position:absolute;inset:-14px -3px}',
+  // The simple journey's Add photo / More options row: each button is half the width, so less side padding and no
+  // wrapping; on the narrowest phones (under 360px) the labels go without their icons.
+  '.m-row button{padding-left:10px!important;padding-right:10px!important;white-space:nowrap}',
+  '@media (max-width:359px){.m-row button i{display:none!important}}',
   '[data-screen-label="Sheet"].m-closing{animation:m-sheet-out .22s cubic-bezier(.4,0,1,1) both;pointer-events:none}',
   '.m-in{animation:m-rise .3s cubic-bezier(.2,.8,.2,1) both}',
   // Typing in a drawer (client/card-data.js, sheetFull): the drawer fills the visible screen with square corners and

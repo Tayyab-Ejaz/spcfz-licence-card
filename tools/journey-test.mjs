@@ -213,7 +213,7 @@ async function runDevice(key, dev) {
   const resp = await p.goto(url, { waitUntil: 'networkidle' });
   await sleep(900);
   const layout = await p.evaluate(() => (matchMedia('(max-width: 759px)').matches ? 'phone' : 'desktop'));
-  const simple = layout === 'phone' ? await H.visible('Customise') : /Customise card/.test(await H.bodyText());
+  const simple = layout === 'phone' ? await H.visible('More options') : /More options/.test(await H.bodyText());
   const journey = simple ? 'simple' : 'before';
   ok(`opens (${layout} layout, ${journey} journey, ${Date.now() - t0} ms)`, resp.status() === 200, resp.status());
   ok('page heading', /is officially licensed!/.test(await H.bodyText()));
@@ -238,7 +238,7 @@ async function runDevice(key, dev) {
   if (layout === 'phone') {
     if (simple) {
       await step('simple first screen', async () => {
-        ok('first screen: Add photo and Customise', (await H.visible('Add photo')) && (await H.visible('Customise')));
+        ok('first screen: Add photo and More options', (await H.visible('Add photo')) && (await H.visible('More options')));
         ok('first screen: the style switcher, but no toolbar or size switch', /Standard · 1 of 3/.test(await H.bodyText()) && !(await H.visible('Headline')) && !(await H.visible('Square')));
         await p.evaluate(() => document.querySelectorAll('.m-dot')[1]?.click()); await sleep(600);
         ok('first screen: the style switcher changes the template', /Launch Pass ·/.test(await H.bodyText()));
@@ -256,8 +256,8 @@ async function runDevice(key, dev) {
         await shot('02-simple-photo');
       });
       await step('customise', async () => {
-        await H.tap('Customise'); await sleep(700);
-        ok('Customise shows the toolbar, style and size', (await H.visible('Headline')) && (await H.visible('Square')));
+        await H.tap('More options'); await sleep(700);
+        ok('More options shows the toolbar and size', (await H.visible('Headline')) && (await H.visible('Square')));
       });
     }
     await step('styles', async () => {
@@ -368,8 +368,8 @@ async function runDevice(key, dev) {
         ok('the step bar takes it to Style', /Choose a template/.test(await H.bodyText()));
         await H.tapRe('^Back$'); await sleep(800);
         ok('Back from Style returns to Share', /Share the Joy!/.test(await H.bodyText()));
-        await H.tap('Customise card'); await sleep(800);
-        ok('Customise card opens Style', /Choose a template/.test(await H.bodyText()));
+        await H.tap('More options'); await sleep(800);
+        ok('More options opens Style', /Choose a template/.test(await H.bodyText()));
       });
     }
     await step('style step', async () => {
@@ -421,7 +421,7 @@ async function runDevice(key, dev) {
     });
     await step('export EN', async () => { await exportImage('en-portrait', layout); const asked = await H.closeReview(); if (!simple) ok('review request shown after the first download', asked); });
     if (!LIGHT) await step('arabic', async () => {
-      if (simple) await H.tap('Customise card'); else await H.tap('Style');
+      if (simple) await H.tap('More options'); else await H.tap('Style');
       await sleep(800); await H.tap('العربية'); await sleep(900);
       const cd = await H.card(); ok('Arabic card', cd && cd.lang === 'ar' && cd.dir === 'rtl');
       ok('no sideways scroll in Arabic', (await H.overflow()) <= 1);
