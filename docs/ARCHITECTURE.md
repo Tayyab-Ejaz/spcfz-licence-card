@@ -359,7 +359,7 @@ client/card-data.js):
 - **The simple journey** (17 November 2026, SPC: "simplify the user journey,
   currently it's too complex"; tools/build-studio.mjs and client/card-data.js
   simpleVals). The card is finished when the customer arrives: Standard,
-  Portrait, "Open for business!", their licence details, and their initials
+  Portrait, "I've started a new business!", their licence details, and their initials
   until they add a photo, so nothing asks for a photo before sharing. Desktop
   opens on the Share step without the step bar: the template picker (18
   November 2026: the Style step's own picture tiles, copied from the design
@@ -569,7 +569,7 @@ What the customer gets, in their preferred language (English or Arabic, right to
   in the SPC Free Zone family. Here’s to many more wins to come!". The subject stays "Your Business Is Official.
   Let the World Know!" (SPC's choice); the preheader is the headline and "Spread the Joy!".
 - Their own card as a picture (the Daylight style since 27 October 2026, SPC's choice: kicker, founder and role,
-  the empty photo tile, "Open for business!", company and activity, "Licensed with"; 1080x1080, drawn by the
+  the empty photo tile, "I've started a new business!", company and activity, "Licensed with"; 1080x1080, drawn by the
   server: `/c/<token>/card/<hash>-v<n>[-ar].jpg`), linked to their studio. It sits in a small editor window, a bar
   with "Your announcement card · Draft" and "Customise →", so it reads as a draft to personalise rather than a
   finished picture (the "Customise your post:" pills under it were removed, SPC, 12 November 2026). The picture

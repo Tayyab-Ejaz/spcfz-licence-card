@@ -269,7 +269,7 @@ DATA_PATCHES.mobile.push(
 );
 
 // The simple journey (SPC, 17 November 2026: "simplify the user journey, currently it's too complex"). The studio
-// opens on a finished card (client/card-data.js fresh: Standard, Portrait, "Open for business!", the licence details,
+// opens on a finished card (client/card-data.js fresh: Standard, Portrait, "I've started a new business!", the licence details,
 // initials until a photo is added) and asks only for the photo:
 // - desktop: the Share step is the first screen, without the step bar; "Add your photo" sits above the buttons
 //   (PHOTO_ROW) and the Back button's place says "More options" (named 18 November 2026), which opens Style and Details; their Next leads
@@ -384,7 +384,7 @@ const INPUT_LOGIC = [
 ];
 const CONTENT_LOGIC = [
   ["const presets = ar ? ['بدأنا العمل رسمياً.', 'اليوم الأول.', 'أصبح الأمر رسمياً.', 'أبوابنا مفتوحة الآن.', 'الآن في الإمارات.', 'افتتحنا فرعنا في الإمارات.'] : ['Officially in business.', 'Day one.', \"It's official.\", 'Now open for business.', 'Now in the UAE.', 'Our UAE branch is open.'];",
-    "const presets = ar ? ['مفتوحون للأعمال!', 'اليوم الأول!', 'أصبح الأمر رسمياً!', 'أبوابنا مفتوحة الآن.', '', ''] : ['Open for business!', 'Day one!', \"It's official!\", 'Now open for business.', '', ''];"],
+    "const presets = ar ? ['بدأت مشروعاً جديداً!', 'اليوم الأول!', 'أصبح الأمر رسمياً!', 'أبوابنا مفتوحة الآن.', '', ''] : [\"I've started a new business!\", 'Day one!', \"It's official!\", 'Now open for business.', '', ''];"],
   // Slots 4 and 5 (the UAE presets) are no longer offered; 6 stays the custom headline, as the design numbers it.
   ["const chips = [...presets, 'Write your own'].map((label, i) => {",
     "const chips = [...presets, 'Write custom headline'].map((label, i) => [label, i]).filter(([, i]) => i < 4 || i === 6).map(([label, i]) => {"],

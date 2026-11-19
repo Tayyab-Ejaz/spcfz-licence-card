@@ -199,7 +199,7 @@ Headlines on the card (tools/build-studio.mjs, CONTENT_LOGIC), and the email pic
 
 | | Arabic | English |
 |---|---|---|
-| 1 | مفتوحون للأعمال! | Open for business! |
+| 1 | بدأت مشروعاً جديداً! | I've started a new business! |
 | 2 | اليوم الأول! | Day one! |
 | 3 | أصبح الأمر رسمياً! | It's official! |
 | 4 | أبوابنا مفتوحة الآن. | Now open for business. |
