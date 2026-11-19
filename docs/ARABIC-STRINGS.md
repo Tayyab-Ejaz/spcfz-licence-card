@@ -137,7 +137,6 @@ Rewritten 12 November 2026 to SPC's new copy ("LI Milestone Email (1).docx"); th
 | viewPost | شاهده على لينكدإن | View on LinkedIn |
 | downloadAsk | تريد مشاركة بطاقتك على حساباتك الأخرى في وسائل التواصل الاجتماعي؟ اضغط لتنزيلها! | Want to share your card on other social media accounts? Click to download it! |
 | downloadButton | نزّل بطاقتي | Download my card |
-| postedTip | نصيحة: أشِر إلى شركائك وفريقك في تعليق، ليصل المنشور إلى شبكاتهم أيضاً. | Tip: Tag your co-founders and team in a comment, so it reaches their network too. |
 | problemTitle | لم يُنشر منشورك | Your post was not published |
 | tryAgain | حاول مرة أخرى | Try again |
 | signInAgain | سجّل الدخول إلى لينكدإن مجدداً | Sign in to LinkedIn again |

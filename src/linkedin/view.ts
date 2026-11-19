@@ -39,7 +39,6 @@ export const LI_STRINGS = {
     viewPostNote: 'LinkedIn can take a minute or two to show a new post. If it says "Post not found", wait a moment and refresh.',
     downloadAsk: 'Want to share your card on other social media accounts? Click to download it!',
     downloadButton: 'Download my card',
-    postedTip: 'Tip: Tag your co-founders and team in a comment, so it reaches their network too.',
     reviewAsk: 'How was your experience with SPC Free Zone?',
     reviewBody: 'Leave a review on Google!',
     reviewButton: 'Leave a Google review',
@@ -84,7 +83,6 @@ export const LI_STRINGS = {
     viewPostNote: 'قد يستغرق لينكدإن دقيقة أو دقيقتين لعرض المنشور الجديد. إذا ظهرت رسالة «لم يتم العثور على المنشور»، انتظر قليلاً ثم حدّث الصفحة.',
     downloadAsk: 'تريد مشاركة بطاقتك على حساباتك الأخرى في وسائل التواصل الاجتماعي؟ اضغط لتنزيلها!',
     downloadButton: 'نزّل بطاقتي',
-    postedTip: 'نصيحة: أشِر إلى شركائك وفريقك في تعليق، ليصل المنشور إلى شبكاتهم أيضاً.',
     reviewAsk: 'كيف كانت تجربتك مع المنطقة الحرة لمدينة الشارقة للنشر؟',
     reviewBody: 'اترك تقييماً على Google!',
     reviewButton: 'اكتب تقييماً على Google',
@@ -180,7 +178,6 @@ textarea{display:block;width:100%;min-height:150px;border:0;padding:8px 16px 4px
 .more p{margin:0 0 12px}
 .more .btn{width:100%}
 .dl{width:17px;height:17px;flex:none}
-.tip{margin:20px auto 0;max-width:420px;font-size:13px;color:var(--muted)}
 .review{margin:22px auto 0;max-width:360px;padding-top:20px;border-top:1px solid var(--line);font-size:14px;color:var(--muted)}
 .review b{display:block;color:var(--ink);font-size:15px;margin-bottom:2px}
 .review p{margin:0 0 14px}
@@ -336,7 +333,6 @@ ${i.imageUrl ? h`<img class="thumb" src="${i.imageUrl}" alt="">` : ''}
 </div>
 <p class="note">${s.viewPostNote}</p>
 <div class="more"><p>${s.downloadAsk}</p><a class="btn ghost" href="${i.downloadUrl}">${DOWNLOAD}<span>${s.downloadButton}</span></a></div>
-<p class="tip">${s.postedTip}</p>
 ${i.review ? h`<div class="review"><p><b>${s.reviewAsk}</b>${s.reviewBody}</p><a class="btn ghost" href="${i.review.href}" target="_blank" rel="noopener">${STAR}<span>${s.reviewButton}</span></a></div>` : ''}
 </div>`;
   // Asked here, so the studio does not ask again for this card (client/card-data.js maybeAskReview).

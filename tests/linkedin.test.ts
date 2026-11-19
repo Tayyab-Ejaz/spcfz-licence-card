@@ -216,11 +216,11 @@ describe('sign-in, review and post', () => {
     expect(done).toContain('>View on LinkedIn<');
     expect(done).toContain('Want to share your card on other social media accounts? Click to download it!');
     expect(done).toContain('href="/linkedin/download"');
-    expect(done).toContain('Tip: Tag your co-founders and team in a comment, so it reaches their network too.');
+    expect(done).not.toContain('Tip:'); // removed at SPC's request, 19 November 2026
     expect(done).toContain('How was your experience with SPC Free Zone?');
     expect(done).toContain('Leave a review on Google!');
-    // The new copy runs in the order SPC gave it: the note, the download, the tip, then the review.
-    const order = ['LinkedIn can take a minute', 'Want to share your card', 'Tip: Tag your', 'How was your experience'].map((t) => done.indexOf(t));
+    // The new copy runs in the order SPC gave it: the note, the download, then the review.
+    const order = ['LinkedIn can take a minute', 'Want to share your card', 'How was your experience'].map((t) => done.indexOf(t));
     expect(order).toEqual([...order].sort((x, y) => x - y));
 
     // "Download my card": the posted picture as a file, named as the studio names it, counted as a download.
