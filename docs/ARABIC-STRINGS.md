@@ -134,8 +134,10 @@ Rewritten 12 November 2026 to SPC's new copy ("LI Milestone Email (1).docx"); th
 | tooLong | يسمح لينكدإن بـ 3,000 حرف كحد أقصى. يرجى اختصار النص. | LinkedIn allows up to 3,000 characters. Please shorten the text. |
 | postedTitle | إعلانك منشور الآن | Your announcement is live |
 | postedLead | {company} الآن على صفحتك في لينكدإن. | {company} is now on your LinkedIn feed. |
-| viewPost | شاهد منشورك على لينكدإن | View your post on LinkedIn |
-| postedTip | نصيحة: أشِر إلى شركائك وفريقك في تعليق، ليصل المنشور إلى شبكاتهم أيضاً. | Tip: tag your co-founders and team in a comment, so it reaches their networks too. |
+| viewPost | شاهده على لينكدإن | View on LinkedIn |
+| downloadAsk | تريد مشاركة بطاقتك على حساباتك الأخرى في وسائل التواصل الاجتماعي؟ اضغط لتنزيلها! | Want to share your card on other social media accounts? Click to download it! |
+| downloadButton | نزّل بطاقتي | Download my card |
+| postedTip | نصيحة: أشِر إلى شركائك وفريقك في تعليق، ليصل المنشور إلى شبكاتهم أيضاً. | Tip: Tag your co-founders and team in a comment, so it reaches their network too. |
 | problemTitle | لم يُنشر منشورك | Your post was not published |
 | tryAgain | حاول مرة أخرى | Try again |
 | signInAgain | سجّل الدخول إلى لينكدإن مجدداً | Sign in to LinkedIn again |
@@ -152,8 +154,8 @@ Rewritten 12 November 2026 to SPC's new copy ("LI Milestone Email (1).docx"); th
 | errUpstream | تعذّر الوصول إلى لينكدإن. حاول مرة أخرى بعد قليل. | We could not reach LinkedIn. Try again in a moment. |
 | errImage | تعذّر تجهيز صورة بطاقتك. عد إلى بطاقتك وحاول مرة أخرى. | Your card picture could not be prepared. Go back to your card and try again. |
 | title | النشر على لينكدإن · المنطقة الحرة لمدينة الشارقة للنشر | Post to LinkedIn · SPC Free Zone |
-| reviewAsk | كيف كانت تجربتك في الحصول على رخصتك من المنطقة الحرة لمدينة الشارقة للنشر؟ | How was getting your license with SPC Free Zone? |
-| reviewBody | تقييم قصير على Google يساعد روّاد الأعمال الآخرين في العثور علينا. | A short Google review helps other founders find us. |
+| reviewAsk | كيف كانت تجربتك مع المنطقة الحرة لمدينة الشارقة للنشر؟ | How was your experience with SPC Free Zone? |
+| reviewBody | اترك تقييماً على Google! | Leave a review on Google! |
 | reviewButton | اكتب تقييماً على Google | Leave a Google review |
 
 ## Comments suggested in the LinkedIn post alert (src/mail/post-alert.ts, suggestedComments; 5 November 2026)

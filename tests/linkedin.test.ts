@@ -212,7 +212,25 @@ describe('sign-in, review and post', () => {
     expect(done).toContain('https://www.linkedin.com/feed/update/urn:li:share:7001/');
     // The Google review request (src/page/review.ts), asked once and counted once however often the page loads.
     expect(done).toContain('LinkedIn can take a minute or two to show a new post.');
-    expect(done).toContain('How was getting your license with SPC Free Zone?');
+    expect(done).toContain('>View on LinkedIn<');
+    expect(done).toContain('Want to share your card on other social media accounts? Click to download it!');
+    expect(done).toContain('href="/linkedin/download"');
+    expect(done).toContain('Tip: Tag your co-founders and team in a comment, so it reaches their network too.');
+    expect(done).toContain('How was your experience with SPC Free Zone?');
+    expect(done).toContain('Leave a review on Google!');
+    // The new copy runs in the order SPC gave it: the note, the download, the tip, then the review.
+    const order = ['LinkedIn can take a minute', 'Want to share your card', 'Tip: Tag your', 'How was your experience'].map((t) => done.indexOf(t));
+    expect(order).toEqual([...order].sort((x, y) => x - y));
+
+    // "Download my card": the posted picture as a file, named as the studio names it, counted as a download.
+    const dl = await app.request('/linkedin/download', { headers: { Cookie: cookie } }, env);
+    expect(dl.status).toBe(200);
+    expect(dl.headers.get('Content-Type')).toBe('image/jpeg');
+    expect(dl.headers.get('Content-Disposition')).toBe('attachment; filename="nimbus-publishing-fze-announcement.jpg"');
+    expect(dl.headers.get('Cache-Control')).toBe('private, no-store');
+    expect(Buffer.from(await dl.arrayBuffer()).equals(Buffer.from(await (await app.request('/linkedin/image', { headers: { Cookie: cookie } }, env)).arrayBuffer()))).toBe(true);
+    await flushBackground();
+    expect((await metricsForCard(env.DB, card.id)).filter((m) => m.kind === 'download').map((m) => [m.lang, m.size, m.network, Number(m.count)])).toEqual([['en', 'square', '', 1]]);
     expect(done).toContain(`href="/c/${card.token}/review?from=linkedin"`);
     expect(done).toContain(`spc-review:${card.token}`);
     await app.request('/linkedin/done', { headers: { Cookie: cookie } }, env);
@@ -332,12 +350,18 @@ describe('sign-in, review and post', () => {
     const { cookie } = await signedIn(card);
     clock += DRAFT_TTL_MS + 1;
     expect((await app.request('/linkedin/review', { headers: { Cookie: cookie } }, env)).status).toBe(410);
+    // "Download my card" after the hour shows the timed-out page instead of saving an error as a file.
+    const dl = await app.request('/linkedin/download', { headers: { Cookie: cookie } }, env);
+    expect(dl.status).toBe(410);
+    expect(dl.headers.get('Content-Disposition')).toBeNull();
+    expect(await dl.text()).toContain('This post has timed out');
   });
 
   it('test cards post but are not counted', async () => {
     const card = await seedCard({ is_test: true });
     const { cookie, key } = await signedIn(card);
     expect((await publish(cookie, { k: key, caption: 'x' })).status).toBe(303);
+    expect((await app.request('/linkedin/download', { headers: { Cookie: cookie } }, env)).status).toBe(200);
     await flushBackground();
     expect(await metricsForCard(env.DB, card.id)).toEqual([]);
   });
@@ -367,6 +391,9 @@ describe('starting from the welcome email', () => {
     const img = await app.request('/linkedin/image', { headers: { Cookie: cookie } }, env);
     const meta = await sharp(Buffer.from(await img.arrayBuffer())).metadata();
     expect([meta.format, meta.width, meta.height]).toEqual(['jpeg', 1080, 1080]);
+    // An Arabic post downloads under the English company name, as the studio names it, with -ar.
+    const dl = await app.request('/linkedin/download', { headers: { Cookie: cookie } }, env);
+    expect(dl.headers.get('Content-Disposition')).toBe('attachment; filename="nimbus-publishing-fze-announcement-ar.jpg"');
   }, 20_000);
 
   it('expired cards, and LinkedIn not set up, lead to the card page', async () => {
@@ -466,7 +493,7 @@ describe('caption as LinkedIn little text', () => {
 
 describe('the header pill', () => {
   const review = renderReviewPage({ lang: 'en', nonce: 'n', name: 'Layla Haddad', picture: null, company: 'Cedar & Quill', caption: 'Hi', formKey: 'k', imageUrl: '/i.png', cardUrl: '/c/x' });
-  const posted = renderPostedPage({ lang: 'ar', nonce: 'n', company: 'Cedar & Quill', postUrl: 'https://www.linkedin.com/feed/update/urn:li:share:1', imageUrl: null, cardUrl: '/c/x' });
+  const posted = renderPostedPage({ lang: 'ar', nonce: 'n', company: 'Cedar & Quill', postUrl: 'https://www.linkedin.com/feed/update/urn:li:share:1', imageUrl: null, cardUrl: '/c/x', downloadUrl: '/linkedin/download' });
 
   it('takes you to the main button: Post now on review, View your post once posted', () => {
     for (const page of [review, posted]) {

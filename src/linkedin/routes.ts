@@ -8,8 +8,8 @@ import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { getCookie, setCookie } from 'hono/cookie';
 import sharp from 'sharp';
-import type { AppEnv, CardRow, Env, Lang, LinkedinStep } from '../types.js';
-import { isLang } from '../types.js';
+import type { AppEnv, CardRow, Env, Lang, LinkedinStep, Size } from '../types.js';
+import { SIZES, SIZE_NAMES, isLang } from '../types.js';
 import { bumpMetric, getCardByToken, getSettings } from '../db/cards.js';
 import { insertLinkedinPost } from '../db/linkedin.js';
 import { queuePostAlert } from '../mail/outbox.js';
@@ -67,6 +67,24 @@ async function imageType(bytes: Uint8Array): Promise<'image/jpeg' | 'image/png' 
   } catch {
     return null;
   }
+}
+
+/** Which of the three sizes a picture is, by its shape (the studio draws at twice the size). */
+async function sizeOf(bytes: Uint8Array): Promise<Size | null> {
+  try {
+    const m = await sharp(bytes).metadata();
+    if (!m.width || !m.height) return null;
+    const ratio = m.width / m.height;
+    return SIZE_NAMES.find((n) => Math.abs(SIZES[n].width / SIZES[n].height - ratio) < 0.02) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** The studio's download name (design/source/studio/logic.js, fileName), with the picture's own extension. */
+export function downloadName(companyEn: string, lang: Lang, type: 'image/jpeg' | 'image/png'): string {
+  const slug = companyEn.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'my-company';
+  return `${slug}-announcement${lang === 'ar' ? '-ar' : ''}.${type === 'image/png' ? 'png' : 'jpg'}`;
 }
 
 function makeNonce(): string {
@@ -307,6 +325,28 @@ export function createLinkedinRoutes(o: LinkedinRouteOptions = {}): Hono<AppEnv>
     });
   });
 
+  // "Download my card" on the posted page: the picture LinkedIn got, saved as a file and counted as a download
+  // (test cards excepted). Without its draft (after the hour) this shows the timed-out page, not a broken file.
+  app.get('/linkedin/download', async (c) => {
+    const d = draftOf(c);
+    if (!d) return expired(c, 'en');
+    if (!d.isTest) {
+      const size = await sizeOf(d.image);
+      background(bumpMetric(c.env.DB, { card_id: d.cardId, kind: 'download', lang: d.lang, size, network: null }, todayInDubai())
+        .catch((err: unknown) => logFailure('metric', d, err)), 'metric');
+    }
+    const card = await getCardByToken(c.env.DB, d.token).catch(() => null);
+    return new Response(new Uint8Array(d.image), {
+      headers: {
+        'Content-Type': d.imageType,
+        'Content-Disposition': `attachment; filename="${downloadName(card?.company_name_en ?? '', d.lang, d.imageType)}"`,
+        'Cache-Control': 'private, no-store',
+        'X-Content-Type-Options': 'nosniff',
+        'X-Robots-Tag': 'noindex',
+      },
+    });
+  });
+
   app.post('/linkedin/publish', async (c) => {
     const d = draftOf(c);
     if (!d) return expired(c, 'en');
@@ -414,6 +454,7 @@ export function createLinkedinRoutes(o: LinkedinRouteOptions = {}): Hono<AppEnv>
       postUrl: `https://www.linkedin.com/feed/update/${d.posted.urn}/`,
       imageUrl: '/linkedin/image',
       cardUrl: cardUrl(d),
+      downloadUrl: '/linkedin/download',
       review: askReview ? { href: `/c/${d.token}/review?from=linkedin`, key: d.token } : null,
     }));
   });

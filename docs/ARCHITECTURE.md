@@ -623,6 +623,7 @@ attached, which the phone share sheet cannot do from a web page.
        -> GET /linkedin/review     the post as it will appear; caption editable (3,000 characters)
        -> POST /linkedin/publish   upload the picture, create the post (public, main feed)
        -> GET /linkedin/done       "Your announcement is live", with a link to the post
+          GET /linkedin/download   "Download my card" there: the posted picture as a file (counted as a download)
 
 - The caption goes as LinkedIn "little text": reserved characters escaped, `#Word` as hashtags and
   "@SPC Free Zone" as a mention of SPC's page when `LINKEDIN_ORG_URN` is set. If LinkedIn refuses the

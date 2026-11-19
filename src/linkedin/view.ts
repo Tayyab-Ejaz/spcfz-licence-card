@@ -35,11 +35,13 @@ export const LI_STRINGS = {
     tooLong: 'LinkedIn allows up to 3,000 characters. Please shorten the text.',
     postedTitle: 'Your announcement is live',
     postedLead: '{company} is now on your LinkedIn feed.',
-    viewPost: 'View your post on LinkedIn',
+    viewPost: 'View on LinkedIn',
     viewPostNote: 'LinkedIn can take a minute or two to show a new post. If it says "Post not found", wait a moment and refresh.',
-    postedTip: 'Tip: tag your co-founders and team in a comment, so it reaches their networks too.',
-    reviewAsk: 'How was getting your license with SPC Free Zone?',
-    reviewBody: 'A short Google review helps other founders find us.',
+    downloadAsk: 'Want to share your card on other social media accounts? Click to download it!',
+    downloadButton: 'Download my card',
+    postedTip: 'Tip: Tag your co-founders and team in a comment, so it reaches their network too.',
+    reviewAsk: 'How was your experience with SPC Free Zone?',
+    reviewBody: 'Leave a review on Google!',
     reviewButton: 'Leave a Google review',
     problemTitle: 'Your post was not published',
     tryAgain: 'Try again',
@@ -78,11 +80,13 @@ export const LI_STRINGS = {
     tooLong: 'يسمح لينكدإن بـ 3,000 حرف كحد أقصى. يرجى اختصار النص.',
     postedTitle: 'إعلانك منشور الآن',
     postedLead: '{company} الآن على صفحتك في لينكدإن.',
-    viewPost: 'شاهد منشورك على لينكدإن',
+    viewPost: 'شاهده على لينكدإن',
     viewPostNote: 'قد يستغرق لينكدإن دقيقة أو دقيقتين لعرض المنشور الجديد. إذا ظهرت رسالة «لم يتم العثور على المنشور»، انتظر قليلاً ثم حدّث الصفحة.',
+    downloadAsk: 'تريد مشاركة بطاقتك على حساباتك الأخرى في وسائل التواصل الاجتماعي؟ اضغط لتنزيلها!',
+    downloadButton: 'نزّل بطاقتي',
     postedTip: 'نصيحة: أشِر إلى شركائك وفريقك في تعليق، ليصل المنشور إلى شبكاتهم أيضاً.',
-    reviewAsk: 'كيف كانت تجربتك في الحصول على رخصتك من المنطقة الحرة لمدينة الشارقة للنشر؟',
-    reviewBody: 'تقييم قصير على Google يساعد روّاد الأعمال الآخرين في العثور علينا.',
+    reviewAsk: 'كيف كانت تجربتك مع المنطقة الحرة لمدينة الشارقة للنشر؟',
+    reviewBody: 'اترك تقييماً على Google!',
     reviewButton: 'اكتب تقييماً على Google',
     problemTitle: 'لم يُنشر منشورك',
     tryAgain: 'حاول مرة أخرى',
@@ -172,6 +176,10 @@ textarea{display:block;width:100%;min-height:150px;border:0;padding:8px 16px 4px
 .mark svg{width:30px;height:30px}
 .thumb{display:block;width:min(260px,70%);height:auto;margin:0 auto 22px;border-radius:12px;border:1px solid var(--line);box-shadow:0 12px 28px -14px rgba(7,19,41,.35);transform:rotate(-2deg)}
 .note{margin:10px auto 0;max-width:360px;font-size:12.5px;color:var(--muted)}
+.more{margin:22px auto 0;max-width:360px;font-size:14px;color:var(--muted)}
+.more p{margin:0 0 12px}
+.more .btn{width:100%}
+.dl{width:17px;height:17px;flex:none}
 .tip{margin:20px auto 0;max-width:420px;font-size:13px;color:var(--muted)}
 .review{margin:22px auto 0;max-width:360px;padding-top:20px;border-top:1px solid var(--line);font-size:14px;color:var(--muted)}
 .review b{display:block;color:var(--ink);font-size:15px;margin-bottom:2px}
@@ -301,6 +309,8 @@ export interface PostedInput {
   postUrl: string;
   imageUrl: string | null;
   cardUrl: string;
+  /** The posted picture as a file (GET /linkedin/download), for the customer's other networks. */
+  downloadUrl: string;
   /**
    * The Google review button (src/page/review.ts): /c/<token>/review?from=linkedin, or absent when the request is
    * off. With it, the studio is told this card has been asked (reviewKey), so it does not ask again.
@@ -308,6 +318,7 @@ export interface PostedInput {
   review?: { href: string; key: string } | null;
 }
 
+const DOWNLOAD = h`<svg class="dl" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m-4.5-4.5L12 15l4.5-4.5M5 19.5h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 const STAR = h`<svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"/></svg>`;
 
 export function renderPostedPage(i: PostedInput): string {
@@ -324,6 +335,7 @@ ${i.imageUrl ? h`<img class="thumb" src="${i.imageUrl}" alt="">` : ''}
 <a class="btn ghost" href="${i.cardUrl}">${s.backToCard}</a>
 </div>
 <p class="note">${s.viewPostNote}</p>
+<div class="more"><p>${s.downloadAsk}</p><a class="btn ghost" href="${i.downloadUrl}">${DOWNLOAD}<span>${s.downloadButton}</span></a></div>
 <p class="tip">${s.postedTip}</p>
 ${i.review ? h`<div class="review"><p><b>${s.reviewAsk}</b>${s.reviewBody}</p><a class="btn ghost" href="${i.review.href}" target="_blank" rel="noopener">${STAR}<span>${s.reviewButton}</span></a></div>` : ''}
 </div>`;
