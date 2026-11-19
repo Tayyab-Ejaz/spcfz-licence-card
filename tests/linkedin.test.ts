@@ -221,8 +221,9 @@ describe('sign-in, review and post', () => {
     expect(done).toContain('Leave a review on Google!');
     // No way back to the card from here (SPC, 19 November 2026); the download line sits under its button.
     expect(done).not.toContain('Back to my card');
-    // The order SPC gave: the note, the download button and its line, then the review.
-    const order = ['LinkedIn can take a minute', 'href="/linkedin/download"', 'Want to share your card', 'How was your experience'].map((t) => done.indexOf(t));
+    // The order SPC gave: the LinkedIn note above View on LinkedIn, the download button with its line under it, then
+    // the review.
+    const order = ['LinkedIn can take a minute', 'id="go"', 'href="/linkedin/download"', 'Want to share your card', 'How was your experience'].map((t) => done.indexOf(t));
     expect(order).toEqual([...order].sort((x, y) => x - y));
 
     // "Download my card": the posted picture as a file, named as the studio names it, counted as a download.
