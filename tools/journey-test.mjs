@@ -243,7 +243,7 @@ async function runDevice(key, dev) {
         await p.evaluate(() => document.querySelectorAll('.m-dot')[1]?.click()); await sleep(600);
         ok('first screen: the style switcher changes the template', /Launch Pass ·/.test(await H.bodyText()));
         await p.evaluate(() => document.querySelectorAll('.m-dot')[0]?.click()); await sleep(500);
-        const c = await H.card(); ok('starts on the finished card (Standard, initials)', c && !(await H.photoSlot()) && /I've started a new business!/.test(c.text));
+        const c = await H.card(); ok('starts on the finished card (Standard, initials)', c && !(await H.photoSlot()) && /I’ve started a\snew business!/.test(c.text));
       });
       await step('simple add photo', async () => {
         const [fc] = await Promise.all([p.waitForEvent('filechooser', { timeout: 10000 }), H.tap('Add photo')]);
@@ -344,7 +344,7 @@ async function runDevice(key, dev) {
         ok('no step bar on the first screen', !(await H.visible('Details')) && !(await H.visible('Choose a template')));
         ok('Template, Add your photo, Post to LinkedIn and Download there', (await H.exists('Template')) && (await H.exists('Add your photo')) && ((await H.exists('Download card')) || (await H.exists('Download'))));
         ok('one caption, no tone tabs', !(await H.visible('Professional')));
-        const c = await H.card(); ok('starts on the finished card (Standard, initials)', c && !(await H.photoSlot()) && /I've started a new business!/.test(c.text));
+        const c = await H.card(); ok('starts on the finished card (Standard, initials)', c && !(await H.photoSlot()) && /I’ve started a\snew business!/.test(c.text));
         // The template switch on this screen (18 November 2026): Standard, Launch Pass, Day One.
         const tpl = async () => { const t = (await H.card()).text; return /launch pass/i.test(t) ? 'Launch Pass' : /day one/i.test(t) ? 'Day One' : 'Standard'; };
         const seen = [];

@@ -31,7 +31,7 @@ const MONTHS_EN = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP'
 const MONTHS_AR = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
 const MONTHS_EN_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const T = {
-  en: { headline: "I've started a new business!", dayOne: 'Day one', licensedWith: 'LICENSED WITH', founder: 'Founder', licensed: 'Licensed', newBusiness: 'New business' },
+  en: { headline: 'I’ve started a\u00a0new business!', dayOne: 'Day one', licensedWith: 'LICENSED WITH', founder: 'Founder', licensed: 'Licensed', newBusiness: 'New business' },
   ar: { headline: 'بدأت مشروعاً جديداً!', dayOne: 'اليوم الأول', licensedWith: 'بترخيص من', founder: 'المؤسس', licensed: 'تاريخ الترخيص', newBusiness: 'مشروع جديد' },
 };
 

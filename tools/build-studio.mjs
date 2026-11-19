@@ -370,6 +370,13 @@ DATA_PATCHES.studio.push(
   ['<span>Issued <strong', '<span>Issued on <strong'],
   [/( *<span sc-camel-on-click="\{\{ fmtSquare \}\}"[^\n]*\n)( *<span sc-camel-on-click="\{\{ fmtPortrait \}\}"[^\n]*\n)/, '$2$1'],
 );
+// The first headline keeps "a new business!" together with a no-break space (SPC, 19 November 2026), except on Day
+// One's portrait and square, whose narrow column would then need three lines. (Wider word spacing was tried for
+// Standard too, but Safari's export wraps a headline with word-spacing onto three lines.)
+for (const layout of ['studio', 'mobile']) {
+  const dayOne = 'font-size:{{ dyHeadSize }}px;font-weight:800;line-height:1;letter-spacing:-.045em;color:var(--spc-ink);text-wrap:balance">{{ headline }}';
+  DATA_PATCHES[layout].push([dayOne, dayOne.replace('{{ headline }}', '{{ headlineLoose }}')]);
+}
 for (const layout of ['studio', 'mobile']) {
   DATA_PATCHES[layout].push(['<textarea dir="{{ dir }}" value="{{ caption }}"', '<textarea dir="{{ dir }}" value="{{ caption }}" placeholder="{{ captionPlaceholder }}"']);
 }
@@ -383,8 +390,10 @@ const INPUT_LOGIC = [
   ['name: T.name, company: T.company, isAr: ar,', 'name: T.name, roleInput: T.role, activityInput: T.activity, company: T.company, isAr: ar,'],
 ];
 const CONTENT_LOGIC = [
+  // Day One's headline without the no-break space (see the Day One patch above).
+  ['      headline, companyText, nameText, initials, role, activity,', "      headline, headlineLoose: headline.replace(/\\u00a0/g, ' '), companyText, nameText, initials, role, activity,"],
   ["const presets = ar ? ['بدأنا العمل رسمياً.', 'اليوم الأول.', 'أصبح الأمر رسمياً.', 'أبوابنا مفتوحة الآن.', 'الآن في الإمارات.', 'افتتحنا فرعنا في الإمارات.'] : ['Officially in business.', 'Day one.', \"It's official.\", 'Now open for business.', 'Now in the UAE.', 'Our UAE branch is open.'];",
-    "const presets = ar ? ['بدأت مشروعاً جديداً!', 'اليوم الأول!', 'أصبح الأمر رسمياً!', 'أبوابنا مفتوحة الآن.', '', ''] : [\"I've started a new business!\", 'Day one!', \"It's official!\", 'Now open for business.', '', ''];"],
+    "const presets = ar ? ['بدأت مشروعاً جديداً!', 'اليوم الأول!', 'أصبح الأمر رسمياً!', 'أبوابنا مفتوحة الآن.', '', ''] : ['I’ve started a\\u00a0new business!', 'Day one!', \"It's official!\", 'Now open for business.', '', ''];"],
   // Slots 4 and 5 (the UAE presets) are no longer offered; 6 stays the custom headline, as the design numbers it.
   ["const chips = [...presets, 'Write your own'].map((label, i) => {",
     "const chips = [...presets, 'Write custom headline'].map((label, i) => [label, i]).filter(([, i]) => i < 4 || i === 6).map(([label, i]) => {"],
