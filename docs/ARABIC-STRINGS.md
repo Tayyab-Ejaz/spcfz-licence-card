@@ -132,7 +132,7 @@ Rewritten 12 November 2026 to SPC's new copy ("LI Milestone Email (1).docx"); th
 | backToCard | العودة إلى بطاقتي | Back to my card |
 | fine | لا يُنشر شيء قبل أن تضغط «انشر الآن»، ويُنشر مرة واحدة فقط. يتم تسجيل دخولك بأمان عبر لينكدإن نفسه: لا تطّلع المنطقة الحرة على كلمة مرورك، وينتهي وصولنا إلى حسابك فور النشر. | Nothing is posted until you press Post now, and it is posted once. Your sign-in is handled securely by LinkedIn: SPC Free Zone never sees your password, and our access ends once you post. |
 | tooLong | يسمح لينكدإن بـ 3,000 حرف كحد أقصى. يرجى اختصار النص. | LinkedIn allows up to 3,000 characters. Please shorten the text. |
-| postedTitle | إعلانك منشور الآن | Your announcement is live |
+| postedTitle | تم نشر منشورك | Your post is live |
 | postedLead | {company} الآن على صفحتك في لينكدإن. | {company} is now on your LinkedIn feed. |
 | viewPost | شاهده على لينكدإن | View on LinkedIn |
 | downloadAsk | تريد مشاركة بطاقتك على حساباتك الأخرى في وسائل التواصل الاجتماعي؟ اضغط لتنزيلها! | Want to share your card on other social media accounts? Click to download it! |

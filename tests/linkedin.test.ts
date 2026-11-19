@@ -212,6 +212,7 @@ describe('sign-in, review and post', () => {
     expect(done).toContain('https://www.linkedin.com/feed/update/urn:li:share:7001/');
     // The Google review request (src/page/review.ts), asked once and counted once however often the page loads.
     expect(done).toContain('LinkedIn can take a minute or two to show a new post.');
+    expect(done).toContain('<h1>Your post is live</h1>');
     expect(done).toContain('>View on LinkedIn<');
     expect(done).toContain('Want to share your card on other social media accounts? Click to download it!');
     expect(done).toContain('href="/linkedin/download"');
