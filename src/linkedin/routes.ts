@@ -453,7 +453,6 @@ export function createLinkedinRoutes(o: LinkedinRouteOptions = {}): Hono<AppEnv>
       company: d.company,
       postUrl: `https://www.linkedin.com/feed/update/${d.posted.urn}/`,
       imageUrl: '/linkedin/image',
-      cardUrl: cardUrl(d),
       downloadUrl: '/linkedin/download',
       review: askReview ? { href: `/c/${d.token}/review?from=linkedin`, key: d.token } : null,
     }));

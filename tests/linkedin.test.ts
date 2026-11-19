@@ -219,8 +219,10 @@ describe('sign-in, review and post', () => {
     expect(done).not.toContain('Tip:'); // removed at SPC's request, 19 November 2026
     expect(done).toContain('How was your experience with SPC Free Zone?');
     expect(done).toContain('Leave a review on Google!');
-    // The new copy runs in the order SPC gave it: the note, the download, then the review.
-    const order = ['LinkedIn can take a minute', 'Want to share your card', 'How was your experience'].map((t) => done.indexOf(t));
+    // No way back to the card from here (SPC, 19 November 2026); the download line sits under its button.
+    expect(done).not.toContain('Back to my card');
+    // The order SPC gave: the note, the download button and its line, then the review.
+    const order = ['LinkedIn can take a minute', 'href="/linkedin/download"', 'Want to share your card', 'How was your experience'].map((t) => done.indexOf(t));
     expect(order).toEqual([...order].sort((x, y) => x - y));
 
     // "Download my card": the posted picture as a file, named as the studio names it, counted as a download.
@@ -494,7 +496,7 @@ describe('caption as LinkedIn little text', () => {
 
 describe('the header pill', () => {
   const review = renderReviewPage({ lang: 'en', nonce: 'n', name: 'Layla Haddad', picture: null, company: 'Cedar & Quill', caption: 'Hi', formKey: 'k', imageUrl: '/i.png', cardUrl: '/c/x' });
-  const posted = renderPostedPage({ lang: 'ar', nonce: 'n', company: 'Cedar & Quill', postUrl: 'https://www.linkedin.com/feed/update/urn:li:share:1', imageUrl: null, cardUrl: '/c/x', downloadUrl: '/linkedin/download' });
+  const posted = renderPostedPage({ lang: 'ar', nonce: 'n', company: 'Cedar & Quill', postUrl: 'https://www.linkedin.com/feed/update/urn:li:share:1', imageUrl: null, downloadUrl: '/linkedin/download' });
 
   it('takes you to the main button: Post now on review, View your post once posted', () => {
     for (const page of [review, posted]) {

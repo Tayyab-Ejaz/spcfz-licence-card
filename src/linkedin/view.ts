@@ -175,7 +175,7 @@ textarea{display:block;width:100%;min-height:150px;border:0;padding:8px 16px 4px
 .thumb{display:block;width:min(260px,70%);height:auto;margin:0 auto 22px;border-radius:12px;border:1px solid var(--line);box-shadow:0 12px 28px -14px rgba(7,19,41,.35);transform:rotate(-2deg)}
 .note{margin:10px auto 0;max-width:360px;font-size:12.5px;color:var(--muted)}
 .more{margin:22px auto 0;max-width:360px;font-size:14px;color:var(--muted)}
-.more p{margin:0 0 12px}
+.more p{margin:12px 0 0}
 .more .btn{width:100%}
 .dl{width:17px;height:17px;flex:none}
 .review{margin:22px auto 0;max-width:360px;padding-top:20px;border-top:1px solid var(--line);font-size:14px;color:var(--muted)}
@@ -305,7 +305,6 @@ export interface PostedInput {
   company: string;
   postUrl: string;
   imageUrl: string | null;
-  cardUrl: string;
   /** The posted picture as a file (GET /linkedin/download), for the customer's other networks. */
   downloadUrl: string;
   /**
@@ -329,10 +328,9 @@ ${steps(s, 3)}
 ${i.imageUrl ? h`<img class="thumb" src="${i.imageUrl}" alt="">` : ''}
 <div class="stack">
 <a class="btn primary" id="go" href="${i.postUrl}" target="_blank" rel="noopener">${IN_MARK}<span>${s.viewPost}</span></a>
-<a class="btn ghost" href="${i.cardUrl}">${s.backToCard}</a>
 </div>
 <p class="note">${s.viewPostNote}</p>
-<div class="more"><p>${s.downloadAsk}</p><a class="btn ghost" href="${i.downloadUrl}">${DOWNLOAD}<span>${s.downloadButton}</span></a></div>
+<div class="more"><a class="btn ghost" href="${i.downloadUrl}">${DOWNLOAD}<span>${s.downloadButton}</span></a><p>${s.downloadAsk}</p></div>
 ${i.review ? h`<div class="review"><p><b>${s.reviewAsk}</b>${s.reviewBody}</p><a class="btn ghost" href="${i.review.href}" target="_blank" rel="noopener">${STAR}<span>${s.reviewButton}</span></a></div>` : ''}
 </div>`;
   // Asked here, so the studio does not ask again for this card (client/card-data.js maybeAskReview).
