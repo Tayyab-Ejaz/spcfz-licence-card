@@ -1,12 +1,18 @@
 // Admin, Test flow (27 October 2026): try the whole path before the ERP is connected. Staff send a licence the
-// way the ERP will (same mapping, validation, card and welcome email as the webhook, src/intake/accept.ts), as a
-// TEST card, then follow one run: what the ERP gets back, which fields were used, the card, the email, LinkedIn,
-// and the ERP's follow-ups (the same licence again, a renewal, an expiry). Server-rendered, no JavaScript.
+// way the ERP will (same mapping, validation, card, welcome email and WhatsApp message as the webhook,
+// src/intake/accept.ts), as a TEST card, then follow one run: what the ERP gets back, which fields were used, the
+// card, the email, the WhatsApp message, LinkedIn, and the ERP's follow-ups (the same licence again, a renewal, an
+// expiry). Server-rendered, no JavaScript.
 import { renderSVG } from 'uqr';
 import type { CardRow, D1Database, Env, EventRow } from '../types.js';
 import type { EmailRow } from '../db/emails.js';
 import type { LinkedinPostRow } from '../db/linkedin.js';
-import { fieldReport } from '../intake/mapper.js';
+import type { WhatsappRow } from '../db/whatsapp.js';
+import { fieldReport, mapPayload } from '../intake/mapper.js';
+import { validateCanonical } from '../intake/validate.js';
+import { formatPhone } from '../whatsapp/phone.js';
+import type { WhatsappMode } from './whatsapp.js';
+import { whatsappTable } from './whatsapp.js';
 import { testRecipientAllowed } from '../mail/outbox.js';
 import { cardImagePath, previewPath } from '../page/studio.js';
 import { pageUrl } from '../storage.js';
@@ -29,7 +35,10 @@ export async function recentRuns(db: D1Database, limit = 12): Promise<Array<Even
 
 // ------------------------------------------------------------------ scenarios
 
-interface ScenarioInput { licence: string; email: string; today: string; nextYear: string }
+/** phone: the first of Settings → WhatsApp test numbers, or null (then the scenarios carry no number). */
+interface ScenarioInput { licence: string; email: string; phone: string | null; today: string; nextYear: string }
+
+const withPhone = (key: string, phone: string | null): Record<string, string> => (phone ? { [key]: phone } : {});
 
 export interface Scenario {
   id: string;
@@ -61,12 +70,13 @@ export const SCENARIOS: readonly Scenario[] = [
       expiry_date: i.nextYear,
       preferred_language: 'en',
       customer_email: i.email,
+      ...withPhone('customer_phone', i.phone),
     }),
   },
   {
     id: 'erp-style',
     label: 'ERP-style field names',
-    note: 'Capitalised names, DD/MM/YYYY dates, an activity list, and two fields we do not use.',
+    note: 'Capitalised names, DD/MM/YYYY dates, an activity list, a mobile number, and two fields we do not use.',
     expect: 'created',
     build: (i) => ({
       LicenseNo: i.licence,
@@ -78,8 +88,9 @@ export const SCENARIOS: readonly Scenario[] = [
       IssueDate: dmy(i.today),
       ExpiryDate: dmy(i.nextYear),
       Language: 'English',
+      ...withPhone('MobileNumber', i.phone),
       Branch: 'Sharjah',
-      MobileNumber: '+971 50 000 0000',
+      Zone: 'Sharjah Publishing City',
     }),
   },
   {
@@ -91,7 +102,7 @@ export const SCENARIOS: readonly Scenario[] = [
       licence_number: i.licence,
       company_name: 'Cedarline Media FZ-LLC',
       activity: 'Digital media production',
-      owner: { full_name: 'Omar Haddad', name_ar: 'عمر حداد', email: i.email },
+      owner: { full_name: 'Omar Haddad', name_ar: 'عمر حداد', email: i.email, ...withPhone('mobile', i.phone) },
       issue_date: i.today,
       licence_expiry: i.nextYear,
     }),
@@ -99,7 +110,7 @@ export const SCENARIOS: readonly Scenario[] = [
   {
     id: 'arabic',
     label: 'Arabic-speaking customer',
-    note: 'Preferred language Arabic: the email and the card open in Arabic.',
+    note: 'Preferred language Arabic: the email, the WhatsApp message and the card open in Arabic.',
     expect: 'created',
     build: (i) => ({
       licence_number: i.licence,
@@ -113,6 +124,7 @@ export const SCENARIOS: readonly Scenario[] = [
       expiry_date: i.nextYear,
       preferred_language: 'ar',
       customer_email: i.email,
+      ...withPhone('customer_phone', i.phone),
     }),
   },
   {
@@ -152,10 +164,10 @@ export function defaultRecipient(env: Pick<Env, 'MAIL_TEST_ALLOWLIST'>, actor: s
   return first.includes('@') ? first : `test@${first.replace(/^@/, '')}`;
 }
 
-export function scenarioPayload(s: Scenario, licence: string, email: string, now = new Date()): string {
+export function scenarioPayload(s: Scenario, licence: string, email: string, phone: string | null = null, now = new Date()): string {
   const today = todayInDubai(now);
   const nextYear = addDays(`${today}T00:00:00.000Z`, 365).slice(0, 10);
-  return JSON.stringify(s.build({ licence, email, today, nextYear }), null, 2);
+  return JSON.stringify(s.build({ licence, email, phone, today, nextYear }), null, 2);
 }
 
 // ------------------------------------------------------------------ follow-ups
@@ -186,6 +198,7 @@ export function followUpPayload(kind: FollowUp, card: CardRow, rawBody: string |
     preferred_language: card.preferred_language,
     customer_email: card.customer_email,
     cc_email: card.cc_email,
+    customer_phone: card.customer_phone,
   };
   if (kind === 'renewal') {
     const from = card.licence_expires_on && card.licence_expires_on > today ? card.licence_expires_on : today;
@@ -252,7 +265,7 @@ export const TEST_FLOW_CSS = `
 .tf-check li{margin:4px 0}
 `;
 
-export interface StatusLine { mail: 'smtp' | 'file' | 'off'; linkedin: 'on' | 'pretend' | 'off'; erpConnected: boolean }
+export interface StatusLine { mail: 'smtp' | 'file' | 'off'; linkedin: 'on' | 'pretend' | 'off'; erpConnected: boolean; whatsapp: WhatsappMode }
 
 export function statusPills(s: StatusLine): RawHtml {
   const mail = s.mail === 'smtp'
@@ -265,10 +278,15 @@ export function statusPills(s: StatusLine): RawHtml {
     : s.linkedin === 'pretend'
       ? h`<span class="tf-pill"><i class="tf-dot half"></i>Post to LinkedIn: <b>pretend</b> (local copy)</span>`
       : h`<span class="tf-pill"><i class="tf-dot"></i>Post to LinkedIn: <b>off</b> until the LinkedIn app is set up</span>`;
+  const wa = s.whatsapp === 'gallabox'
+    ? h`<span class="tf-pill"><i class="tf-dot on"></i>WhatsApp: <b>sending</b> through Gallabox</span>`
+    : s.whatsapp === 'file'
+      ? h`<span class="tf-pill"><i class="tf-dot half"></i>WhatsApp: <b>written to files</b> (local copy)</span>`
+      : h`<span class="tf-pill"><i class="tf-dot"></i>WhatsApp: <b>off</b> until Gallabox is set up</span>`;
   const erp = s.erpConnected
     ? h`<span class="tf-pill"><i class="tf-dot on"></i>ERP: <b>allowlisted</b></span>`
     : h`<span class="tf-pill"><i class="tf-dot"></i>ERP: <b>not connected yet</b></span>`;
-  return h`<div class="tf-status">${mail}${li}${erp}</div>`;
+  return h`<div class="tf-status">${mail}${wa}${li}${erp}</div>`;
 }
 
 export interface FormPageInput {
@@ -278,6 +296,8 @@ export interface FormPageInput {
   status: StatusLine;
   recipient: string;
   recipientAllowed: boolean;
+  /** The first WhatsApp test number, or null when Settings has none. */
+  phone: string | null;
   runs: Array<EventRow & { company: string | null }>;
 }
 
@@ -294,6 +314,8 @@ ${statusPills(i.status)}
 <textarea class="tf-json" name="payload" spellcheck="false">${i.payload}</textarea></label>
 <label class="check"><input type="checkbox" name="send_email" value="1" checked> Send the welcome email
 <small>(to ${i.recipient}${i.recipientAllowed ? '' : '; not on MAIL_TEST_ALLOWLIST, so it will be skipped'})</small></label>
+<label class="check"><input type="checkbox" name="send_whatsapp" value="1" checked> Send the welcome WhatsApp message
+<small>(${i.phone ? h`to ${formatPhone(i.phone)}` : h`no test number yet: add yours in <a href="/admin/settings">Settings → WhatsApp test numbers</a>, then start a new test`})</small></label>
 <div class="actions"><button class="btn" type="submit">Send as the ERP</button>
 <a class="btn secondary" href="/admin/test-flow?scenario=${i.scenario.id}">New licence number</a></div>
 </form>
@@ -336,6 +358,7 @@ export interface RunPageInput {
   card: CardRow | null;
   emails: EmailRow[];
   posts: LinkedinPostRow[];
+  whatsapp: WhatsappRow[];
   timeline: EventRow[];
   expect: Expect | null;
   status: StatusLine;
@@ -352,6 +375,8 @@ export function runBody(i: RunPageInput): RawHtml {
   let payload: unknown = null;
   try { payload = ev.raw_body ? JSON.parse(ev.raw_body) : null; } catch { payload = null; }
   const report = fieldReport(payload, i.env.FIELD_MAP);
+  const checked = validateCanonical(mapPayload(payload, i.env.FIELD_MAP));
+  const notes = checked.ok ? checked.notes : [];
 
   const expectLine = i.expect
     ? (i.expect === ev.outcome
@@ -367,6 +392,7 @@ ${accepted ? EMPTY : h`<div class="error">${(ev.errors ?? []).length ? h`<ul>${(
 <p class="muted">How its fields were read:</p>
 ${table(['ERP field', 'Used as'], report.used.map(([f, k]) => [h`${f}`, h`${k}`]), 'No recognised fields.')}
 ${report.unused.length ? h`<div class="tf-warn">Not used by the card: <b>${report.unused.join(', ')}</b>. Fine for extra data; if one of these should be used, add it to FIELD_MAP.</div>` : EMPTY}
+${notes.map((n) => h`<div class="tf-warn">${n}</div>`)}
 <details><summary class="muted">The payload as sent</summary><pre>${ev.raw_body ?? ''}</pre></details>`);
 
   if (!card) {
@@ -418,13 +444,32 @@ ${latest && latest.status === 'sent' && i.status.mail === 'file' ? h`<p class="m
 <a class="btn secondary" href="/admin/cards/${card.id}/email-preview?lang=ar" target="_blank" rel="noopener">Arabic email</a>
 ${card.customer_email ? h`<form method="post" action="/admin/cards/${card.id}/email">${csrfField(i.token)}<input type="hidden" name="back" value="/admin/test-flow/runs/${ev.id}"><button class="btn secondary" type="submit">Send it again</button></form>` : EMPTY}</div>`);
 
-  // 4. LinkedIn
+  // 4. The welcome WhatsApp message
+  const wa = i.whatsapp.find((m) => m.kind === 'welcome') ?? null;
+  const later = wa?.status === 'queued' && wa.next_attempt_at !== null && Date.parse(wa.next_attempt_at) > Date.now() + 60_000;
+  const waState: ['ok' | 'bad' | 'wait' | 'off', string] = !card.customer_phone
+    ? ['off', 'No mobile number: none sent']
+    : !wa ? ['off', 'Not queued (the box was unticked)']
+      : wa.status === 'sent'
+        ? (wa.delivery === 'failed' || wa.delivery === 'error' ? ['bad', 'Not delivered'] : ['ok', wa.delivery === 'read' ? 'Read' : wa.delivery === 'delivered' ? 'Delivered' : `Sent ${fmtDateTime(wa.sent_at)}`])
+        : wa.status === 'queued' ? ['wait', i.status.whatsapp === 'off' ? 'Queued: WhatsApp is off on this server' : later ? `Waiting for ${fmtDateTime(wa.next_attempt_at)}` : 'Queued: sending…']
+          : wa.status === 'skipped' ? ['off', wa.last_error?.startsWith('test card') ? 'Not a test number: skipped' : 'Skipped']
+            : ['bad', 'Failed'];
+  const s4 = step(4, 'The welcome WhatsApp message', waState[0], waState[1], h`
+${card.customer_phone ? h`<p>To <b dir="ltr">${formatPhone(card.customer_phone)}</b>, in ${card.preferred_language === 'ar' && i.env.WHATSAPP_TEMPLATE_AR ? 'Arabic' : 'English'}.</p>` : h`<p class="muted">Add customer_phone to the payload (your number from Settings → WhatsApp test numbers) to test the message.</p>`}
+${i.whatsapp.length ? whatsappTable(i.whatsapp.filter((m) => m.kind === 'welcome')) : EMPTY}
+${wa && wa.status === 'sent' && i.status.whatsapp === 'file' ? h`<p class="muted">Local copy: the message is a file in DATA_DIR/whatsapp-outbox.</p>` : EMPTY}
+<div class="actions"><a class="btn secondary" href="/admin/cards/${card.id}/whatsapp-preview?lang=en" target="_blank" rel="noopener">Preview the message</a>
+<a class="btn secondary" href="/admin/cards/${card.id}/whatsapp-preview?lang=ar" target="_blank" rel="noopener">Arabic message</a>
+${card.customer_phone ? h`<form method="post" action="/admin/cards/${card.id}/whatsapp">${csrfField(i.token)}<input type="hidden" name="back" value="/admin/test-flow/runs/${ev.id}"><button class="btn secondary" type="submit">Send it again</button></form>` : EMPTY}</div>`);
+
+  // 5. LinkedIn
   const posted = i.posts.find((p) => p.status === 'posted') ?? null;
   const alert = i.emails.find((e) => e.kind === 'post_alert') ?? null;
   const liState: ['ok' | 'bad' | 'wait' | 'off', string] = i.status.linkedin === 'off'
     ? ['off', 'Off on this server']
     : posted ? ['ok', 'Posted'] : i.posts.length ? ['bad', 'Last try failed'] : ['wait', 'Not tried yet'];
-  const s4 = step(4, 'Post to LinkedIn', liState[0], liState[1], h`
+  const s5 = step(5, 'Post to LinkedIn', liState[0], liState[1], h`
 ${i.status.linkedin === 'off'
     ? h`<p class="muted">The buttons are hidden until LINKEDIN_CLIENT_ID and LINKEDIN_CLIENT_SECRET are set (docs/RUNBOOK.md).</p>`
     : h`<p>Open the card, choose a photo or “Use initials”, go to Share and press <b>Post to LinkedIn</b>. (The email has no LinkedIn button: it would post the card before it is personalised.)</p>
@@ -436,14 +481,15 @@ ${i.posts.length ? table(['When', 'Result', ''], i.posts.map((p) => [
   ])) : EMPTY}
 ${alert ? h`<p>Alert to SPC, <b>${alert.to_email}</b>: ${alert.status === 'sent' ? `sent ${fmtDateTime(alert.sent_at)}` : alert.status}.</p>${alert.last_error ? h`<div class="tf-warn">${alert.last_error}</div>` : EMPTY}` : EMPTY}`);
 
-  // 5. What the ERP does next
-  const s5 = step(5, 'What the ERP does next', 'off', 'Try each one', h`
+  // 6. What the ERP does next
+  const s6 = step(6, 'What the ERP does next', 'off', 'Try each one', h`
 <div class="tf-next">${FOLLOW_UPS.map((f) => h`<form method="post" action="/admin/test-flow/runs/${ev.id}/next">${csrfField(i.token)}<input type="hidden" name="kind" value="${f.kind}"><b>${f.label}</b><small>${f.what}</small><button class="btn small" type="submit">Send</button></form>`)}</div>`);
 
-  // 6. By hand
-  const s6 = step(6, 'Check by hand', 'off', 'On a phone and a computer', h`
+  // 7. By hand
+  const s7 = step(7, 'Check by hand', 'off', 'On a phone and a computer', h`
 <ul class="tf-check">
 <li>Open the email on your phone and on a computer; try both buttons.</li>
+<li>Open the WhatsApp message on your phone: the card picture shows, and Open my card opens the card.</li>
 <li>On the card: switch styles and sizes, add a photo, edit the caption, then Share (phone) and Download (computer).</li>
 <li>Paste the card's link into WhatsApp: the preview shows the company's name.</li>
 <li>Switch to Arabic and check the card, the caption and the email.</li>
@@ -459,7 +505,7 @@ ${alert ? h`<p>Alert to SPC, <b>${alert.to_email}</b>: ${alert.status === 'sent'
   return h`<style>${raw(TEST_FLOW_CSS)}</style>
 ${expectLine}
 ${statusPills(i.status)}
-<div class="tf-steps">${s1}${s2}${s3}${s4}${s5}${s6}</div>
+<div class="tf-steps">${s1}${s2}${s3}${s4}${s5}${s6}${s7}</div>
 <h2>Everything that happened to this card</h2>
 ${timeline}
 <div class="actions"><a class="btn" href="/admin/test-flow">Start another test</a></div>`;

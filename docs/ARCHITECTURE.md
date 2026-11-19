@@ -624,3 +624,45 @@ again (unchanged), a renewal (updated), a correction (updated), and a lapsed lic
 expired). The dashboard links to it while ERP_IP_ALLOWLIST is empty. The email goes to the signed-in person when
 MAIL_TEST_ALLOWLIST allows them.
 
+
+## 19. Welcome WhatsApp message (19 November 2026)
+
+Beside the welcome email, the customer gets one WhatsApp message through **Gallabox**, SPC's WhatsApp Business
+provider. docs/WHATSAPP.md has the details, the template to create in Gallabox and the steps to switch it on.
+
+- **Data.** `cards.customer_phone` is the 14th canonical field. The ERP sends it under any common name, or inside
+  the owner object. It is stored in international form (+971501234567). src/whatsapp/phone.ts reads it with
+  libphonenumber-js, with the UAE as the home country, and keeps mobile numbers only. A number it cannot read is
+  dropped with a note: the webhook's answer gets `notes`, and nothing is rejected (C6 still applies to
+  everything else). The content hash includes the number only when there is one, so older cards keep their hash.
+  Migration 0011.
+- **Queue.** src/whatsapp/outbox.ts follows the email outbox:
+  - one message per card, in the `whatsapp_messages` log;
+  - the same retry schedule;
+  - the same 30-second worker in src/server.ts;
+  - test cards message only Admin → Settings → WhatsApp test numbers (setting `whatsapp_test_to`);
+  - numbers stopped by staff are listed in `whatsapp_suppressions`.
+
+  Messages the ERP triggers (actor null) wait for 09:00–21:00 Dubai time; staff actions go out at once.
+- **Sending.** src/whatsapp/transport.ts posts Gallabox's template message (`POST /devapi/messages/whatsapp`,
+  headers apiKey/apiSecret). The request carries:
+  - the template name (English, or Arabic when `WHATSAPP_TEMPLATE_AR` is set);
+  - the body values `name` and `company`;
+  - the card picture as the image header;
+  - the button's URL suffix `<token>?lang=xx&via=whatsapp`.
+
+  `WHATSAPP_TRANSPORT=file` writes it to `DATA_DIR/whatsapp-outbox` instead (the local copy).
+- **Delivery.** Read back from Gallabox (`GET /devapi/accounts/:accountId/messages/:id/status`) at 2 min, 15 min,
+  1 h, 6 h, 24 h and 3 days, until read or failed. Polling was chosen over Gallabox's webhook. A status webhook
+  would push every message on SPC's WhatsApp number to this service, including the sales team's chats. Polling
+  needs no new public endpoint and asks about our own messages only.
+- **Replies** stay in Gallabox's inbox, where the team works. The service never reads them.
+- **Admin.**
+  - The card page: the mobile row, the message log with WhatsApp's status, Send it again, Stop / Allow, and a
+    preview in both languages.
+  - Create and CSV import take `customer_phone`, with a "Send the welcome WhatsApp message" box.
+  - Settings: the test numbers and the WhatsApp status.
+  - Test flow: a WhatsApp step with a pill.
+  - The monthly report counts visits from WhatsApp separately.
+- **Wording.** The template text lives in Gallabox (Meta approves it). `TEMPLATE_TEXT` in src/whatsapp/message.ts is
+  the draft to paste there and what the admin preview shows.

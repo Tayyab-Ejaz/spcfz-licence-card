@@ -1,11 +1,14 @@
 # Licence-issued webhook: specification for the ERP team
 
-From SPC Free Zone marketing. Version 0.2, 27 October 2026 (0.1: 15 October 2026).
+From SPC Free Zone marketing. Version 0.3, 19 November 2026 (0.2: 27 October 2026; 0.1: 15 October 2026).
 
 When a business licence is issued, please send us one HTTP request, with the
-customer's email address in it. We email the customer their announcement card
-ourselves, and answer you with a web address to the same card. Nothing else is
-needed from the ERP.
+customer's email address and mobile number in it. We email and WhatsApp the
+customer their announcement card ourselves, and answer you with a web address
+to the same card. Nothing else is needed from the ERP.
+
+**New in 0.3:** the customer's mobile number, for a WhatsApp message beside the
+welcome email. Please send it; a number we cannot read never stops the card.
 
 **New in 0.2:** the customer's email address (required for the welcome email)
 and an optional copy-to address. Putting the address into your own
@@ -61,13 +64,16 @@ our side. What we need:
 | Customer's preferred language | no | `en` or `ar`. Defaults to English. The welcome email is in this language. |
 | Customer's email address | yes, for the welcome email | One address, for example `customer_email` or `email`, or an `email` inside the owner or founder object. Without it the card is still made, but we send no email. |
 | Copy-to email | no | One address that receives a copy, for example the account manager (`cc_email` or `account_manager_email`). |
+| Customer's mobile number | yes, for the WhatsApp message | The number the customer uses WhatsApp on, for example `customer_mobile`, `mobile`, `phone` or `whatsapp`, or a `mobile` inside the owner or founder object. UAE numbers in any usual form (`050 123 4567`, `+971501234567`, `00971…`); other countries with their country code (`+91 98765 43210`). A number we cannot read does not reject the licence: we make the card, send no WhatsApp message, and say so in the answer (`notes`). |
 
-The personal details we keep are the founder's name and these two email
-addresses. Please do not send phone numbers or other personal data; if your
-system cannot leave them out, we discard them on receipt and never store them.
+The personal details we keep are the founder's name, these two email addresses
+and the mobile number. Please do not send other personal data (passport,
+Emirates ID, nationality and the like); if your system cannot leave it out, we
+discard it on receipt and never store it.
 
-Each licence gets one welcome email: the first time we receive it with an email
-address. Sending the same licence again does not email the customer again.
+Each licence gets one welcome email and one WhatsApp message: the first time we
+receive it with an email address or a mobile number. Sending the same licence
+again does not message the customer again.
 
 Example:
 
@@ -85,7 +91,8 @@ Example:
   "expiry_date": "2027-10-14",
   "preferred_language": "en",
   "customer_email": "mariam@nimbus-publishing.com",
-  "cc_email": "account.manager@spcfz.ae"
+  "cc_email": "account.manager@spcfz.ae",
+  "customer_mobile": "+971 50 123 4567"
 }
 ```
 
@@ -104,8 +111,23 @@ Normally within one second:
 }
 ```
 
-We email the card to the customer within a minute. You may also put `page_url`
-into your licence-issued email; it is the same card. The page is ready as soon
+We email the card to the customer within a minute, and WhatsApp it within a
+minute between 09:00 and 21:00 Dubai time (later ones go at 09:00 the next
+morning). You may also put `page_url` into your licence-issued email; it is the
+same card.
+
+When something was received but not used, the answer lists it under `notes`
+(only then). Today that is only a mobile number we could not read:
+
+```json
+{
+  "status": "accepted",
+  "card_id": "01J9ZK4Q7W…",
+  "page_url": "https://licensed.spcfz.ae/c/7Hk2bQpX9sLm3nVd8rTy1w",
+  "ready": true,
+  "notes": ["customer_phone: not a mobile number in a form we can read (add the country code, e.g. +91…); no WhatsApp message"]
+}
+``` The page is ready as soon
 as we answer: the customer builds and downloads the card in the browser.
 
 Sending the same licence twice is safe. You get the same `page_url` back.

@@ -16,6 +16,8 @@ export interface MonthStats {
   openedCards: number;
   views: number;
   viewsFromEmail: number;
+  /** Opened from the welcome WhatsApp message (?via=whatsapp). */
+  viewsFromWhatsapp: number;
   /** Customers who downloaded, shared or posted their card (each card once). */
   sharedCards: number;
   downloads: number;
@@ -103,6 +105,7 @@ export async function monthStats(db: D1Database, month: string): Promise<MonthSt
     openedCards,
     views: sum('view'),
     viewsFromEmail: sum('view', (n) => n === 'email'),
+    viewsFromWhatsapp: sum('view', (n) => n === 'whatsapp'),
     sharedCards,
     downloads: sum('download'),
     shares: sum('share', (n) => n !== 'linkedin'),
@@ -150,7 +153,7 @@ export function change(cur: number, prev: number): string {
 /** The smaller figures under the headlines. */
 export function details(s: MonthStats): Array<[string, string]> {
   return [
-    ['Card page views', `${s.views} (${s.viewsFromEmail} from the welcome email)`],
+    ['Card page views', `${s.views} (${s.viewsFromEmail} from the welcome email, ${s.viewsFromWhatsapp} from WhatsApp)`],
     ['Downloads', String(s.downloads)],
     ['Shared with the phone share sheet', String(s.shares)],
     ['Post to LinkedIn', `${s.liStarted} started, ${s.liSignedIn} signed in, ${s.posts} posted, ${s.liCancelled} cancelled at LinkedIn, ${s.liFailed} failed`],

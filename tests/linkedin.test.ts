@@ -84,6 +84,7 @@ async function seedCard(o: { fields?: Partial<CanonicalFields>; is_test?: boolea
       licence_expires_on: null,
       customer_email: null,
       cc_email: null,
+      customer_phone: null,
       ...o.fields,
     },
     content_hash: `hash-${seq}`,

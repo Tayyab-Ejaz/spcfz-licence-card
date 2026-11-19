@@ -144,15 +144,20 @@ function makeHandler(cfg: RouteConfig) {
       const payload = parseJsonObject(body.text);
       if (payload === null) return await reject(400, ['body is not a JSON object']);
 
-      // 4-6. Map, validate, create or update the card, queue the welcome email (./accept.ts).
+      // 4-6. Map, validate, create or update the card, queue the welcome email and WhatsApp message (./accept.ts).
       const result = await acceptPayload(env, payload, { is_test: cfg.is_test, source: cfg.source, actor: null });
       if (!result.ok) return await reject(400, result.errors);
       await record(200, result.outcome, null, result.card.id);
       console.log('intake accepted', {
         route: cfg.route, outcome: result.outcome, licence_number: result.card.licence_number, card_id: result.card.id,
+        ...(result.notes.length ? { notes: result.notes } : {}),
       });
+      // notes: what was received but not used (a phone number we cannot WhatsApp); only present when there is one.
       return c.json(
-        { status: 'accepted', card_id: result.card.id, page_url: result.page_url, ready: result.card.status === 'ready' },
+        {
+          status: 'accepted', card_id: result.card.id, page_url: result.page_url, ready: result.card.status === 'ready',
+          ...(result.notes.length ? { notes: result.notes } : {}),
+        },
         200,
         NO_STORE,
       );

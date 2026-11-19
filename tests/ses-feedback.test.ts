@@ -56,7 +56,7 @@ async function cardEmailed(email: string): Promise<CardRow> {
     fields: {
       licence_number: `SPC-FB-${seq}`, company_name_en: 'Harbour Books FZE', company_name_ar: null, licence_type: null,
       activity_category: 'Publishing', activity_category_ar: null, founder_name_en: null, founder_name_ar: null,
-      issued_on: '2026-11-01', preferred_language: 'en', licence_expires_on: null, customer_email: email, cc_email: null,
+      issued_on: '2026-11-01', preferred_language: 'en', licence_expires_on: null, customer_email: email, cc_email: null, customer_phone: null,
     },
     content_hash: `feedback${seq}`,
     source: 'manual',

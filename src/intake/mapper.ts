@@ -1,4 +1,4 @@
-// Field mapping: turns whatever the ERP sends into the thirteen canonical keys and nothing else
+// Field mapping: turns whatever the ERP sends into the fourteen canonical keys and nothing else
 // (ARCHITECTURE section 4 "Field mapping", C5, C6). Pure; no I/O.
 import type { CanonicalFields } from '../types.js';
 import { isBlank, isPlainObject, normaliseKey } from './common.js';
@@ -20,6 +20,7 @@ export const CANONICAL_KEYS: readonly CanonicalKey[] = [
   'licence_expires_on',
   'customer_email',
   'cc_email',
+  'customer_phone',
 ];
 
 /**
@@ -55,6 +56,13 @@ const ALIASES: Readonly<Record<CanonicalKey, readonly string[]>> = {
     'client_email', 'investor_email', 'EmailAddress', 'CustomerEmail', 'ContactEmail',
   ],
   cc_email: ['cc_email', 'cc', 'account_manager_email', 'relationship_manager_email', 'rm_email', 'agent_email', 'sales_email'],
+  // 19 November 2026: the welcome WhatsApp message goes to this number.
+  customer_phone: [
+    'customer_phone', 'customer_mobile', 'whatsapp', 'whatsapp_number', 'whatsapp_no', 'mobile', 'mobile_number', 'mobile_no',
+    'phone', 'phone_number', 'phone_no', 'contact_number', 'contact_phone', 'contact_mobile', 'owner_mobile', 'owner_phone',
+    'founder_mobile', 'founder_phone', 'applicant_mobile', 'applicant_phone', 'client_mobile', 'client_phone',
+    'investor_mobile', 'investor_phone', 'MobileNumber', 'PhoneNumber', 'CustomerMobile', 'CustomerPhone',
+  ],
 };
 
 /** Sub-fields read from an activity object, in order of preference. Compared after `normaliseKey`. */
@@ -72,6 +80,8 @@ const PERSON_NAME_KEYS: readonly string[] = ['name_en', 'full_name_en', 'full_na
 const PERSON_NAME_AR_KEYS: readonly string[] = ['name_ar', 'full_name_ar', 'arabic_name'];
 /** The email inside the same owner/founder object, when the ERP sends no top-level email. */
 const PERSON_EMAIL_KEYS: readonly string[] = ['email', 'email_address', 'emailAddress', 'contact_email'];
+/** The mobile number inside the same owner/founder object, when the ERP sends no top-level number. */
+const PERSON_PHONE_KEYS: readonly string[] = ['whatsapp', 'whatsapp_number', 'mobile', 'mobile_number', 'phone', 'phone_number', 'contact_number'];
 
 /** Canonical keys whose value may arrive as an object or list, with the sub-fields to read. */
 const NAMED: Partial<Record<CanonicalKey, readonly string[]>> = {
@@ -85,6 +95,7 @@ const SIBLINGS: ReadonlyArray<[CanonicalKey, CanonicalKey, readonly string[]]> =
   ['activity_category', 'activity_category_ar', ACTIVITY_NAME_AR_KEYS],
   ['founder_name_en', 'founder_name_ar', PERSON_NAME_AR_KEYS],
   ['founder_name_en', 'customer_email', PERSON_EMAIL_KEYS],
+  ['founder_name_en', 'customer_phone', PERSON_PHONE_KEYS],
 ];
 
 /** normalised alias -> canonical key, built once. The canonical names themselves are included. */

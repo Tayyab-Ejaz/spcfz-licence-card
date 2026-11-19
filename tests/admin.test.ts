@@ -48,6 +48,7 @@ async function seedCard(o: SeedOptions = {}): Promise<CardRow> {
       licence_expires_on: null,
       customer_email: null,
       cc_email: null,
+      customer_phone: null,
       ...o.fields,
     },
     content_hash: `hash-${seq}`,
@@ -482,7 +483,7 @@ describe('welcome email', () => {
 
   it('settings say whether email and LinkedIn are on', async () => {
     const body = await (await get('/admin/settings')).res.text();
-    expect(body).toContain('Email and LinkedIn');
+    expect(body).toContain('Email, WhatsApp and LinkedIn');
     expect(body).toContain('the button is hidden until the LinkedIn app is set up');
   });
 });
@@ -533,7 +534,7 @@ describe('test flow', () => {
   it('names the ERP fields the card does not use', async () => {
     const { res } = await post('/admin/test-flow', { payload: await payloadOf('erp-style') });
     const page = await (await get(res.headers.get('Location') ?? '')).res.text();
-    expect(page).toContain('Not used by the card: <b>Branch, MobileNumber</b>');
+    expect(page).toContain('Not used by the card: <b>Branch, Zone</b>');
     expect(page).toMatch(/<td>LicenseNo<\/td><td>licence_number<\/td>/);
   });
 

@@ -73,6 +73,12 @@ function ensureEnvFile() {
   return true;
 }
 
+/** Welcome WhatsApp messages as files (19 November 2026). */
+const WHATSAPP_EXTRAS = [
+  '# Welcome WhatsApp messages are written to DATA_DIR/whatsapp-outbox (.txt and the Gallabox request as .json), never sent.',
+  'WHATSAPP_TRANSPORT=file',
+];
+
 /** Welcome emails as files, the sample cards' example.com addresses allowed, and a pretend LinkedIn (27 October 2026). */
 const LOCAL_EXTRAS = [
   '# Welcome emails are written to DATA_DIR/mail-outbox (.html, open it in a browser), never sent.',
@@ -80,6 +86,7 @@ const LOCAL_EXTRAS = [
   'MAIL_TEST_ALLOWLIST=example.com,spcfz.ae',
   '# "Post to LinkedIn" against a pretend LinkedIn; posts are written to DATA_DIR/linkedin-outbox.',
   'LINKEDIN_FAKE=1',
+  ...WHATSAPP_EXTRAS,
 ];
 
 /** Copies made before 19 October 2026 opened the admin with LOCAL_ADMIN_EMAIL; move them to the sign-in key. */
@@ -92,6 +99,10 @@ function upgradeEnvFile() {
   if (!/^MAIL_TRANSPORT=/m.test(next)) {
     next = next.replace(/\n*$/, '\n') + LOCAL_EXTRAS.join('\n') + '\n';
     say(`updated ${ENV_FILE}: welcome emails go to files, and Post to LinkedIn uses a pretend LinkedIn`);
+  }
+  if (!/^WHATSAPP_TRANSPORT=/m.test(next)) {
+    next = next.replace(/\n*$/, '\n') + WHATSAPP_EXTRAS.join('\n') + '\n';
+    say(`updated ${ENV_FILE}: welcome WhatsApp messages go to files`);
   }
   if (next !== text) {
     writeFileSync(ENV_FILE, next, { mode: 0o600 });

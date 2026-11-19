@@ -430,12 +430,12 @@ describe('mapPayload', () => {
     expect(out).toEqual({ licence_number: 'C-3', company_name_en: 'Cased Co', preferred_language: 'ar' });
   });
 
-  it('keeps the customer email (for the welcome email) and drops everything else that is not canonical', () => {
+  it('keeps the customer email and mobile (for the welcome email and WhatsApp message) and drops everything else that is not canonical', () => {
     const out = mapPayload(
-      { licence_number: 'D-4', company_name_en: 'Dropped Co', owner_email: 'x@example.com', phone: '+971500000000', nested: { a: 1 } },
+      { licence_number: 'D-4', company_name_en: 'Dropped Co', owner_email: 'x@example.com', phone: '+971500000000', passport: 'X1', nested: { a: 1 } },
       '{}',
     );
-    expect(Object.keys(out).sort()).toEqual(['company_name_en', 'customer_email', 'licence_number']);
+    expect(Object.keys(out).sort()).toEqual(['company_name_en', 'customer_email', 'customer_phone', 'licence_number']);
   });
 
   it('maps the customer and copy emails from common names or the owner object, and validates them', () => {
@@ -591,9 +591,9 @@ describe('founder name', () => {
     expect(mapPayload({ shareholders: [{ name: 'Lina Saeed' }, { name: 'Other' }] }, '{}')).toEqual({ founder_name_en: 'Lina Saeed' });
   });
 
-  it('keeps only the email from the person object, never the phone or anything else', () => {
-    const out = mapPayload({ owner: { name: 'Omar Haddad', email: 'o@x.ae', phone: '+971', passport: 'X1' } }, '{}');
-    expect(out).toEqual({ founder_name_en: 'Omar Haddad', customer_email: 'o@x.ae' });
+  it('keeps only the email and mobile from the person object, never anything else', () => {
+    const out = mapPayload({ owner: { name: 'Omar Haddad', email: 'o@x.ae', phone: '+971501234567', passport: 'X1', nationality: 'AE' } }, '{}');
+    expect(out).toEqual({ founder_name_en: 'Omar Haddad', customer_email: 'o@x.ae', customer_phone: '+971501234567' });
   });
 
   it('accepts long legal names rather than rejecting the licence', () => {

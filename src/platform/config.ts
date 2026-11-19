@@ -4,8 +4,8 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import type { Env, TrustProxy } from '../types.js';
-import { MAIL_TRANSPORT_MODES, TRUST_PROXY_MODES } from '../types.js';
-import type { MailTransportMode } from '../types.js';
+import { MAIL_TRANSPORT_MODES, TRUST_PROXY_MODES, WHATSAPP_TRANSPORT_MODES } from '../types.js';
+import type { MailTransportMode, WhatsappTransportMode } from '../types.js';
 
 /** The part of Env that comes from configuration rather than from an adapter. */
 export type EnvVars = Omit<Env, 'DB' | 'BUCKET' | 'RENDER_QUEUE'>;
@@ -159,6 +159,29 @@ export function readConfig(source: ConfigSource, envFile: string | null = null):
   const liVersion = text(source, 'LINKEDIN_API_VERSION');
   if (liVersion !== undefined && !/^20\d{4}$/.test(liVersion)) errors.push('LINKEDIN_API_VERSION must look like 202606 (YYYYMM)');
 
+  // WhatsApp (src/whatsapp/): gallabox needs the key, the secret and the channel; file and off need nothing.
+  const gbKey = text(source, 'GALLABOX_API_KEY');
+  const gbSecret = text(source, 'GALLABOX_API_SECRET');
+  const gbChannel = text(source, 'GALLABOX_CHANNEL_ID');
+  const waRaw = text(source, 'WHATSAPP_TRANSPORT')?.toLowerCase();
+  let waMode: WhatsappTransportMode = gbKey ? 'gallabox' : 'off';
+  if (waRaw !== undefined) {
+    if ((WHATSAPP_TRANSPORT_MODES as readonly string[]).includes(waRaw)) waMode = waRaw as WhatsappTransportMode;
+    else errors.push(`WHATSAPP_TRANSPORT must be one of ${WHATSAPP_TRANSPORT_MODES.join(', ')}, got ${JSON.stringify(waRaw)}`);
+  }
+  if (waMode === 'gallabox' && !(gbKey && gbSecret && gbChannel)) errors.push('WHATSAPP_TRANSPORT=gallabox needs GALLABOX_API_KEY, GALLABOX_API_SECRET and GALLABOX_CHANNEL_ID');
+  const gbUrl = text(source, 'GALLABOX_API_URL');
+  if (gbUrl !== undefined && !/^https:\/\//.test(gbUrl) && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(gbUrl)) errors.push('GALLABOX_API_URL must be an https:// address');
+  const waHeader = text(source, 'WHATSAPP_HEADER')?.toLowerCase();
+  if (waHeader !== undefined && waHeader !== 'image' && waHeader !== 'none') errors.push('WHATSAPP_HEADER must be image or none');
+  for (const k of ['WHATSAPP_TEMPLATE_EN', 'WHATSAPP_TEMPLATE_AR'] as const) {
+    const t = text(source, k);
+    if (t !== undefined && !/^[a-z0-9_]{1,512}$/.test(t)) errors.push(`${k} must be a WhatsApp template name: lower-case letters, digits and underscores`);
+  }
+  if (waMode === 'gallabox' && !text(source, 'GALLABOX_ACCOUNT_ID')) warnings.push('GALLABOX_ACCOUNT_ID is not set: WhatsApp messages are sent, but whether they were delivered and read is not read back');
+  if (waMode === 'off') warnings.push('WhatsApp is off (no GALLABOX_API_KEY): welcome WhatsApp messages are queued in the admin but not sent');
+  if (waMode === 'file') warnings.push('WHATSAPP_TRANSPORT=file: WhatsApp messages are written to DATA_DIR/whatsapp-outbox');
+
   const allowlist = text(source, 'ERP_IP_ALLOWLIST') ?? '';
   if (!allowlist) warnings.push('ERP_IP_ALLOWLIST is empty: both intake routes reject every request');
   if (!text(source, 'WEBHOOK_SECRET_CURRENT')) warnings.push('WEBHOOK_SECRET_CURRENT is not set: the production intake route accepts nothing');
@@ -194,6 +217,15 @@ export function readConfig(source: ConfigSource, envFile: string | null = null):
     LINKEDIN_FAKE: liFake,
     LINKEDIN_ALERT_TO: alertTo,
     SES_FEEDBACK_TOPIC: feedbackTopic,
+    WHATSAPP_TRANSPORT: waMode,
+    GALLABOX_API_KEY: gbKey,
+    GALLABOX_API_SECRET: gbSecret,
+    GALLABOX_CHANNEL_ID: gbChannel,
+    GALLABOX_ACCOUNT_ID: text(source, 'GALLABOX_ACCOUNT_ID'),
+    GALLABOX_API_URL: gbUrl,
+    WHATSAPP_TEMPLATE_EN: text(source, 'WHATSAPP_TEMPLATE_EN'),
+    WHATSAPP_TEMPLATE_AR: text(source, 'WHATSAPP_TEMPLATE_AR'),
+    WHATSAPP_HEADER: waHeader === 'none' ? 'none' : waHeader === 'image' ? 'image' : undefined,
   };
   return { ok: true, config: { vars, host, port, dataDir, trustProxy, envFile, warnings } };
 }

@@ -113,3 +113,25 @@ describe('loadConfig', () => {
     expect(lines.join('\n')).toContain('BASE_URL is required');
   });
 });
+
+describe('WhatsApp settings (19 November 2026)', () => {
+  it('is off without a Gallabox key, and gallabox needs the key, the secret and the channel', () => {
+    const off = readConfig({ ...MINIMAL });
+    expect(off.ok && off.config.vars.WHATSAPP_TRANSPORT).toBe('off');
+    const half = readConfig({ ...MINIMAL, GALLABOX_API_KEY: 'k' });
+    expect(half.ok ? [] : half.errors).toContain('WHATSAPP_TRANSPORT=gallabox needs GALLABOX_API_KEY, GALLABOX_API_SECRET and GALLABOX_CHANNEL_ID');
+    const on = readConfig({ ...MINIMAL, GALLABOX_API_KEY: 'k', GALLABOX_API_SECRET: 's', GALLABOX_CHANNEL_ID: 'c' });
+    expect(on.ok && [on.config.vars.WHATSAPP_TRANSPORT, on.config.warnings.some((w) => w.startsWith('GALLABOX_ACCOUNT_ID is not set'))]).toEqual(['gallabox', true]);
+    expect(readConfig({ ...MINIMAL, WHATSAPP_TRANSPORT: 'file' }).ok).toBe(true);
+  });
+
+  it('refuses a bad mode, a template name WhatsApp would refuse, a bad header and a plain-http API', () => {
+    const r = readConfig({ ...MINIMAL, WHATSAPP_TRANSPORT: 'sms', WHATSAPP_TEMPLATE_EN: 'Licence Card', WHATSAPP_HEADER: 'video', GALLABOX_API_URL: 'http://gallabox.example/devapi' });
+    expect(r.ok ? [] : r.errors).toEqual(expect.arrayContaining([
+      expect.stringMatching(/^WHATSAPP_TRANSPORT must be one of/),
+      expect.stringMatching(/^WHATSAPP_TEMPLATE_EN must be a WhatsApp template name/),
+      'WHATSAPP_HEADER must be image or none',
+      'GALLABOX_API_URL must be an https:// address',
+    ]));
+  });
+});

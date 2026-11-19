@@ -333,6 +333,15 @@ Settings → Monthly report (nobody until addresses are added); a daily run on t
 server was down on the 1st. "Send to me" and "Send to the report list" send the month shown at any time; the page
 lists each sending.
 
+## WhatsApp message: turn it on
+
+19 November 2026. The welcome WhatsApp message goes through Gallabox. docs/WHATSAPP.md has the whole story: the
+template to create in Gallabox (English and Arabic), the env lines, the test, and what each error on the card page
+means. In short: add `WHATSAPP_TRANSPORT=gallabox`, `GALLABOX_API_KEY`, `GALLABOX_API_SECRET`,
+`GALLABOX_CHANNEL_ID`, `GALLABOX_ACCOUNT_ID` and the two template names to the env file (the owner types the
+secret), recreate the container (see Secrets), put your number in Admin → Settings → WhatsApp test numbers, and run
+Admin → Test flow. `WHATSAPP_TRANSPORT=off` and a recreate switch it off; queued messages wait in the admin.
+
 ## Rate limits
 
 The app limits each visitor per minute, counting an IPv4 address or an IPv6 /64 block as one visitor: 300 page, status and image

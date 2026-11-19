@@ -105,7 +105,31 @@ export interface Env {
   LINKEDIN_ALERT_TO?: string;
   /** The SNS topic whose SES bounces and complaints POST /aws/ses-feedback accepts (src/mail/ses-feedback.ts); off turns it off. */
   SES_FEEDBACK_TOPIC?: string;
+
+  /**
+   * The welcome WhatsApp message (src/whatsapp/). gallabox: send through Gallabox's API. file: write each message to
+   * DATA_DIR/whatsapp-outbox instead (the local copy). off: keep messages queued, send nothing. Defaults to gallabox
+   * when GALLABOX_API_KEY is set.
+   */
+  WHATSAPP_TRANSPORT?: WhatsappTransportMode;
+  /** Gallabox's API key and secret (Gallabox → Settings → API keys). Secrets. */
+  GALLABOX_API_KEY?: string;
+  GALLABOX_API_SECRET?: string;
+  /** The Gallabox channel (SPC's WhatsApp number) the message is sent from. */
+  GALLABOX_CHANNEL_ID?: string;
+  /** SPC's Gallabox account; needed only to read back whether a message was delivered and read. */
+  GALLABOX_ACCOUNT_ID?: string;
+  /** Gallabox's API, default https://server.gallabox.com/devapi. */
+  GALLABOX_API_URL?: string;
+  /** The approved template names in Gallabox: English, and Arabic (Arabic customers get English when it is not set). */
+  WHATSAPP_TEMPLATE_EN?: string;
+  WHATSAPP_TEMPLATE_AR?: string;
+  /** image (default): the template has an image header and gets the customer's card picture. none: it has no header. */
+  WHATSAPP_HEADER?: 'image' | 'none';
 }
+
+export type WhatsappTransportMode = 'gallabox' | 'file' | 'off';
+export const WHATSAPP_TRANSPORT_MODES: readonly WhatsappTransportMode[] = ['gallabox', 'file', 'off'];
 
 export type MailTransportMode = 'smtp' | 'file' | 'off';
 export const MAIL_TRANSPORT_MODES: readonly MailTransportMode[] = ['smtp', 'file', 'off'];
@@ -155,6 +179,7 @@ export interface CanonicalFields {
   licence_expires_on: string | null;  // YYYY-MM-DD, the licence's last valid day; the card expires after it
   customer_email: string | null;      // where the welcome email goes; personal data, never shown on the page
   cc_email: string | null;            // an optional copy of the welcome email, e.g. the account manager
+  customer_phone: string | null;      // the welcome WhatsApp message goes here (+971501234567); personal data, never shown on the page
 }
 
 export type CardStatus = 'pending' | 'ready' | 'failed' | 'expired';
@@ -180,6 +205,7 @@ export type EventRoute = IntakeRoute | 'admin';
 export type EventOutcome =
   | 'created' | 'unchanged' | 'updated' | 'rejected'
   | 'replayed' | 'deleted' | 'expired' | 'unexpired' | 'imported' | 'settings' | 'emailed'
+  | 'whatsapped' | 'wa_stopped' | 'wa_allowed'
   | 'regenerated' | 'rerender';  // the last two only on rows from the server-render era
 
 export interface EventRow {
@@ -212,5 +238,7 @@ export const SETTING_KEYS = [
   'gtm_enabled', 'retention_days', 'test_retention_days', 'raw_body_days',
   // 5 November 2026: who gets the LinkedIn post alert, the Google review request, who gets the monthly report.
   'post_alert_to', 'review_enabled', 'review_url', 'report_to',
+  // 19 November 2026: the numbers test cards may WhatsApp (src/whatsapp/outbox.ts).
+  'whatsapp_test_to',
 ] as const;
 export type SettingKey = (typeof SETTING_KEYS)[number];

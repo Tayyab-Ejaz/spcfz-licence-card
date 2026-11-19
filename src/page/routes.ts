@@ -109,8 +109,10 @@ pageRoutes.get('/c/:token', async (c) => {
   pageHeaders(c, nonce, gtmContainer !== null, true);
 
   // The studio builds the card in the browser, so it never waits for the server-side render.
-  // Opened from the welcome email (?via=email): counted apart, so the admin can see how many came that way.
-  if (!card.is_test) safeMetric(c, { card_id: card.id, kind: 'view', lang, network: c.req.query('via') === 'email' ? 'email' : null });
+  // Opened from the welcome email (?via=email) or WhatsApp message (?via=whatsapp): counted apart, so the admin can
+  // see how many came each way.
+  const via = c.req.query('via');
+  if (!card.is_test) safeMetric(c, { card_id: card.id, kind: 'view', lang, network: via === 'email' || via === 'whatsapp' ? via : null });
   const linkedin = linkedinEnabled(c.env);
   const review = reviewLink(settings) !== null;
   return c.html(renderStudioShell({ card, lang, nonce, gtmContainer, baseUrl: c.env.BASE_URL, linkedin, review }), 200);

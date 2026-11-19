@@ -35,6 +35,10 @@ import type { ImpactReport } from '../report/impact.js';
 import { renderReportEmail } from '../report/email.js';
 import { DEFAULT_REPORT_TO, queueReport, reportRecipients, reportSends } from '../report/send.js';
 import { linkedinEnabled } from '../linkedin/client.js';
+import { suppressWhatsapp, unsuppressWhatsapp, whatsappCounts, whatsappForCard, whatsappSuppression } from '../db/whatsapp.js';
+import { queueWelcomeWhatsapp, testPhones } from '../whatsapp/outbox.js';
+import { formatPhone, parsePhoneList } from '../whatsapp/phone.js';
+import { WHATSAPP_FLASH, whatsappMode, whatsappPreviewPage, whatsappSection } from './whatsapp.js';
 import { acceptPayload } from '../intake/accept.js';
 import { isPlainObject } from '../intake/common.js';
 import { MAX_BODY_BYTES } from '../intake/routes.js';
@@ -56,6 +60,7 @@ const SOURCES: readonly CardSource[] = ['webhook', 'test', 'manual', 'csv', 'rep
 const EVENT_ROUTES: readonly EventRoute[] = ['production', 'test', 'admin'];
 const EVENT_OUTCOMES: readonly EventOutcome[] = [
   'created', 'unchanged', 'updated', 'rejected', 'replayed', 'deleted', 'expired', 'unexpired', 'imported', 'settings', 'emailed',
+  'whatsapped', 'wa_stopped', 'wa_allowed',
 ];
 
 const FLASH: Record<string, string> = {
@@ -74,6 +79,7 @@ const FLASH: Record<string, string> = {
   saved: 'Settings saved.',
   'report-queued': 'Report queued: it goes out within a minute. The list below shows when it has.',
   'report-none': 'Nobody to send it to: the monthly report is off in Admin → Settings.',
+  ...WHATSAPP_FLASH,
 };
 
 type Body = Record<string, unknown>;
@@ -202,7 +208,7 @@ interface CreateField {
   key: keyof CanonicalFields;
   label: string;
   required: boolean;
-  type: 'text' | 'date' | 'email';
+  type: 'text' | 'date' | 'email' | 'tel';
   hint: string;
 }
 
@@ -218,6 +224,7 @@ const CREATE_FIELDS: readonly CreateField[] = [
   { key: 'issued_on', label: 'Issued on', required: false, type: 'date', hint: 'Today in Asia/Dubai when empty.' },
   { key: 'customer_email', label: 'Customer email', required: false, type: 'email', hint: 'Optional. The welcome email with the card goes here.' },
   { key: 'cc_email', label: 'Copy to', required: false, type: 'email', hint: 'Optional. Gets a copy of the welcome email, e.g. the account manager.' },
+  { key: 'customer_phone', label: 'Customer mobile (WhatsApp)', required: false, type: 'tel', hint: 'Optional. The welcome WhatsApp message goes here. 050 123 4567 for the UAE; other countries with their code, e.g. +91 98765 43210.' },
   { key: 'licence_expires_on', label: 'Licence expires on', required: false, type: 'date', hint: "Optional. The card shows \"expired\" after this day; it never expires when empty." },
 ];
 
@@ -235,6 +242,7 @@ ${CREATE_FIELDS.map(
 )}</select><small>The language the page opens in; the visitor can switch.</small></label>
 <label class="check"><input type="checkbox" name="is_test" value="1"${isTest ? raw(' checked') : EMPTY}> Test card <small>([TEST] in the page title, excluded from counters)</small></label>
 <label class="check"><input type="checkbox" name="send_email" value="1"${values['send_email'] === '1' ? raw(' checked') : EMPTY}> Send the welcome email <small>(when a customer email is given; test cards only email MAIL_TEST_ALLOWLIST)</small></label>
+<label class="check"><input type="checkbox" name="send_whatsapp" value="1"${values['send_whatsapp'] === '1' ? raw(' checked') : EMPTY}> Send the welcome WhatsApp message <small>(when a mobile number is given; test cards only message Settings → WhatsApp test numbers)</small></label>
 <div><button class="btn" type="submit">Create card</button></div>
 </form>`;
   return respond(c, { title: 'Create card', active: 'create', error: errors.length ? errors : null, flash: flashOf(c), body }, status);
@@ -263,7 +271,8 @@ async function dryRun(env: Env, rows: Record<string, string>[], isTest: boolean)
     const existing = await findCardByLicence(env.DB, v.fields.licence_number, isTest);
     let outcome: DryRow['outcome'] = 'create';
     if (existing) outcome = (await hashFields(v.fields)) === existing.content_hash ? 'unchanged' : 'update';
-    out.push({ n, licence: v.fields.licence_number, company: v.fields.company_name_en, outcome, errors: [], fields: v.fields });
+    // A mobile number it cannot read does not stop the row (as with the webhook); the dry run says so.
+    out.push({ n, licence: v.fields.licence_number, company: v.fields.company_name_en, outcome, errors: v.notes, fields: v.fields });
   }
   return out;
 }
@@ -300,7 +309,7 @@ interface ImportFormOptions {
 
 function importForm(c: Context<AppEnv>, o: ImportFormOptions): Response | Promise<Response> {
   const token = csrfToken(c);
-  const body = h`<p class="muted">Header row with canonical column names: <code>licence_number</code> and <code>company_name_en</code> are required; <code>company_name_ar</code>, <code>licence_type</code>, <code>activity_category</code>, <code>activity_category_ar</code>, <code>founder_name_en</code>, <code>founder_name_ar</code>, <code>issued_on</code>, <code>licence_expires_on</code>, <code>customer_email</code>, <code>cc_email</code> and <code>preferred_language</code> are optional. Headers are matched case-insensitively. Up to ${IMPORT_CAP} rows per run.</p>
+  const body = h`<p class="muted">Header row with canonical column names: <code>licence_number</code> and <code>company_name_en</code> are required; <code>company_name_ar</code>, <code>licence_type</code>, <code>activity_category</code>, <code>activity_category_ar</code>, <code>founder_name_en</code>, <code>founder_name_ar</code>, <code>issued_on</code>, <code>licence_expires_on</code>, <code>customer_email</code>, <code>cc_email</code>, <code>customer_phone</code> and <code>preferred_language</code> are optional. Headers are matched case-insensitively. Up to ${IMPORT_CAP} rows per run.</p>
 <form class="form" method="post" action="/admin/import" enctype="multipart/form-data">${csrfField(token)}
 <label>CSV file<input type="file" name="file" accept=".csv,text/csv"></label>
 <label>…or paste CSV<textarea name="csv" rows="10" dir="auto">${o.csv ?? ''}</textarea></label>
@@ -360,6 +369,9 @@ async function settingsForm(c: Context<AppEnv>, values: Record<string, string>, 
   const v = (k: string): string => values[k] ?? '';
   const mailMode = c.env.MAIL_TRANSPORT ?? (c.env.MAIL_SMTP_URL ? 'smtp' : 'off');
   const counts = await emailCounts(c.env.DB);
+  const wa = await whatsappCounts(c.env.DB);
+  const waMode = whatsappMode(c.env);
+  const waTest = parsePhoneList(v('whatsapp_test_to')).phones;
   const alertNow = alertRecipients(c.env, v('post_alert_to'));
   const alertFallback = c.env.LINKEDIN_ALERT_TO ?? DEFAULT_ALERT_TO;
   const reviewOn = (values['review_enabled'] ?? '1') === '1';
@@ -370,21 +382,27 @@ async function settingsForm(c: Context<AppEnv>, values: Record<string, string>, 
 <h3>Google review request</h3>
 <label class="check"><input type="checkbox" name="review_enabled" value="1"${reviewOn ? raw(' checked') : EMPTY}> Ask customers for a Google review <small>(once, after they download, share or post their card)</small></label>
 <label>Review link<input type="url" name="review_url" value="${v('review_url')}" placeholder="${DEFAULT_REVIEW_URL}" autocomplete="off"><small>Empty: SPC Free Zone on Google Maps, where "Write a review" is one tap away. For a link that opens the review form straight away, copy "Ask for reviews" from SPC's Google Business Profile and paste it here.</small></label>
+<h3>WhatsApp test numbers</h3>
+<label>Test cards may message<input type="text" name="whatsapp_test_to" value="${v('whatsapp_test_to')}" placeholder="+971 50 123 4567, +971 55 765 4321" autocomplete="off" dir="ltr"><small>The welcome WhatsApp message of a test card (Admin → Test flow) goes only to these numbers; others are skipped. Comma separated. Empty: test cards message nobody. Now: ${waTest.length ? waTest.map(formatPhone).join(', ') : 'nobody'}.</small></label>
 <h3>Monthly report</h3>
 <label>Goes to<input type="text" name="report_to" value="${v('report_to')}" placeholder="${DEFAULT_REPORT_TO}" autocomplete="off"><small>On the 1st of each month at 09:00 Dubai time, last month's report (<a href="/admin/report">Admin → Report</a>) goes to these addresses. Comma separated; "off" stops it; empty uses ${DEFAULT_REPORT_TO}.</small></label>
 <div><button class="btn" type="submit">Save settings</button></div>
 </form>
 <h2>Keeping data</h2>
 <p class="muted">Nothing is deleted automatically: cards, test cards, the request bodies the test webhook received, founder names and daily counters all stay. A card shows "expired" once its licence expiry date has passed, and comes back when the ERP sends a renewal.</p>
-<h2>Email and LinkedIn</h2>
+<h2>Email, WhatsApp and LinkedIn</h2>
 ${kv([
   ['Email sending', mailMode === 'smtp' ? h`<span class="badge ready">on</span> through the SMTP provider` : mailMode === 'file' ? h`<span class="badge pending">files</span> written to DATA_DIR/mail-outbox (local copy)` : h`<span class="badge expired">off</span> emails are queued but not sent`],
   ['From', c.env.MAIL_FROM || 'SPC Free Zone <noreply@spcfz.ae> (default)'],
   ['Test cards may email', c.env.MAIL_TEST_ALLOWLIST || 'spcfz.ae (default)'],
   ['Emails so far', h`${counts.sent} sent, ${counts.queued} queued, ${counts.failed} failed, ${counts.skipped} skipped`],
+  ['WhatsApp sending', waMode === 'gallabox'
+    ? h`<span class="badge ready">on</span> through Gallabox, template ${c.env.WHATSAPP_TEMPLATE_EN || 'licence_card_welcome'}${c.env.WHATSAPP_TEMPLATE_AR ? ` / ${c.env.WHATSAPP_TEMPLATE_AR}` : ' (Arabic customers get English: no WHATSAPP_TEMPLATE_AR)'}${c.env.GALLABOX_ACCOUNT_ID ? '' : '; delivery is not read back (no GALLABOX_ACCOUNT_ID)'}`
+    : waMode === 'file' ? h`<span class="badge pending">files</span> written to DATA_DIR/whatsapp-outbox (local copy)` : h`<span class="badge expired">off</span> messages are queued but not sent until Gallabox is set up`],
+  ['WhatsApp so far', h`${wa.sent} sent (${wa.delivered} delivered, ${wa.read} read, ${wa.undelivered} not delivered), ${wa.queued} queued, ${wa.failed} failed, ${wa.skipped} skipped`],
   ['Post to LinkedIn', c.env.LINKEDIN_FAKE === '1' ? h`<span class="badge pending">pretend</span> local copy: posts go to DATA_DIR/linkedin-outbox` : linkedinEnabled(c.env) ? h`<span class="badge ready">on</span>${c.env.LINKEDIN_ORG_URN ? ' with an @SPC Free Zone mention' : ' (no SPC page id: @SPC Free Zone stays plain text)'}` : h`<span class="badge expired">off</span> the button is hidden until the LinkedIn app is set up`],
 ])}
-<p class="muted">These come from the service's env file (MAIL_*, LINKEDIN_*); docs/RUNBOOK.md has the steps.</p>
+<p class="muted">These come from the service's env file (MAIL_*, LINKEDIN_*, GALLABOX_*, WHATSAPP_*); docs/RUNBOOK.md and docs/WHATSAPP.md have the steps.</p>
 <h2>Field mapping (read-only)</h2>
 <p class="muted">From the <code>FIELD_MAP</code> environment variable; change it in the service's env file and recreate the container (docs/RUNBOOK.md). Secrets and the ERP IP allowlist are not editable here.</p>
 <pre>${prettyJson(c.env.FIELD_MAP || '{}')}</pre>`;
@@ -535,10 +553,12 @@ ${pager('/admin/cards', query, page, total, PER_PAGE)}`;
       metricsForCard(c.env.DB, card.id),
       listEvents(c.env.DB, { card_id: card.id, limit: 20 }),
     ]);
-    const [allEmails, posts, unsub] = await Promise.all([
+    const [allEmails, posts, unsub, waRows, waStop] = await Promise.all([
       emailsForCard(c.env.DB, card.id),
       linkedinPostsForCard(c.env.DB, card.id),
       card.customer_email ? suppression(c.env.DB, card.customer_email) : Promise.resolve(null),
+      whatsappForCard(c.env.DB, card.id),
+      card.customer_phone ? whatsappSuppression(c.env.DB, card.customer_phone) : Promise.resolve(null),
     ]);
     const emails = allEmails.filter((e) => e.kind === 'welcome');
     const alerts = allEmails.filter((e) => e.kind === 'post_alert');
@@ -559,6 +579,7 @@ ${kv([
   ['Licence expires on', card.licence_expires_on ?? h`<span class="muted">not known: the card does not expire</span>`],
   ['Customer email', card.customer_email ?? h`<span class="muted">none: no welcome email</span>`],
   ['Copy to', card.cc_email],
+  ['Customer mobile', card.customer_phone ? h`<span dir="ltr">${formatPhone(card.customer_phone)}</span>` : h`<span class="muted">none: no welcome WhatsApp message</span>`],
   ['Preferred language', card.preferred_language],
   ['Status', badge(card.status)],
   ['Test card', card.is_test ? 'yes' : 'no'],
@@ -593,6 +614,7 @@ ${card.customer_email
 <a class="btn small secondary" href="/admin/cards/${card.id}/email-preview?lang=en" target="_blank" rel="noopener">Preview (English)</a>
 <a class="btn small secondary" href="/admin/cards/${card.id}/email-preview?lang=ar" target="_blank" rel="noopener">Preview (Arabic)</a>
 </div>
+${whatsappSection({ card, rows: waRows, stop: waStop, token, mode: whatsappMode(c.env) })}
 <h2>LinkedIn posts</h2>
 <p class="muted">${card.is_test ? 'Test cards are not counted.' : LI_STEPS.map(([k, label]) => `${label} ${metrics.filter((m) => m.kind === k).reduce((n, m) => n + Number(m.count), 0)}`).join(' · ')}</p>
 ${table(['When', 'Status', 'Post'], posts.map((p) => [h`${fmtDateTime(p.created_at)}`, h`${p.status}`, p.post_urn ? h`<a href="https://www.linkedin.com/feed/update/${p.post_urn}/" target="_blank" rel="noopener">View on LinkedIn</a>` : h`<span class="muted">${p.error ?? ''}</span>`]), 'No posts through "Post to LinkedIn" yet.')}
@@ -662,6 +684,54 @@ ${eventsTable(events.rows)}`;
     const back = field(form, 'back');
     if (/^\/admin\/test-flow\/runs\/[0-9A-Z]{26}$/.test(back)) return c.redirect(`${back}?m=${m}`, 303);
     return c.redirect(`/admin/cards/${card.id}?m=${m}`, 303);
+  });
+
+  app.post('/cards/:id/whatsapp', async (c) => {
+    const form = await readForm(c);
+    const bad = csrfFailure(c, form);
+    if (bad) return forbidden(c, bad);
+    const card = await getCardById(c.env.DB, c.req.param('id'));
+    if (!card) return notFoundPage(c, 'card');
+    const r = await queueWelcomeWhatsapp(c.env, card, { actor: c.get('actor') ?? null, force: true });
+    if (r === 'queued') await audit(c, 'whatsapped', card.id);
+    const m = r === 'queued' ? 'whatsapped' : r === 'no-phone' ? 'wa-none' : r === 'expired' ? 'wa-expired' : r === 'stopped' ? 'wa-stopped' : 'wa-test';
+    const back = field(form, 'back');
+    if (/^\/admin\/test-flow\/runs\/[0-9A-Z]{26}$/.test(back)) return c.redirect(`${back}?m=${m}`, 303);
+    return c.redirect(`/admin/cards/${card.id}?m=${m}`, 303);
+  });
+
+  // Stop / allow WhatsApp messages to the card's number (the customer asked, or the number is someone else's).
+  app.post('/cards/:id/whatsapp-stop', async (c) => {
+    const form = await readForm(c);
+    const bad = csrfFailure(c, form);
+    if (bad) return forbidden(c, bad);
+    const card = await getCardById(c.env.DB, c.req.param('id'));
+    if (!card) return notFoundPage(c, 'card');
+    if (!card.customer_phone) return c.redirect(`/admin/cards/${card.id}?m=wa-none`, 303);
+    await suppressWhatsapp(c.env.DB, { phone: card.customer_phone, card_id: card.id, source: 'staff', actor: c.get('actor') ?? null, created_at: nowIso() });
+    await audit(c, 'wa_stopped', card.id);
+    return c.redirect(`/admin/cards/${card.id}?m=wa-stop`, 303);
+  });
+
+  app.post('/cards/:id/whatsapp-allow', async (c) => {
+    const form = await readForm(c);
+    const bad = csrfFailure(c, form);
+    if (bad) return forbidden(c, bad);
+    const card = await getCardById(c.env.DB, c.req.param('id'));
+    if (!card) return notFoundPage(c, 'card');
+    if (!card.customer_phone) return c.redirect(`/admin/cards/${card.id}?m=wa-none`, 303);
+    await unsuppressWhatsapp(c.env.DB, card.customer_phone);
+    await audit(c, 'wa_allowed', card.id);
+    return c.redirect(`/admin/cards/${card.id}?m=wa-allow`, 303);
+  });
+
+  // The WhatsApp message as the customer sees it, from the draft wording (src/whatsapp/message.ts).
+  app.get('/cards/:id/whatsapp-preview', async (c) => {
+    const card = await getCardById(c.env.DB, c.req.param('id'));
+    if (!card) return notFoundPage(c, 'card');
+    const lang = c.req.query('lang') === 'ar' ? 'ar' : 'en';
+    c.header('Content-Security-Policy', "default-src 'none'; img-src 'self' https: http://localhost:* data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'");
+    return c.html(whatsappPreviewPage(c.env, card, lang));
   });
 
   // The welcome email exactly as the customer gets it (images load from BASE_URL).
@@ -800,14 +870,17 @@ ${ev.raw_body
     mail: c.env.MAIL_TRANSPORT ?? (c.env.MAIL_SMTP_URL ? 'smtp' : 'off'),
     linkedin: c.env.LINKEDIN_FAKE === '1' ? 'pretend' : linkedinEnabled(c.env) ? 'on' : 'off',
     erpConnected: parseAllowlist(c.env.ERP_IP_ALLOWLIST).length > 0,
+    whatsapp: whatsappMode(c.env),
   });
 
   const testForm = async (c: Context<AppEnv>, scenario: Scenario, payload: string | null, error: string | null, status: AdminStatus = 200): Promise<Response> => {
     const recipient = defaultRecipient(c.env, c.get('actor'));
+    const phones = await testPhones(c.env);
     const body = formBody({
       token: csrfToken(c),
       scenario,
-      payload: payload ?? scenarioPayload(scenario, freshLicence(), recipient),
+      payload: payload ?? scenarioPayload(scenario, freshLicence(), recipient, phones[0] ?? null),
+      phone: phones[0] ?? null,
       status: testStatus(c),
       recipient,
       recipientAllowed: testRecipientAllowed(c.env, recipient),
@@ -817,7 +890,7 @@ ${ev.raw_body
   };
 
   /** Exactly the webhook's steps after its network checks, as a TEST card; the run is a test-route event. */
-  const runTest = async (c: Context<AppEnv>, text: string, sendEmail: boolean): Promise<{ eventId: string } | { error: string }> => {
+  const runTest = async (c: Context<AppEnv>, text: string, sendEmail: boolean, sendWhatsapp = sendEmail): Promise<{ eventId: string } | { error: string }> => {
     if (new TextEncoder().encode(text).byteLength > MAX_BODY_BYTES) return { error: `The payload is over ${MAX_BODY_BYTES} bytes; the webhook would refuse it (413).` };
     let payload: unknown;
     try {
@@ -827,7 +900,7 @@ ${ev.raw_body
     }
     if (!isPlainObject(payload)) return { error: 'The payload must be one JSON object, { … }. The webhook would answer 400.' };
     const actor = c.get('actor') ?? null;
-    const r = await acceptPayload(c.env, payload, { is_test: true, source: 'test', actor, sendEmail });
+    const r = await acceptPayload(c.env, payload, { is_test: true, source: 'test', actor, sendEmail, sendWhatsapp });
     const eventId = await insertEvent(c.env.DB, {
       route: 'test',
       source_ip: sourceIp(c),
@@ -849,7 +922,7 @@ ${ev.raw_body
     const bad = csrfFailure(c, body);
     if (bad) return forbidden(c, bad);
     const text = field(body, 'payload');
-    const r = await runTest(c, text, checked(body, 'send_email'));
+    const r = await runTest(c, text, checked(body, 'send_email'), checked(body, 'send_whatsapp'));
     if ('error' in r) return testForm(c, SCENARIOS[0] as Scenario, text, r.error, 400);
     const expect = pick(field(body, 'expect'), EXPECTS);
     return c.redirect(`/admin/test-flow/runs/${r.eventId}${expect ? `?expect=${expect}` : ''}`, 303);
@@ -860,17 +933,18 @@ ${ev.raw_body
     const ev = await getEvent(db, c.req.param('id'));
     if (!ev || ev.route !== 'test') return notFoundPage(c, 'test run');
     const card = ev.card_id ? await getCardById(db, ev.card_id) : null;
-    const [emails, posts, timeline] = card
-      ? await Promise.all([emailsForCard(db, card.id), linkedinPostsForCard(db, card.id), listEvents(db, { card_id: card.id, limit: 50 })])
-      : [[], [], { rows: [], total: 0 }];
+    const [emails, posts, timeline, whatsapp] = card
+      ? await Promise.all([emailsForCard(db, card.id), linkedinPostsForCard(db, card.id), listEvents(db, { card_id: card.id, limit: 50 }), whatsappForCard(db, card.id)])
+      : [[], [], { rows: [], total: 0 }, []];
     const status = testStatus(c);
-    const sending = emails.some((e) => e.status === 'queued') && status.mail !== 'off';
+    const sending = (emails.some((e) => e.status === 'queued') && status.mail !== 'off')
+      || (whatsapp.some((m) => m.status === 'queued' && (!m.next_attempt_at || Date.parse(m.next_attempt_at) <= Date.now() + 60_000)) && status.whatsapp !== 'off');
     return respond(c, {
       title: card ? `Test run · ${card.company_name_en}` : 'Test run · rejected',
       active: 'test',
       flash: flashOf(c),
       refresh: sending ? 4 : undefined,
-      body: runBody({ env: c.env, token: csrfToken(c), ev, card, emails, posts, timeline: timeline.rows, expect: pick(c.req.query('expect'), EXPECTS) ?? null, status }),
+      body: runBody({ env: c.env, token: csrfToken(c), ev, card, emails, posts, whatsapp, timeline: timeline.rows, expect: pick(c.req.query('expect'), EXPECTS) ?? null, status }),
     });
   });
 
@@ -889,7 +963,7 @@ ${ev.raw_body
 
   // ---------------------------------------------------------------- create
 
-  app.get('/create', (c) => createForm(c, { send_email: '1' }, false, []));
+  app.get('/create', (c) => createForm(c, { send_email: '1', send_whatsapp: '1' }, false, []));
 
   app.post('/create', async (c) => {
     const body = await readForm(c);
@@ -899,12 +973,16 @@ ${ev.raw_body
     for (const f of CREATE_FIELDS) values[f.key] = field(body, f.key);
     values['preferred_language'] = field(body, 'preferred_language');
     values['send_email'] = checked(body, 'send_email') ? '1' : '0';
+    values['send_whatsapp'] = checked(body, 'send_whatsapp') ? '1' : '0';
     const isTest = checked(body, 'is_test');
     const v = validateCanonical(values);
     if (!v.ok) return createForm(c, values, isTest, v.errors, 400);
+    // A number staff typed and we cannot read is a typo to fix, not something to drop quietly (the webhook drops it).
+    if (v.notes.length) return createForm(c, values, isTest, v.notes, 400);
     const r = await upsertFromCanonical(c.env, v.fields, { is_test: isTest, source: 'manual' });
     await audit(c, r.outcome, r.card.id);
     if (checked(body, 'send_email') && r.outcome !== 'unchanged') await queueWelcome(c.env, r.card, { actor: c.get('actor') ?? null });
+    if (checked(body, 'send_whatsapp') && r.outcome !== 'unchanged') await queueWelcomeWhatsapp(c.env, r.card, { actor: c.get('actor') ?? null });
     return c.redirect(`/admin/cards/${r.card.id}?m=${r.outcome}`, 303);
   });
 
@@ -941,6 +1019,7 @@ ${dryTable(dry)}
 <input type="hidden" name="confirm" value="1">
 ${isTest ? h`<input type="hidden" name="is_test" value="1">` : EMPTY}
 <label class="check"><input type="checkbox" name="send_email" value="1"> Email the welcome card to each new card's customer email <small>(off by default for back-fills)</small></label>
+<label class="check"><input type="checkbox" name="send_whatsapp" value="1"> WhatsApp each new card's customer mobile <small>(off by default for back-fills)</small></label>
 <button class="btn" type="submit"${counts.valid === 0 ? raw(' disabled') : EMPTY}>Apply ${counts.valid} valid ${counts.valid === 1 ? 'row' : 'rows'}</button>
 <a class="btn secondary" href="/admin/import">Start over</a>
 </form>`;
@@ -949,6 +1028,7 @@ ${isTest ? h`<input type="hidden" name="is_test" value="1">` : EMPTY}
 
     const applied = { created: 0, updated: 0, unchanged: 0, rejected: 0 };
     const sendEmails = checked(body, 'send_email');
+    const sendWhatsapp = checked(body, 'send_whatsapp');
     const rejected: string[] = [];
     for (const d of dry) {
       if (!d.fields) {
@@ -959,6 +1039,7 @@ ${isTest ? h`<input type="hidden" name="is_test" value="1">` : EMPTY}
       const r = await upsertFromCanonical(c.env, d.fields, { is_test: isTest, source: 'csv' });
       applied[r.outcome] += 1;
       if (sendEmails && r.outcome !== 'unchanged') await queueWelcome(c.env, r.card, { actor: c.get('actor') ?? null });
+      if (sendWhatsapp && r.outcome !== 'unchanged') await queueWelcomeWhatsapp(c.env, r.card, { actor: c.get('actor') ?? null });
     }
     await audit(c, 'imported', null, rejected.length ? rejected.slice(0, 50) : null);
     const result = h`<div class="cards">
@@ -1045,6 +1126,12 @@ ${dryTable(dry)}
     const reportBad = reportOff ? [] : parseAddressList(reportTo).bad;
     if (reportBad.length) errors.push(`Monthly report: ${reportBad.join(', ')} is not an email address.`);
     else updates.push(['report_to', reportOff ? 'off' : parseAddressList(reportTo).list.join(', ')]);
+
+    const waTest = field(body, 'whatsapp_test_to');
+    submitted['whatsapp_test_to'] = waTest;
+    const waList = parsePhoneList(waTest);
+    if (waList.bad.length) errors.push(`WhatsApp test numbers: ${waList.bad.join(', ')} is not a mobile number we can read (add the country code, e.g. +971…).`);
+    else updates.push(['whatsapp_test_to', waList.phones.map(formatPhone).join(', ')]);
 
     if (errors.length) return settingsForm(c, submitted, errors, 400);
     for (const [k, v] of updates) await setSetting(c.env.DB, k, v);

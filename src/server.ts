@@ -19,6 +19,8 @@ import { Scheduler } from './platform/scheduler.js';
 import { onEmailQueued, processOutbox } from './mail/outbox.js';
 import { processReports, queueMonthlyReport } from './report/send.js';
 import { transportFromEnv } from './mail/transport.js';
+import { processWhatsapp } from './whatsapp/outbox.js';
+import { whatsappTransportFromEnv } from './whatsapp/transport.js';
 import { SqliteDb } from './platform/sqlite-db.js';
 import type { Env } from './types.js';
 
@@ -103,22 +105,27 @@ export async function startServer(options: StartOptions): Promise<RunningServer>
     await scheduler.start();
   }
 
-  // The email outbox (src/mail/outbox.ts) and the monthly report (src/report/send.ts): every 30 seconds, and a
-  // moment after something is queued.
+  // The email outbox (src/mail/outbox.ts), the monthly report (src/report/send.ts) and the WhatsApp outbox
+  // (src/whatsapp/outbox.ts): every 30 seconds, and a moment after something is queued.
   const transport = transportFromEnv(env);
+  const whatsapp = whatsappTransportFromEnv(env);
   let sending = false;
   const sendDue = (): void => {
-    if (sending || !transport) return;
+    if (sending || (!transport && !whatsapp)) return;
     sending = true;
-    processOutbox(env, transport)
-      .then(() => processReports(env, transport))
-      .catch((err: unknown) => log('outbox failed', { message: err instanceof Error ? err.message : String(err) }))
+    const mail = transport
+      ? processOutbox(env, transport).then(() => processReports(env, transport))
+        .catch((err: unknown) => log('outbox failed', { message: err instanceof Error ? err.message : String(err) }))
+      : Promise.resolve();
+    mail
+      .then(() => processWhatsapp(env, whatsapp))
+      .catch((err: unknown) => log('whatsapp outbox failed', { message: err instanceof Error ? err.message : String(err) }))
       .finally(() => { sending = false; });
   };
   const outboxTimer = (options.schedulerEnabled ?? true) ? setInterval(sendDue, 30_000) : null;
   outboxTimer?.unref();
   onEmailQueued(() => setTimeout(sendDue, 250).unref());
-  log('mail', { transport: transport?.mode ?? 'off' });
+  log('mail', { transport: transport?.mode ?? 'off', whatsapp: whatsapp?.mode ?? 'off' });
 
   log('listening', { host: address.address, port: address.port, dataDir: config.dataDir, trustProxy: config.trustProxy, pid: process.pid });
   for (const w of config.warnings) log(`warning: ${w}`);
