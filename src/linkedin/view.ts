@@ -108,7 +108,7 @@ export const LI_STRINGS = {
 export type LiStrings = (typeof LI_STRINGS)[Lang];
 
 const CSS = `
-:root{--blue:#004dff;--blue2:#003fd1;--ink:#071329;--muted:#53617c;--line:#dfe7f4;--soft:#eef3ff;--bg:#f4f7fc;--li:#0a66c2;--ok:#0f9d58;--warn:#b42318}
+:root{--blue:#004dff;--blue2:#003fd1;--ink:#071329;--muted:#53617c;--line:#dfe7f4;--soft:#eef3ff;--bg:#f4f7fc;--li:#0a66c2;--ok:#0f9d58;--warn:#b42318;--gold:#f0b429;--cyan:#00b2c7}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;min-height:100vh;background:radial-gradient(1200px 500px at 50% -180px,#dfe8ff 0,rgba(223,232,255,0) 70%),var(--bg);color:var(--ink);font:16px/1.5 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Kufi Arabic","Noto Sans Arabic",Tahoma,Arial,sans-serif;-webkit-font-smoothing:antialiased}
@@ -166,26 +166,45 @@ textarea{display:block;width:100%;min-height:150px;border:0;padding:8px 16px 4px
 .state .lead{margin:0 auto 22px;max-width:420px}
 .state .stack{display:flex;flex-direction:column;gap:10px;max-width:360px;margin:0 auto}
 .state .btn{width:100%}
-.tick{width:72px;height:72px;margin:0 auto 18px;border-radius:50%;background:#e8f7ef;display:grid;place-items:center}
-.tick svg{width:38px;height:38px}
-.tick path{stroke:var(--ok);stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:40;stroke-dashoffset:40;animation:draw .5s .15s ease-out forwards}
-@keyframes draw{to{stroke-dashoffset:0}}
 .mark{width:64px;height:64px;margin:0 auto 16px;border-radius:50%;background:var(--soft);display:grid;place-items:center;color:var(--blue)}
 .mark svg{width:30px;height:30px}
-.thumb{display:block;width:min(260px,70%);height:auto;margin:0 auto 22px;border-radius:12px;border:1px solid var(--line);box-shadow:0 12px 28px -14px rgba(7,19,41,.35);transform:rotate(-2deg)}
-.note{margin:0 auto 12px;max-width:360px;font-size:12.5px;color:var(--muted)}
-.more{margin:22px auto 0;max-width:360px;font-size:14px;color:var(--muted)}
-.more p{margin:12px 0 0}
-.more .btn{width:100%}
 .dl{width:17px;height:17px;flex:none}
-.review{margin:22px auto 0;max-width:360px;padding-top:20px;border-top:1px solid var(--line);font-size:14px;color:var(--muted)}
-.review b{display:block;color:var(--ink);font-size:15px;margin-bottom:2px}
-.review p{margin:0 0 14px}
-.review .btn{width:100%}
-.star{width:17px;height:17px;flex:none;color:var(--gold,#f0b429)}
+.star{width:17px;height:17px;flex:none;color:var(--gold)}
+/* "Your post is live" in the card studio's layout (SPC, 19 November 2026): the card on the studio's blue stage, a
+   panel beside it, and SPC's pill buttons (blue, ink rising on hover; white with a blue outline). */
+body.wide .top,body.wide main,body.wide footer{max-width:1080px}
+.posted{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:24px;align-items:stretch}
+.posted.solo{grid-template-columns:minmax(0,1fr);max-width:560px;margin:0 auto}
+.stage{position:relative;overflow:hidden;background:#d6e1ff;border-radius:28px;display:grid;place-items:center;padding:44px 28px;min-height:520px}
+.stage img{position:relative;display:block;width:auto;height:auto;max-width:88%;max-height:440px;border-radius:6px;box-shadow:0 30px 60px -28px rgba(7,19,41,.45)}
+.stage i{position:absolute;display:block;transform:rotate(45deg)}
+.stage .sq1{width:150px;height:150px;border-radius:30px;background:rgba(255,255,255,.35);top:-40px;inset-inline-start:-30px}
+.stage .sq2{width:120px;height:120px;border-radius:26px;background:rgba(255,255,255,.35);bottom:-30px;inset-inline-end:-24px}
+/* In the corners, clear of the card whatever its size (portrait, square or landscape). */
+.stage .gold{width:20px;height:20px;border-radius:5px;background:var(--gold);inset-inline-end:30px;bottom:28px}
+.stage .cyan{width:13px;height:13px;border-radius:3px;background:var(--cyan);inset-inline-start:28px;top:24px}
+.panel{background:#fff;border:1px solid var(--line);border-radius:28px;padding:34px 30px 30px;display:flex;flex-direction:column;justify-content:center}
+.panel h1{font-size:30px;margin:0 0 6px}
+.panel .lead{margin:0 0 26px;font-size:15px}
+.hint{margin:0 0 12px;font-size:13.5px;color:var(--muted)}
+.hint.after{margin:12px 0 0}
+.pbtn{appearance:none;display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:54px;padding:0 26px;border-radius:999px;font:inherit;font-size:16px;font-weight:700;text-decoration:none;cursor:pointer;border:0;background-repeat:no-repeat;background-position:bottom center;background-size:100% 0;transition:background-size .32s cubic-bezier(.2,.7,.2,1),box-shadow .28s ease,transform .16s ease;-webkit-tap-highlight-color:transparent}
+.pbtn:active{transform:scale(.985)}
+.pbtn:focus-visible{outline:3px solid rgba(0,77,255,.35);outline-offset:2px;background-size:100% 100%}
+.pbtn .in,.pbtn .dl,.pbtn .star{width:18px;height:18px}
+.pbtn-main{background-color:var(--blue);background-image:linear-gradient(var(--ink),var(--ink));color:#fff}
+.pbtn-line{background-color:#fff;background-image:linear-gradient(#e8eeff,#e8eeff);color:var(--blue);border:1.5px solid var(--blue)}
+.pbtn-line+.hint,.pbtn-main+.pbtn-line{margin-top:12px}
+@media (hover:hover){.pbtn:hover{background-size:100% 100%}.pbtn-main:hover{box-shadow:0 12px 24px -14px rgba(7,19,41,.85)}}
+.rv{margin-top:26px;padding-top:24px;border-top:1px solid var(--line)}
+.rv b{display:block;font-size:16px;margin-bottom:2px}
+.rv p{margin:0 0 14px;font-size:14.5px;color:var(--muted)}
+@media (max-width:860px){.posted{grid-template-columns:minmax(0,1fr);gap:14px}.stage{min-height:0;padding:30px 20px;border-radius:24px}.stage img{max-width:72%;max-height:300px}.stage .sq1{width:110px;height:110px}.stage .sq2{width:90px;height:90px}.panel{padding:24px 20px 22px;border-radius:24px}.panel h1{font-size:26px}.panel .lead{margin-bottom:18px}}
+/* Phones: a smaller card, so View on LinkedIn shows without scrolling. */
+@media (max-width:560px){body.wide .steps{margin-bottom:16px}.stage{padding:20px 18px}.stage img{max-width:62%;max-height:210px}.stage .cyan{inset-inline-start:18px;top:16px}.stage .gold{inset-inline-end:20px;bottom:18px}}
 footer{max-width:640px;margin:0 auto;padding:0 16px 28px;font-size:12px;color:var(--muted);text-align:center}
 footer a{color:var(--muted)}
-@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.tick path{stroke-dashoffset:0}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 @media (max-width:420px){.bar{flex-direction:column-reverse}.bar .btn{width:100%}}
 @media (max-width:760px),(hover:none) and (pointer:coarse){textarea{font-size:16px}}
 @media (max-width:440px){.steps{column-gap:6px;font-size:13.5px}.steps li{gap:6px}.steps b{width:26px;height:26px;font-size:12.5px}.steps li+li::before{width:16px}
@@ -204,6 +223,8 @@ interface Page {
   script?: string;
   /** The body has a main button with id="go"; the header's pill then scrolls to it. */
   action?: boolean;
+  /** A two-column page (the posted page): header, main and footer widen to 1080px. */
+  wide?: boolean;
 }
 
 // The header's pill looks like a button, so it takes you to the one that does the job: a smooth scroll to
@@ -229,7 +250,7 @@ function page(p: Page): string {
 ${raw(FAVICON_LINKS)}
 <style nonce="${p.nonce}">${raw(CSS)}</style>
 </head>
-<body>
+<body${p.wide ? raw(' class="wide"') : ''}>
 <header class="top"><a href="https://www.spcfz.ae/"><img src="${LOGO_URL}" alt="SPC Free Zone" width="98" height="40"></a>${pill}</header>
 <main>
 ${p.body}
@@ -319,23 +340,26 @@ const STAR = h`<svg class="star" viewBox="0 0 24 24" aria-hidden="true"><path fi
 
 export function renderPostedPage(i: PostedInput): string {
   const s = LI_STRINGS[i.lang];
+  const stage = i.imageUrl
+    ? h`<section class="stage" aria-hidden="true"><i class="sq1"></i><i class="sq2"></i><i class="gold"></i><i class="cyan"></i><img src="${i.imageUrl}" alt=""></section>`
+    : '';
   const body = h`
 ${steps(s, 3)}
-<div class="state">
-<div class="tick" aria-hidden="true"><svg viewBox="0 0 40 40"><path d="M11 21l6 6 12-13"/></svg></div>
+<div class="${i.imageUrl ? 'posted' : 'posted solo'}">
+${stage}
+<section class="panel">
 <h1>${s.postedTitle}</h1>
 <p class="lead">${s.postedLead.replace('{company}', i.company)}</p>
-${i.imageUrl ? h`<img class="thumb" src="${i.imageUrl}" alt="">` : ''}
-<p class="note">${s.viewPostNote}</p>
-<div class="stack">
-<a class="btn primary" id="go" href="${i.postUrl}" target="_blank" rel="noopener">${IN_MARK}<span>${s.viewPost}</span></a>
-</div>
-<div class="more"><a class="btn ghost" href="${i.downloadUrl}">${DOWNLOAD}<span>${s.downloadButton}</span></a><p>${s.downloadAsk}</p></div>
-${i.review ? h`<div class="review"><p><b>${s.reviewAsk}</b>${s.reviewBody}</p><a class="btn ghost" href="${i.review.href}" target="_blank" rel="noopener">${STAR}<span>${s.reviewButton}</span></a></div>` : ''}
+<p class="hint">${s.viewPostNote}</p>
+<a class="pbtn pbtn-main" id="go" href="${i.postUrl}" target="_blank" rel="noopener">${IN_MARK}<span>${s.viewPost}</span></a>
+<a class="pbtn pbtn-line" href="${i.downloadUrl}">${DOWNLOAD}<span>${s.downloadButton}</span></a>
+<p class="hint after">${s.downloadAsk}</p>
+${i.review ? h`<div class="rv"><b>${s.reviewAsk}</b><p>${s.reviewBody}</p><a class="pbtn pbtn-line" href="${i.review.href}" target="_blank" rel="noopener">${STAR}<span>${s.reviewButton}</span></a></div>` : ''}
+</section>
 </div>`;
   // Asked here, so the studio does not ask again for this card (client/card-data.js maybeAskReview).
   const asked = i.review ? `try{localStorage.setItem(${JSON.stringify(`spc-review:${i.review.key}`)},'asked')}catch(e){}` : '';
-  return page({ lang: i.lang, nonce: i.nonce, body, action: true, script: asked || undefined });
+  return page({ lang: i.lang, nonce: i.nonce, body, action: true, wide: true, script: asked || undefined });
 }
 
 export interface ProblemInput {

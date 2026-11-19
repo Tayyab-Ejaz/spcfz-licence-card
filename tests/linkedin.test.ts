@@ -506,7 +506,7 @@ describe('the header pill', () => {
       expect(page).toContain("getElementById('go')");
     }
     expect(review).toMatch(/<button class="btn primary" id="go" type="submit"/);
-    expect(posted).toMatch(/<a class="btn primary" id="go" href="https:\/\/www\.linkedin\.com\/feed/);
+    expect(posted).toMatch(/<a class="pbtn pbtn-main" id="go" href="https:\/\/www\.linkedin\.com\/feed/);
     expect(review).toMatch(/<script nonce="n">[^]*getElementById\('caption'\)/); // the review script still runs
   });
 
