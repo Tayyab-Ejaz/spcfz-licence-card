@@ -520,7 +520,8 @@ export function withCardData(Base) {
       const s = this.state;
       if (!this.cropRef) this.cropRef = { current: null };
       const stageW = s.cropStageW || 300;
-      const stageH = 200;
+      // The Share panel's Adjust view on laptop-height windows: a shorter frame keeps its buttons on the first screen.
+      const stageH = s.deskAdjust && (s.vh || 900) < 820 ? 150 : 200;
       const c = this.cropWindow();
       const zero = { stageH, imgL: 0, imgT: 0, imgW: 0, imgH: 0, winL: 0, winT: 0, winW: 0, winH: 0, innerL: 0, innerT: 0, radius: '0' };
       let crop = zero;
@@ -587,7 +588,7 @@ export function withCardData(Base) {
     detailsNav(v) {
       if (v.mChips || !v.sq || typeof v.next !== 'function') return {};
       const s = this.state;
-      if (s.step === 2 && !this.props.card.designExact) return { back: () => this.openCustomise() };
+      if (s.step === 2 && !this.props.card.designExact) return this.deskAdjusting() ? {} : { back: () => this.openCustomise() };
       if (s.step === 2) {
         // Back from Share lands on the last part, so Back keeps walking through the parts.
         return { back: () => { v.back(); clearTimeout(this.subT); this.setState({ sub: 3 }); this.partScroll = 3; this.scrollToPart(); } };
@@ -916,6 +917,7 @@ export function withCardData(Base) {
       this.watchOutsideTaps();
       this.watchImgAsk(args[1]);
       this.watchReviewAsk();
+      this.watchDeskAdjust();
       this.measureCrop();
       this.scrollToPart(settling);
     }
@@ -1042,13 +1044,32 @@ export function withCardData(Base) {
       this.goStep(0);
     }
 
-    /** Desktop: the photo part of Details, where the crop view is. */
+    /**
+     * Desktop Adjust (SPC, 19 November 2026): the Share panel turns into "Adjust your photo" in place, with no trip
+     * through the Details step (tools/build-studio.mjs DESK_ADJUST). Back and Done come back to Share.
+     */
     adjustPhotoDesk() {
-      this.goStep(1);
-      clearTimeout(this.subT);
-      this.setState({ sub: 1 });
-      this.partScroll = 1;
-      this.scrollToPart();
+      this.setState({ deskAdjust: true }, () => this.panelTop());
+    }
+
+    closeAdjust() {
+      this.setState({ deskAdjust: false }, () => this.panelTop());
+    }
+
+    /** Open only on the Share step, with a photo on a card about the founder. */
+    deskAdjusting() {
+      const s = this.state;
+      return !this.props.card.designExact && !!s.deskAdjust && s.step === 2 && s.focus !== 'company' && s.imgMode === 'photo' && !!s.photo;
+    }
+
+    /** The view closes for good once it no longer applies, so it does not reopen by itself later. */
+    watchDeskAdjust() {
+      if (this.state.deskAdjust && !this.deskAdjusting()) this.setState({ deskAdjust: false });
+    }
+
+    panelTop() {
+      const pane = document.querySelector('[data-step-panel]');
+      if (pane) pane.scrollTop = 0;
     }
 
     /** What the simple journey's photo buttons say and do, for both layouts. */
@@ -1057,6 +1078,7 @@ export function withCardData(Base) {
       const company = s.focus === 'company';
       const shown = company ? s.imgMode === 'logo' && !!s.logo : s.imgMode === 'photo' && !!s.photo;
       const add = () => this.addImage(company ? 'logo' : 'photo');
+      const adjusting = !exact && !v.mChips && this.deskAdjusting();
       return {
         // Desktop. Stacked under the card (under 1080px wide), the panel takes the full width instead of 460px.
         ...(!exact && (s.vw || 1280) < 1080 && !v.mChips ? { asideMax: 'none' } : {}),
@@ -1064,8 +1086,17 @@ export function withCardData(Base) {
         showTones: exact,
         // In Style (opened from Share by "More options"), Back returns to Share instead of "Step 1 of 3".
         ...(!exact && s.step === 0 ? { canBack: true, noBack: false, back: () => this.goStep(2) } : {}),
-        navBackLabel: !exact && s.step === 2 ? 'More options' : 'Back',
-        navBackIcon: !exact && s.step === 2 ? 'ph-sliders-horizontal' : 'ph-arrow-left',
+        navBackLabel: !exact && s.step === 2 && !adjusting ? 'More options' : 'Back',
+        navBackIcon: !exact && s.step === 2 && !adjusting ? 'ph-sliders-horizontal' : 'ph-arrow-left',
+        // Adjust your photo, in the Share panel (adjustPhotoDesk): Back and Done return to Share.
+        deskAdjust: adjusting,
+        shareMain: !adjusting,
+        ...(adjusting ? { canBack: true, noBack: false, back: () => this.closeAdjust(), goPortal: () => this.closeAdjust() } : {}),
+        deskAnother: () => this.addImage('photo'),
+        deskRemove: () => {
+          this.setState({ photo: null, imgMode: 'initials', deskAdjust: false }, () => this.panelTop());
+          this.showToast('Photo removed. Your card shows your initials.');
+        },
         showPhotoRow: !exact,
         // On laptop-height windows (under 820px) the row is one line, so Post and Download stay on the first screen.
         photoRowNoteShow: (s.vh || 900) >= 820,

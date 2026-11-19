@@ -361,13 +361,39 @@ async function runDevice(key, dev) {
         await fc.setFiles(PHOTO); await sleep(1500);
         ok('the photo is on the card', !!(await H.photoSlot()));
         ok('the row says so', await H.exists('Your photo is on the card'));
+        // Adjust stays on the first screen (SPC, 19 November 2026): the panel becomes "Adjust your photo", no steps.
+        const url0 = p.url();
+        const look = () => p.evaluate(() => {
+          const c = [...document.querySelectorAll('div[data-lang][dir]')].filter((x) => { const r = x.getBoundingClientRect(); return r.width > 0 && r.left > -1000; })
+            .sort((a, b) => b.getBoundingClientRect().width - a.getBoundingClientRect().width)[0];
+          const n = c && [...c.querySelectorAll('*')].find((el) => /url\("?data:image\/(jpeg|png)/.test(getComputedStyle(el).backgroundImage) && el.getBoundingClientRect().width > 10);
+          return n ? { pos: getComputedStyle(n).backgroundPosition, w: n.getBoundingClientRect().width } : null;
+        });
         await H.tapRe('^Adjust$'); await sleep(900);
-        ok('Adjust opens the crop view', /Drag the frame to choose/.test(await H.bodyText()));
+        const t1 = await H.bodyText();
+        ok('Adjust opens "Adjust your photo" in the panel', /Adjust your photo/.test(t1) && /Drag the frame to choose/.test(t1));
+        ok('no step bar and no Details step', !(await H.visible('Details')) && !(await H.visible('Style')) && !/Who is it about\?/.test(t1) && !(await H.visible('Post to LinkedIn')));
+        const before = await look();
+        await p.evaluate(() => { const z = document.querySelector('[data-desk-adjust] [aria-label="Zoom in"]'); if (z) z.click(); }); await sleep(400);
+        const stage = await p.evaluate(() => { const el = document.querySelector('[data-desk-adjust] [style*="cursor: grab"], [data-desk-adjust] [style*="cursor:grab"]'); if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+        if (stage) { await p.mouse.move(stage.x, stage.y); await p.mouse.down(); await p.mouse.move(stage.x + 30, stage.y + 20, { steps: 6 }); await p.mouse.up(); await sleep(400); }
+        const after = await look();
+        ok('zoom and drag change the card', !!stage && before && after && after.w > before.w + 1 && after.pos !== before.pos, `${before && before.pos} → ${after && after.pos}`);
         await shot('02-simple-adjust');
-        await H.tap('Style'); await sleep(800);
-        ok('the step bar takes it to Style', /Choose a template/.test(await H.bodyText()));
+        await H.tapRe('^Done$'); await sleep(800);
+        ok('Done returns to Share, on the same page', /Share the Joy!/.test(await H.bodyText()) && (await H.exists('Your photo is on the card')) && p.url() === url0);
+        await H.tapRe('^Adjust$'); await sleep(800);
+        const [fc2] = await Promise.all([p.waitForEvent('filechooser', { timeout: 10000 }), H.tap('Use another photo')]);
+        await fc2.setFiles(PHOTO); await sleep(1500);
+        ok('Use another photo keeps the adjust view', /Adjust your photo/.test(await H.bodyText()) && !!(await H.photoSlot()));
         await H.tapRe('^Back$'); await sleep(800);
-        ok('Back from Style returns to Share', /Share the Joy!/.test(await H.bodyText()));
+        ok('Back returns to Share', /Share the Joy!/.test(await H.bodyText()) && !/Adjust your photo/.test(await H.bodyText()));
+        await H.tapRe('^Adjust$'); await sleep(800);
+        await H.tap('Remove photo'); await sleep(800);
+        ok('Remove photo: initials again, back on Share', !(await H.photoSlot()) && (await H.exists('Add your photo')) && /Share the Joy!/.test(await H.bodyText()));
+        const [fc3] = await Promise.all([p.waitForEvent('filechooser', { timeout: 10000 }), H.tapRe('^Add photo$')]);
+        await fc3.setFiles(PHOTO); await sleep(1500);
+        ok('the photo goes back on', !!(await H.photoSlot()));
         await H.tap('More options'); await sleep(800);
         ok('More options opens Style', /Choose a template/.test(await H.bodyText()));
       });

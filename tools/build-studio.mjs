@@ -241,16 +241,18 @@ for (const layout of ['studio', 'mobile']) DATA_PATCHES[layout].push(['<sc-if va
 // (client/card-data.js crop*).
 const zoomBtn = (dir, size) => `<button type="button" aria-label="Zoom ${dir === 'minus' ? 'out' : 'in'}" sc-camel-on-click="{{ ${dir === 'minus' ? 'zoomOut' : 'zoomIn'} }}" style="display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;width:${size}px;height:${size}px;padding:0;border:0;border-radius:50%;background:#fff;box-shadow:inset 0 0 0 1px var(--spc-border);color:var(--spc-ink);cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation"><i class="ph-bold ph-${dir}" style="font-size:13px"></i></button>`;
 const ZOOM_ICON = (dir) => `<i class="ph-bold ph-${dir}" style="font-size:13px;color:var(--spc-muted)"></i>`;
-DATA_PATCHES.studio.push(
-  [/<div style="display:flex;align-items:center;gap:18px;padding:14px;border-radius:18px;background:var\(--spc-soft\)">\s*<div sc-camel-on-pointer-down="\{\{ adjDown \}\}"[\s\S]*?<\/div>\s*<\/div>/,
-    `<div style="display:flex;flex-direction:column;gap:12px;padding:14px;border-radius:18px;background:var(--spc-soft)">
-                    <div ref="{{ cropRef }}" sc-camel-on-pointer-down="{{ cropDown }}" sc-camel-on-pointer-move="{{ cropMove }}" sc-camel-on-pointer-up="{{ cropUp }}" sc-camel-on-pointer-cancel="{{ cropUp }}" style="position:relative;width:100%;height:{{ crop.stageH }}px;border-radius:12px;overflow:hidden;background:#071329;cursor:grab;touch-action:none;user-select:none">
+const CROP_STAGE = `<div ref="{{ cropRef }}" sc-camel-on-pointer-down="{{ cropDown }}" sc-camel-on-pointer-move="{{ cropMove }}" sc-camel-on-pointer-up="{{ cropUp }}" sc-camel-on-pointer-cancel="{{ cropUp }}" style="position:relative;width:100%;height:{{ crop.stageH }}px;border-radius:12px;overflow:hidden;background:#071329;cursor:grab;touch-action:none;user-select:none">
                       <div style="position:absolute;left:{{ crop.imgL }}px;top:{{ crop.imgT }}px;width:{{ crop.imgW }}px;height:{{ crop.imgH }}px;background-image:{{ photoBg }};background-size:100% 100%;opacity:.35;pointer-events:none"></div>
                       <div style="position:absolute;left:{{ crop.winL }}px;top:{{ crop.winT }}px;width:{{ crop.winW }}px;height:{{ crop.winH }}px;border-radius:{{ crop.radius }};overflow:hidden;box-shadow:0 0 0 2px #fff,0 6px 18px rgba(7,19,41,.45);pointer-events:none">
                         <div style="position:absolute;left:{{ crop.innerL }}px;top:{{ crop.innerT }}px;width:{{ crop.imgW }}px;height:{{ crop.imgH }}px;background-image:{{ photoBg }};background-size:100% 100%"></div>
                       </div>
-                    </div>`],
-  ['Drag the photo to move it. Use the slider to zoom.', 'Drag the frame to choose what shows on your card. Use − and + to zoom.'],
+                    </div>`;
+const CROP_NOTE = 'Drag the frame to choose what shows on your card. Use − and + to zoom.';
+DATA_PATCHES.studio.push(
+  [/<div style="display:flex;align-items:center;gap:18px;padding:14px;border-radius:18px;background:var\(--spc-soft\)">\s*<div sc-camel-on-pointer-down="\{\{ adjDown \}\}"[\s\S]*?<\/div>\s*<\/div>/,
+    `<div style="display:flex;flex-direction:column;gap:12px;padding:14px;border-radius:18px;background:var(--spc-soft)">
+                    ${CROP_STAGE}`],
+  ['Drag the photo to move it. Use the slider to zoom.', CROP_NOTE],
   [ZOOM_ICON('minus'), zoomBtn('minus', 32)],
   [ZOOM_ICON('plus'), zoomBtn('plus', 32)],
 );
@@ -303,6 +305,40 @@ DATA_PATCHES.mobile.push(
   [/(<div class="m-chips m-in"[\s\S]*?<\/sc-for>\s*<\/div>)/,
     `<sc-if value="{{ mShowChips }}" hint-placeholder-val="{{ true }}">$1</sc-if>\n    ${PHONE_ROW}`],
 );
+
+// Desktop Adjust on the first screen (SPC, 19 November 2026: Adjust "takes me to the long standard flow, which
+// shouldn't be the case"). With a photo on the card, the photo row's Adjust no longer opens the Details step and its
+// step bar: the Share panel itself becomes "Adjust your photo" (the Details crop view, − and + zoom, another photo,
+// Reset, Remove photo) while the card beside it shows the result, and Back or Done return to Share
+// (client/card-data.js deskAdjust). Phones already adjust in their photo drawer.
+const TEXT_BTN = (bind, label) => `<button type="button" sc-camel-on-click="{{ ${bind} }}" style="padding:6px 2px;border:0;background:none;font-family:inherit;font-size:13px;font-weight:700;color:var(--spc-muted);cursor:pointer">${label}</button>`;
+const DESK_ADJUST = `<sc-if value="{{ deskAdjust }}" hint-placeholder-val="{{ false }}">
+        <div data-desk-adjust="" style="display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <h2 style="font-size:22px;font-weight:800;letter-spacing:-.02em;color:var(--spc-ink)">Adjust your photo</h2>
+            <p style="font-size:14.5px;line-height:1.5;color:var(--spc-muted);text-wrap:pretty">${CROP_NOTE}</p>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px;padding:14px;border-radius:18px;background:var(--spc-soft)">
+                    ${CROP_STAGE}
+            <div style="display:flex;align-items:center;gap:10px">
+              ${zoomBtn('minus', 32)}
+              <input type="range" min="1" max="2.5" step="0.05" value="{{ photoZoom }}" sc-camel-on-change="{{ onZoom }}" aria-label="Zoom" style="flex:1;min-width:0;accent-color:var(--spc-blue)">
+              ${zoomBtn('plus', 32)}
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px 18px">
+            <x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="secondary" size="md" sc-camel-on-click="{{ deskAnother }}" hint-size="200px,46px"><i class="ph-bold ph-image" style="font-size:17px"></i><span>Use another photo</span></x-import>
+            ${TEXT_BTN('resetAdjust', 'Reset')}
+            ${TEXT_BTN('deskRemove', 'Remove photo')}
+          </div>
+        </div>
+      </sc-if>`;
+// Applied after the desktop motion patches below, which make the Share step's box the scrolling panel
+// (data-step-panel="2"): the adjust view goes inside that panel, and the Share content is wrapped beside it.
+const DESK_ADJUST_PATCHES = [
+  [/(<div data-step-panel="2" style="[^"]*">)/, `$1\n          ${DESK_ADJUST}\n          <sc-if value="{{ shareMain }}" hint-placeholder-val="{{ true }}">`],
+  [/(<\/div>\s*<\/sc-if>\s*<div style="margin-top:auto;display:flex;justify-content:space-between)/, '</sc-if>\n        $1'],
+];
 
 // Logic patches: the same exactly-once rule, applied to design/source/<layout>/logic.js before it is wrapped.
 // Share (SPC, 19 October 2026): hand the share menu the image only. With text alongside, LinkedIn's app keeps the
@@ -411,6 +447,7 @@ DATA_PATCHES.studio.push(
   ['<span>Looks right</span><i class="ph-bold ph-check" style="font-size:13px"></i>',
     '<span>{{ detailsDoneLabel }}</span><i class="ph-bold {{ detailsDoneIcon }}" style="font-size:13px"></i>'],
 );
+DATA_PATCHES.studio.push(...DESK_ADJUST_PATCHES);
 // Colour changes in the side panel (a chosen template's ring, the format and language switches, a field's border)
 // ease instead of snapping. :where() keeps this below every rule of the design system's own components.
 const STUDIO_MOTION_CSS = [
