@@ -191,7 +191,7 @@ suggested caption; the English and Arabic pages differ, so each links its own.
 
 | | Arabic | English |
 |---|---|---|
-| Refer a Friend | هل تعرف شخصاً يخطط لتأسيس عمله في دولة الإمارات؟ رشّحه للمنطقة الحرة لمدينة الشارقة للنشر واكسب ما يصل إلى 1500 درهم إماراتي:<br>https://www.spcfz.ae/ar/refer-a-friend/?utm_campaign=Linkedin%20Milestone | Know someone planning to start a business in the UAE? Refer them to SPC Free Zone and earn up to AED 1,500:<br>https://www.spcfz.ae/refer-a-friend/?utm_campaign=Linkedin%20Milestone |
+| Refer a Friend | هل تخطط أنت أيضاً لتأسيس عمل في دولة الإمارات قريباً؟ اضغط على الرابط أدناه!<br>https://www.spcfz.ae/ar/refer-a-friend/?utm_campaign=Linkedin%20Milestone | Are you also planning to start a business in the UAE in the near future? Click the link below!<br>https://www.spcfz.ae/refer-a-friend/?utm_campaign=Linkedin%20Milestone |
 
 Headlines on the card (tools/build-studio.mjs, CONTENT_LOGIC), and the email picture's headline
 (src/page/card-image.ts, the first one):

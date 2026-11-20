@@ -11,10 +11,10 @@ export type CaptionLang = 'en' | 'ar';
  */
 export const REFER_UTM = '?utm_campaign=Linkedin%20Milestone';
 
-/** SPC's Refer a Friend page, before the hashtags (3 November 2026). */
+/** SPC's Refer a Friend page, before the hashtags (3 November 2026; SPC's wording of 20 November 2026). */
 export const REFER_LINE: Record<CaptionLang, string> = {
-  en: `Know someone planning to start a business in the UAE? Refer them to SPC Free Zone and earn up to AED 1,500:\nhttps://www.spcfz.ae/refer-a-friend/${REFER_UTM}`,
-  ar: `هل تعرف شخصاً يخطط لتأسيس عمله في دولة الإمارات؟ رشّحه للمنطقة الحرة لمدينة الشارقة للنشر واكسب ما يصل إلى 1500 درهم إماراتي:\nhttps://www.spcfz.ae/ar/refer-a-friend/${REFER_UTM}`,
+  en: `Are you also planning to start a business in the UAE in the near future? Click the link below!\nhttps://www.spcfz.ae/refer-a-friend/${REFER_UTM}`,
+  ar: `هل تخطط أنت أيضاً لتأسيس عمل في دولة الإمارات قريباً؟ اضغط على الرابط أدناه!\nhttps://www.spcfz.ae/ar/refer-a-friend/${REFER_UTM}`,
 };
 
 export interface CaptionInput {

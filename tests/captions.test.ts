@@ -28,6 +28,7 @@ describe('captionFor', () => {
         const where = `${lang} ${tone} ${focus} activity=${activity || 'none'}`;
         expect(c, where).toContain('@SPC Free Zone');
         expect(c, where).toContain(REFER_LINE[lang]);
+        expect(c, where).not.toMatch(/AED 1,500|1500 درهم/); // SPC's new wording, 20 November 2026
         expect(c.includes('Cedar & Quill'), where).toBe(focus !== 'personal');
         expect(/focusing on \.|focus will be on \.| \.|،\s*\.|  /.test(c), where).toBe(false);
         if (activity) expect(c.toLowerCase(), where).toContain('book publishing');
