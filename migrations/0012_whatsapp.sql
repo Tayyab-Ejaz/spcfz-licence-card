@@ -1,7 +1,5 @@
 -- The welcome WhatsApp message (19 November 2026), sent through Gallabox beside the welcome email.
--- customer_phone: the customer's mobile number in international form (+971501234567), from the ERP or staff.
--- Personal data, kept like the founder's name and the email addresses (nothing is deleted).
-ALTER TABLE cards ADD COLUMN customer_phone TEXT;
+-- It goes to cards.customer_phone, which migration 0011 (the referral link, 24 November 2026) already added.
 
 -- Every WhatsApp message the service sends or means to send, kept as a log, like emails.
 -- status: the outbox's own state (queued -> sent | failed | skipped); sent means Gallabox accepted it.

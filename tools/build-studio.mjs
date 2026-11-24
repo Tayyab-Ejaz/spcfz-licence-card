@@ -71,22 +71,74 @@ DATA_PATCHES.studio.push(...ROBUSTNESS_PATCHES);
 // shortcut. The phone layout is untouched.
 // Post to LinkedIn (SPC, 27 October 2026): when the service has LinkedIn set up (card data `linkedin`), a first,
 // primary button posts the card straight to the customer's LinkedIn (src/linkedin/); Share and Download follow.
+// The simple journey (SPC, 17 November 2026): this step is the first screen, so the photo, the one thing worth adding
+// before sharing, is offered here (client/card-data.js photoRow*). Order (SPC, 18 November 2026): the template, the
+// photo, then Post / Share / Download; on laptop-height windows the panel scrolls to the buttons ("See more"). Share
+// and Download share one row under Post (SPC, 18 November 2026: not three buttons in a stack); a panel too narrow for
+// both labels stacks them again, and where the browser cannot share files Download takes the whole row. Side by side
+// they read "Share" and "Download", as on phones ("Download card" broke onto two lines at half width).
+const PHOTO_ROW = `<sc-if value="{{ showPhotoRow }}" hint-placeholder-val="{{ false }}">
+          <div data-photo-row="" style="display:flex;align-items:center;gap:12px;padding:{{ photoRowPad }};border-radius:16px;background:var(--spc-soft);border:1px solid var(--spc-border)">
+            <span style="width:40px;height:40px;flex-shrink:0;border-radius:50%;background:#fff;box-shadow:inset 0 0 0 1px var(--spc-border);display:flex;align-items:center;justify-content:center;color:var(--spc-blue)"><i class="ph-bold {{ photoRowIcon }}" style="font-size:19px"></i></span>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+              <span style="font-size:14.5px;font-weight:700;color:var(--spc-ink)">{{ photoRowTitle }}</span>
+              <sc-if value="{{ photoRowNoteShow }}" hint-placeholder-val="{{ true }}"><span style="font-size:12.5px;line-height:1.4;color:var(--spc-muted)">{{ photoRowNote }}</span></sc-if>
+            </div>
+            <x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="secondary" size="md" sc-camel-on-click="{{ photoRowGo }}" hint-size="110px,46px"><span>{{ photoRowAction }}</span></x-import>
+          </div>
+          </sc-if>`;
+// The template, too, on this first screen (SPC, 18 November 2026: "allow user to choose the template in this new
+// variant too", then "the selector should be like this old one"): the Style step's own picker, the three picture tiles
+// with their names and lines, copied from the design at build time so the two stay identical. The card beside it is
+// the preview.
+function sliceElement(html, start) {
+  const re = /<div\b|<\/div>/g;
+  re.lastIndex = start;
+  let depth = 0;
+  for (let m = re.exec(html); m; m = re.exec(html)) {
+    depth += m[0] === '</div>' ? -1 : 1;
+    if (depth === 0) return html.slice(start, re.lastIndex);
+  }
+  throw new Error('studio: unclosed element');
+}
+const STUDIO_SRC = readFileSync(path.join(SRC, 'studio', 'template.html'), 'utf8');
+const pickAt = STUDIO_SRC.indexOf('sc-camel-on-click="{{ pickDaylight }}"');
+const gridAt = STUDIO_SRC.lastIndexOf('<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">', pickAt);
+if (pickAt < 0 || gridAt < 0 || pickAt - gridAt > 200) throw new Error('studio: the Style step template picker moved');
+const TILE_GRID = sliceElement(STUDIO_SRC, gridAt).replace('">Daylight</span>', '">Standard</span>');
+if (!/pickPass[\s\S]*pickDayone/.test(TILE_GRID)) throw new Error('studio: the template picker lost a template');
+const TEMPLATE_TILES = `<sc-if value="{{ showTplTabs }}" hint-placeholder-val="{{ false }}">
+          <div data-tpl-tiles="" style="display:flex;flex-direction:column;gap:8px">
+            <span style="font-size:13px;font-weight:600;color:var(--spc-ink)">Template</span>
+            ${TILE_GRID}
+          </div>
+          </sc-if>`;
 const DESKTOP_SHARE_ACTIONS = `<p style="font-size:14.5px;line-height:1.5;color:var(--spc-muted);text-wrap:pretty">{{ shareIntro }}</p>
           </div>
+          ${TEMPLATE_TILES}
+          ${PHOTO_ROW}
           <div style="display:flex;flex-direction:column;gap:10px">
             <sc-if value="{{ liOn }}" hint-placeholder-val="{{ false }}">
               <x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="primary" size="lg" sc-camel-on-click="{{ postLinkedIn }}" style="display:block" hint-size="100%,54px"><i class="ph-bold ph-linkedin-logo" style="font-size:19px"></i><span>{{ liLabel }}</span></x-import>
             </sc-if>
-            <sc-if value="{{ canShare }}" hint-placeholder-val="{{ false }}">
-              <x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="{{ shareVariant }}" size="lg" sc-camel-on-click="{{ shareCard }}" style="display:block" hint-size="100%,54px"><i class="ph-bold ph-share-network" style="font-size:18px"></i><span>{{ shareLabel }}</span></x-import>
-            </sc-if>
-            <x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="{{ dlVariant }}" size="lg" sc-camel-on-click="{{ download }}" style="display:block" hint-size="100%,54px"><i class="ph-bold ph-download-simple" style="font-size:18px"></i><span>{{ downloadLabel }}</span></x-import>
+            <div data-share-row="" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px">
+              <sc-if value="{{ canShare }}" hint-placeholder-val="{{ false }}">
+                <x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="{{ shareVariant }}" size="lg" sc-camel-on-click="{{ shareCard }}" style="display:block;min-width:0" hint-size="100%,54px"><i class="ph-bold ph-share-network" style="font-size:18px"></i><span>{{ dShareLabel }}</span></x-import>
+              </sc-if>
+              <x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="{{ dlVariant }}" size="lg" sc-camel-on-click="{{ download }}" style="display:block;min-width:0" hint-size="100%,54px"><i class="ph-bold ph-download-simple" style="font-size:18px"></i><span>{{ dDlLabel }}</span></x-import>
+            </div>
           </div>`;
 // Desktop, last step (SPC, 18 October 2026): a Done button that takes the customer back to the portal, in place
 // of the "Step 3 of 3" label. Same tab, like the header's "Back to Customer Portal" link.
+// With LinkedIn on (SPC, 24 November 2026) the Share screen's Done is "Post" with the LinkedIn mark: the same post
+// as the big button above it (navPost in client/card-data.js). Adjust your photo keeps Done (back to Share), and so
+// does a card without LinkedIn (to the portal).
 DATA_PATCHES.studio.push([
   '<sc-if value="{{ isStep2 }}"><span style="font-size:13px;font-weight:600;color:var(--spc-muted)">Step 3 of 3</span></sc-if>',
-  '<sc-if value="{{ isStep2 }}"><x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="primary" size="md" sc-camel-on-click="{{ goPortal }}" hint-size="120px,46px"><span>Done</span><i class="ph-bold ph-check" style="font-size:15px"></i></x-import></sc-if>',
+  '<sc-if value="{{ isStep2 }}">'
+    + '<sc-if value="{{ navPost }}" hint-placeholder-val="{{ false }}"><x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="primary" size="md" sc-camel-on-click="{{ postLinkedIn }}" hint-size="120px,46px"><i class="ph-bold ph-linkedin-logo" style="font-size:17px"></i><span>{{ navPostLabel }}</span></x-import></sc-if>'
+    + '<sc-if value="{{ navDone }}" hint-placeholder-val="{{ true }}"><x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="primary" size="md" sc-camel-on-click="{{ goPortal }}" hint-size="120px,46px"><span>Done</span><i class="ph-bold ph-check" style="font-size:15px"></i></x-import></sc-if>'
+    + '</sc-if>',
 ]);
 DATA_PATCHES.studio.push(
   [/<p style="font-size:14\.5px;line-height:1\.5;color:var\(--spc-muted\);text-wrap:pretty">Download your card, then post it on LinkedIn with the caption below\.<\/p>[\s\S]*?LinkedIn opens with your caption filled in[^<]*<\/p>\s*<\/div>/,
@@ -195,16 +247,18 @@ for (const layout of ['studio', 'mobile']) DATA_PATCHES[layout].push(['<sc-if va
 // (client/card-data.js crop*).
 const zoomBtn = (dir, size) => `<button type="button" aria-label="Zoom ${dir === 'minus' ? 'out' : 'in'}" sc-camel-on-click="{{ ${dir === 'minus' ? 'zoomOut' : 'zoomIn'} }}" style="display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;width:${size}px;height:${size}px;padding:0;border:0;border-radius:50%;background:#fff;box-shadow:inset 0 0 0 1px var(--spc-border);color:var(--spc-ink);cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation"><i class="ph-bold ph-${dir}" style="font-size:13px"></i></button>`;
 const ZOOM_ICON = (dir) => `<i class="ph-bold ph-${dir}" style="font-size:13px;color:var(--spc-muted)"></i>`;
-DATA_PATCHES.studio.push(
-  [/<div style="display:flex;align-items:center;gap:18px;padding:14px;border-radius:18px;background:var\(--spc-soft\)">\s*<div sc-camel-on-pointer-down="\{\{ adjDown \}\}"[\s\S]*?<\/div>\s*<\/div>/,
-    `<div style="display:flex;flex-direction:column;gap:12px;padding:14px;border-radius:18px;background:var(--spc-soft)">
-                    <div ref="{{ cropRef }}" sc-camel-on-pointer-down="{{ cropDown }}" sc-camel-on-pointer-move="{{ cropMove }}" sc-camel-on-pointer-up="{{ cropUp }}" sc-camel-on-pointer-cancel="{{ cropUp }}" style="position:relative;width:100%;height:{{ crop.stageH }}px;border-radius:12px;overflow:hidden;background:#071329;cursor:grab;touch-action:none;user-select:none">
+const CROP_STAGE = `<div ref="{{ cropRef }}" sc-camel-on-pointer-down="{{ cropDown }}" sc-camel-on-pointer-move="{{ cropMove }}" sc-camel-on-pointer-up="{{ cropUp }}" sc-camel-on-pointer-cancel="{{ cropUp }}" style="position:relative;width:100%;height:{{ crop.stageH }}px;border-radius:12px;overflow:hidden;background:#071329;cursor:grab;touch-action:none;user-select:none">
                       <div style="position:absolute;left:{{ crop.imgL }}px;top:{{ crop.imgT }}px;width:{{ crop.imgW }}px;height:{{ crop.imgH }}px;background-image:{{ photoBg }};background-size:100% 100%;opacity:.35;pointer-events:none"></div>
                       <div style="position:absolute;left:{{ crop.winL }}px;top:{{ crop.winT }}px;width:{{ crop.winW }}px;height:{{ crop.winH }}px;border-radius:{{ crop.radius }};overflow:hidden;box-shadow:0 0 0 2px #fff,0 6px 18px rgba(7,19,41,.45);pointer-events:none">
                         <div style="position:absolute;left:{{ crop.innerL }}px;top:{{ crop.innerT }}px;width:{{ crop.imgW }}px;height:{{ crop.imgH }}px;background-image:{{ photoBg }};background-size:100% 100%"></div>
                       </div>
-                    </div>`],
-  ['Drag the photo to move it. Use the slider to zoom.', 'Drag the frame to choose what shows on your card. Use − and + to zoom.'],
+                    </div>`;
+const CROP_NOTE = 'Drag the frame to choose what shows on your card. Use − and + to zoom.';
+DATA_PATCHES.studio.push(
+  [/<div style="display:flex;align-items:center;gap:18px;padding:14px;border-radius:18px;background:var\(--spc-soft\)">\s*<div sc-camel-on-pointer-down="\{\{ adjDown \}\}"[\s\S]*?<\/div>\s*<\/div>/,
+    `<div style="display:flex;flex-direction:column;gap:12px;padding:14px;border-radius:18px;background:var(--spc-soft)">
+                    ${CROP_STAGE}`],
+  ['Drag the photo to move it. Use the slider to zoom.', CROP_NOTE],
   [ZOOM_ICON('minus'), zoomBtn('minus', 32)],
   [ZOOM_ICON('plus'), zoomBtn('plus', 32)],
 );
@@ -219,6 +273,78 @@ DATA_PATCHES.mobile.push(
   ['<div style="position:relative;max-width:480px;margin:0 auto;min-height:{{ vhPx }}px;height:{{ wrapH }};',
     '<div style="position:{{ wrapPos }};top:{{ wrapTop }}px;left:0;right:0;max-width:480px;margin:0 auto;min-height:{{ vhPx }}px;height:{{ wrapH }};'],
 );
+
+// The simple journey (SPC, 17 November 2026: "simplify the user journey, currently it's too complex"). The studio
+// opens on a finished card (client/card-data.js fresh: Standard, Portrait, "I've started a new business!", the licence details,
+// initials until a photo is added) and asks only for the photo:
+// - desktop: the Share step is the first screen, without the step bar; "Add your photo" sits above the buttons
+//   (PHOTO_ROW) and the Back button's place says "More options" (named 18 November 2026), which opens Style and Details; their Next leads
+//   back to Share;
+// - phones: the format switch and the toolbar wait behind "More options"; the first screen is the card, its style
+//   switcher (SPC, 18 November 2026), "Add photo" and "More options", and the LinkedIn / Share bar;
+// - both: one caption, without the Warm / Professional / Custom tabs.
+// Every change hangs on a binding that is off for tools/compare-design.mjs (designExact), so the design comparison
+// still sees the design.
+const TONE_TABS = /(<div style="display:grid;grid-template-columns:repeat\(3,minmax\(0,1fr\)\);gap:3px;padding:4px;background:var\(--spc-soft\);border:1px solid var\(--spc-border\);border-radius:999px">\s*<sc-for list="\{\{ tones \}\}"[\s\S]*?<\/sc-for>\s*<\/div>)/;
+for (const layout of ['studio', 'mobile']) {
+  DATA_PATCHES[layout].push([TONE_TABS, '<sc-if value="{{ showTones }}" hint-placeholder-val="{{ false }}">$1</sc-if>']);
+}
+DATA_PATCHES.studio.push(
+  [/(<div style="display:flex;align-items:center;gap:10px">\s*<sc-for list="\{\{ steps \}\}"[\s\S]*?<\/sc-for>\s*<\/div>)/,
+    '<sc-if value="{{ showSteps }}" hint-placeholder-val="{{ true }}">$1</sc-if>'],
+  ['<i class="ph-bold ph-arrow-left" style="font-size:15px"></i><span>Back</span></x-import></sc-if>',
+    '<i class="ph-bold {{ navBackIcon }}" style="font-size:15px"></i><span>{{ navBackLabel }}</span></x-import></sc-if>'],
+);
+const PHONE_ROW = `<sc-if value="{{ mSimple }}" hint-placeholder-val="{{ false }}">
+      <div class="m-row m-in" style="display:grid;grid-template-columns:{{ mRowCols }};gap:8px;padding:2px 16px 12px">
+        <sc-if value="{{ mRowPhoto }}" hint-placeholder-val="{{ true }}">
+          <x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="secondary" size="md" sc-camel-on-click="{{ mPhotoGo }}" style="display:block;min-width:0" hint-size="100%,46px"><i class="ph-bold {{ mPhotoIcon }}" style="font-size:17px"></i><span>{{ mPhotoLabel }}</span></x-import>
+        </sc-if>
+        <x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="secondary" size="md" sc-camel-on-click="{{ toggleCustom }}" style="display:block;min-width:0" hint-size="100%,46px"><i class="ph-bold {{ mCustomIcon }}" style="font-size:17px"></i><span>{{ mCustomLabel }}</span></x-import>
+      </div>
+    </sc-if>`;
+DATA_PATCHES.mobile.push(
+  [/<sc-if value="\{\{ noSheet \}\}" hint-placeholder-val="\{\{ true \}\}">(\s*<div class="m-in" style="display:grid;grid-template-columns:repeat\(3,minmax\(0,1fr\)\);gap:3px;padding:4px;width:100%)/,
+    '<sc-if value="{{ mShowFmt }}" hint-placeholder-val="{{ true }}">$1'],
+  [/<sc-if value="\{\{ noSheet \}\}" hint-placeholder-val="\{\{ true \}\}">(\s*<div class="m-in" style="display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%">)/,
+    '<sc-if value="{{ mShowStyle }}" hint-placeholder-val="{{ true }}">$1'],
+  [/(<div class="m-chips m-in"[\s\S]*?<\/sc-for>\s*<\/div>)/,
+    `<sc-if value="{{ mShowChips }}" hint-placeholder-val="{{ true }}">$1</sc-if>\n    ${PHONE_ROW}`],
+);
+
+// Desktop Adjust on the first screen (SPC, 19 November 2026: Adjust "takes me to the long standard flow, which
+// shouldn't be the case"). With a photo on the card, the photo row's Adjust no longer opens the Details step and its
+// step bar: the Share panel itself becomes "Adjust your photo" (the Details crop view, − and + zoom, another photo,
+// Reset, Remove photo) while the card beside it shows the result, and Back or Done return to Share
+// (client/card-data.js deskAdjust). Phones already adjust in their photo drawer.
+const TEXT_BTN = (bind, label) => `<button type="button" sc-camel-on-click="{{ ${bind} }}" style="padding:6px 2px;border:0;background:none;font-family:inherit;font-size:13px;font-weight:700;color:var(--spc-muted);cursor:pointer">${label}</button>`;
+const DESK_ADJUST = `<sc-if value="{{ deskAdjust }}" hint-placeholder-val="{{ false }}">
+        <div data-desk-adjust="" style="display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <h2 style="font-size:22px;font-weight:800;letter-spacing:-.02em;color:var(--spc-ink)">Adjust your photo</h2>
+            <p style="font-size:14.5px;line-height:1.5;color:var(--spc-muted);text-wrap:pretty">${CROP_NOTE}</p>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px;padding:14px;border-radius:18px;background:var(--spc-soft)">
+                    ${CROP_STAGE}
+            <div style="display:flex;align-items:center;gap:10px">
+              ${zoomBtn('minus', 32)}
+              <input type="range" min="1" max="2.5" step="0.05" value="{{ photoZoom }}" sc-camel-on-change="{{ onZoom }}" aria-label="Zoom" style="flex:1;min-width:0;accent-color:var(--spc-blue)">
+              ${zoomBtn('plus', 32)}
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px 18px">
+            <x-import component-from-global-scope="SPCFreeZoneDesignSystem_792df0.Button" variant="secondary" size="md" sc-camel-on-click="{{ deskAnother }}" hint-size="200px,46px"><i class="ph-bold ph-image" style="font-size:17px"></i><span>Use another photo</span></x-import>
+            ${TEXT_BTN('resetAdjust', 'Reset')}
+            ${TEXT_BTN('deskRemove', 'Remove photo')}
+          </div>
+        </div>
+      </sc-if>`;
+// Applied after the desktop motion patches below, which make the Share step's box the scrolling panel
+// (data-step-panel="2"): the adjust view goes inside that panel, and the Share content is wrapped beside it.
+const DESK_ADJUST_PATCHES = [
+  [/(<div data-step-panel="2" style="[^"]*">)/, `$1\n          ${DESK_ADJUST}\n          <sc-if value="{{ shareMain }}" hint-placeholder-val="{{ true }}">`],
+  [/(<\/div>\s*<\/sc-if>\s*<div style="margin-top:auto;display:flex;justify-content:space-between)/, '</sc-if>\n        $1'],
+];
 
 // Logic patches: the same exactly-once rule, applied to design/source/<layout>/logic.js before it is wrapped.
 // Share (SPC, 19 October 2026): hand the share menu the image only. With text alongside, LinkedIn's app keeps the
@@ -250,6 +376,13 @@ DATA_PATCHES.studio.push(
   ['<span>Issued <strong', '<span>Issued on <strong'],
   [/( *<span sc-camel-on-click="\{\{ fmtSquare \}\}"[^\n]*\n)( *<span sc-camel-on-click="\{\{ fmtPortrait \}\}"[^\n]*\n)/, '$2$1'],
 );
+// The first headline keeps "a new business!" together with a no-break space (SPC, 19 November 2026), except on Day
+// One's portrait and square, whose narrow column would then need three lines. (Wider word spacing was tried for
+// Standard too, but Safari's export wraps a headline with word-spacing onto three lines.)
+for (const layout of ['studio', 'mobile']) {
+  const dayOne = 'font-size:{{ dyHeadSize }}px;font-weight:800;line-height:1;letter-spacing:-.045em;color:var(--spc-ink);text-wrap:balance">{{ headline }}';
+  DATA_PATCHES[layout].push([dayOne, dayOne.replace('{{ headline }}', '{{ headlineLoose }}')]);
+}
 for (const layout of ['studio', 'mobile']) {
   DATA_PATCHES[layout].push(['<textarea dir="{{ dir }}" value="{{ caption }}"', '<textarea dir="{{ dir }}" value="{{ caption }}" placeholder="{{ captionPlaceholder }}"']);
 }
@@ -263,13 +396,15 @@ const INPUT_LOGIC = [
   ['name: T.name, company: T.company, isAr: ar,', 'name: T.name, roleInput: T.role, activityInput: T.activity, company: T.company, isAr: ar,'],
 ];
 const CONTENT_LOGIC = [
+  // Day One's headline without the no-break space (see the Day One patch above).
+  ['      headline, companyText, nameText, initials, role, activity,', "      headline, headlineLoose: headline.replace(/\\u00a0/g, ' '), companyText, nameText, initials, role, activity,"],
   ["const presets = ar ? ['بدأنا العمل رسمياً.', 'اليوم الأول.', 'أصبح الأمر رسمياً.', 'أبوابنا مفتوحة الآن.', 'الآن في الإمارات.', 'افتتحنا فرعنا في الإمارات.'] : ['Officially in business.', 'Day one.', \"It's official.\", 'Now open for business.', 'Now in the UAE.', 'Our UAE branch is open.'];",
-    "const presets = ar ? ['مفتوحون للأعمال!', 'اليوم الأول!', 'أصبح الأمر رسمياً!', 'أبوابنا مفتوحة الآن.', '', ''] : ['Open for business!', 'Day one!', \"It's official!\", 'Now open for business.', '', ''];"],
+    "const presets = ar ? ['بدأت مشروعاً جديداً!', 'اليوم الأول!', 'أصبح الأمر رسمياً!', 'أبوابنا مفتوحة الآن.', '', ''] : ['I’ve started a\\u00a0new business!', 'Day one!', \"It's official!\", 'Now open for business.', '', ''];"],
   // Slots 4 and 5 (the UAE presets) are no longer offered; 6 stays the custom headline, as the design numbers it.
   ["const chips = [...presets, 'Write your own'].map((label, i) => {",
     "const chips = [...presets, 'Write custom headline'].map((label, i) => [label, i]).filter(([, i]) => i < 4 || i === 6).map(([label, i]) => {"],
   ["['short', 'Short']", "['custom', 'Custom']"],
-  ["'Suggested from your details. Edit it however you like.'", "'Edit these captions to add or remove details.'"],
+  ["'Suggested from your details. Edit it however you like.'", "'Edit the caption to add or remove details.'"],
   ["LinkedIn\\'s standard wide image size, good for desktop feeds.", 'Best for laptops.'],
   ['Works in any feed.', 'Good on any device.'],
   ['Fills more of the screen on phones.', 'Best for phones.'],
@@ -327,6 +462,7 @@ DATA_PATCHES.studio.push(
   ['<span>Looks right</span><i class="ph-bold ph-check" style="font-size:13px"></i>',
     '<span>{{ detailsDoneLabel }}</span><i class="ph-bold {{ detailsDoneIcon }}" style="font-size:13px"></i>'],
 );
+DATA_PATCHES.studio.push(...DESK_ADJUST_PATCHES);
 // Colour changes in the side panel (a chosen template's ring, the format and language switches, a field's border)
 // ease instead of snapping. :where() keeps this below every rule of the design system's own components.
 const STUDIO_MOTION_CSS = [
@@ -382,7 +518,8 @@ const FIT_LOGIC = [
   ["const budget = side ? (s.vh || 900) - 32 - 2 * Math.min(40, Math.max(16, (s.vw || 1280) * .035)) - 60 - (feed ? 200 : 0) : ",
     "const budget = side ? fitH - stagePadPx - (feed ? 236 : 0) : "],
   // Stacked (under 1080px, e.g. a tablet held sideways) the card is no taller than the window either.
-  ["mStick ? Math.min((s.vh || 800) * .34, 300) : 9999;", "mStick ? Math.min((s.vh || 800) * .34, 300) : Math.max(320, (s.vh || 900) - (s.deskTop || 200) - 24 - stagePadPx - (feed ? 236 : 0));"],
+  // The simple journey (client/card-data.js stackFit) keeps it to part of that, so the Share buttons under it show.
+  ["mStick ? Math.min((s.vh || 800) * .34, 300) : 9999;", "mStick ? Math.min((s.vh || 800) * .34, 300) : Math.max(320, ((s.vh || 900) - (s.deskTop || 200) - 24 - stagePadPx - (feed ? 236 : 0)) * (s.stackFit || 1));"],
   ["stagePad: mobile ? '14px 16px 16px' : 'clamp(16px,3.5vw,40px)'", "stagePad: mobile ? '14px 16px 16px' : 'clamp(16px,2.4vw,32px)'"],
   ["sizeRowDisp: mobile ? 'none' : 'flex'", "sizeRowDisp: 'none'"],
   ["navPos: mobile ? 'fixed' : 'static'", "navPos: mobile ? 'fixed' : 'relative'"],
@@ -611,6 +748,10 @@ const MOBILE_CSS = [
   '[data-screen-label="Sheet"]{animation:m-sheet-in .34s cubic-bezier(.2,.8,.2,1) both}',
   '[data-screen-label="Sheet"].m-settled{transition:height .25s var(--ease-standard)}',
   '.m-dot{position:relative}.m-dot::after{content:"";position:absolute;inset:-14px -3px}',
+  // The simple journey's Add photo / More options row: each button is half the width, so less side padding and no
+  // wrapping; on the narrowest phones (under 360px) the labels go without their icons.
+  '.m-row button{padding-left:10px!important;padding-right:10px!important;white-space:nowrap}',
+  '@media (max-width:359px){.m-row button i{display:none!important}}',
   '[data-screen-label="Sheet"].m-closing{animation:m-sheet-out .22s cubic-bezier(.4,0,1,1) both;pointer-events:none}',
   '.m-in{animation:m-rise .3s cubic-bezier(.2,.8,.2,1) both}',
   // Typing in a drawer (client/card-data.js, sheetFull): the drawer fills the visible screen with square corners and

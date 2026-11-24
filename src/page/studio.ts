@@ -9,6 +9,7 @@ import { Hono } from 'hono';
 import type { AppEnv, CardRow, Lang } from '../types.js';
 import { formatFullDate } from '../util/time.js';
 import { html, raw } from '../util/html.js';
+import { referUrl } from '../referral/links.js';
 import { FAVICON_LINKS } from './favicon.js';
 
 /** public/studio, resolved from this file so it works from src/ (tests, tsx) and dist/ alike. */
@@ -46,10 +47,13 @@ export interface StudioCardData {
   linkedin: boolean;
   /** The Google review request is on (./review.ts): the studio asks once, after the first download or share. */
   review: boolean;
+  /** The owner's referral link for the caption, English and Arabic (src/referral/); null before the card has a code. */
+  refer_en: string | null;
+  refer_ar: string | null;
 }
 
 /** `lang` is the card language the studio opens with: ?lang= when given, else the customer's preference. */
-export function cardData(card: CardRow, lang: Lang = card.preferred_language, linkedin = false, review = false): StudioCardData {
+export function cardData(card: CardRow, lang: Lang = card.preferred_language, linkedin = false, review = false, baseUrl = ''): StudioCardData {
   return {
     token: card.token,
     company_en: card.company_name_en,
@@ -64,6 +68,8 @@ export function cardData(card: CardRow, lang: Lang = card.preferred_language, li
     is_test: card.is_test,
     linkedin,
     review,
+    refer_en: referUrl(baseUrl, card.ref_code, 'en'),
+    refer_ar: referUrl(baseUrl, card.ref_code, 'ar'),
   };
 }
 
@@ -174,7 +180,7 @@ ${i.gtmContainer ? raw(gtmSnippet(i.gtmContainer, i.nonce)) : ''}
 </head>
 <body>
 <div id="dc-root"></div>
-<script type="application/json" id="card-data">${raw(jsonForScript(cardData(i.card, i.lang, i.linkedin ?? false, i.review ?? false)))}</script>
+<script type="application/json" id="card-data">${raw(jsonForScript(cardData(i.card, i.lang, i.linkedin ?? false, i.review ?? false, i.baseUrl)))}</script>
 <script src="${m.js}" defer></script>
 </body>
 </html>`;

@@ -181,6 +181,27 @@ export function readConfig(source: ConfigSource, envFile: string | null = null):
   if (waMode === 'gallabox' && !text(source, 'GALLABOX_ACCOUNT_ID')) warnings.push('GALLABOX_ACCOUNT_ID is not set: WhatsApp messages are sent, but whether they were delivered and read is not read back');
   if (waMode === 'off') warnings.push('WhatsApp is off (no GALLABOX_API_KEY): welcome WhatsApp messages are queued in the admin but not sent');
   if (waMode === 'file') warnings.push('WHATSAPP_TRANSPORT=file: WhatsApp messages are written to DATA_DIR/whatsapp-outbox');
+  // The owner's referral link (src/referral/routes.ts).
+  const referKey = text(source, 'REFERRER_API_KEY');
+  if (referKey !== undefined && referKey.length < 32) errors.push('REFERRER_API_KEY must be at least 32 characters');
+  if (referKey === undefined) warnings.push('REFERRER_API_KEY is not set: the website cannot look up referral codes, so referral leads reach Zoho without the referrer');
+  const landing: Record<'REFER_LANDING_EN' | 'REFER_LANDING_AR', string | undefined> = {
+    REFER_LANDING_EN: text(source, 'REFER_LANDING_EN'),
+    REFER_LANDING_AR: text(source, 'REFER_LANDING_AR'),
+  };
+  for (const [k, v] of Object.entries(landing)) {
+    if (v === undefined) continue;
+    try {
+      const u = new URL(v);
+      if (u.protocol !== 'https:' && u.protocol !== 'http:') throw new Error('scheme');
+    } catch {
+      errors.push(`${k} must be an http(s) URL, got ${JSON.stringify(v)}`);
+    }
+  }
+  const cookieDomain = text(source, 'REFER_COOKIE_DOMAIN');
+  if (cookieDomain !== undefined && cookieDomain.toLowerCase() !== 'host' && !/^\.?[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(cookieDomain)) {
+    errors.push('REFER_COOKIE_DOMAIN must be a domain such as .spcfz.ae, or host');
+  }
 
   const allowlist = text(source, 'ERP_IP_ALLOWLIST') ?? '';
   if (!allowlist) warnings.push('ERP_IP_ALLOWLIST is empty: both intake routes reject every request');
@@ -226,6 +247,10 @@ export function readConfig(source: ConfigSource, envFile: string | null = null):
     WHATSAPP_TEMPLATE_EN: text(source, 'WHATSAPP_TEMPLATE_EN'),
     WHATSAPP_TEMPLATE_AR: text(source, 'WHATSAPP_TEMPLATE_AR'),
     WHATSAPP_HEADER: waHeader === 'none' ? 'none' : waHeader === 'image' ? 'image' : undefined,
+    REFERRER_API_KEY: referKey,
+    REFER_LANDING_EN: landing.REFER_LANDING_EN,
+    REFER_LANDING_AR: landing.REFER_LANDING_AR,
+    REFER_COOKIE_DOMAIN: cookieDomain,
   };
   return { ok: true, config: { vars, host, port, dataDir, trustProxy, envFile, warnings } };
 }

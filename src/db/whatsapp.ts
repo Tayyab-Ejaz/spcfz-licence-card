@@ -1,4 +1,4 @@
-// The WhatsApp log (migrations/0011_whatsapp.sql): every WhatsApp message the service sends or means to send, and the
+// The WhatsApp log (migrations/0012_whatsapp.sql): every WhatsApp message the service sends or means to send, and the
 // numbers staff stopped. Shaped like the email log (./emails.ts).
 import type { D1Database } from '../types.js';
 import { ulid } from '../util/crypto.js';

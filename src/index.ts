@@ -14,6 +14,7 @@ import { FEEDBACK_PATH, createSesFeedbackRoutes } from './mail/ses-feedback.js';
 import type { FeedbackOptions } from './mail/ses-feedback.js';
 import { studioStaticRoutes } from './page/studio.js';
 import { faviconRoutes } from './page/favicon.js';
+import { referralRoutes } from './referral/routes.js';
 import { ipAllowed, parseAllowlist, rateKeyForIp } from './util/ip.js';
 import { FixedWindowLimiter, rateLimit } from './util/rate-limit.js';
 import type { RateDecision, RateRule } from './util/rate-limit.js';
@@ -30,6 +31,8 @@ export interface RateLimits {
   linkedin: RateRule;
   /** Amazon SES bounce and complaint feedback from SNS (src/mail/ses-feedback.ts); SNS retries anything refused. */
   sesFeedback: RateRule;
+  /** The referral link (/r/) and the website's referrer lookup (/api/referrer/), src/referral/routes.ts. */
+  referral: RateRule;
 }
 
 export const DEFAULT_RATE_LIMITS: RateLimits = {
@@ -38,6 +41,7 @@ export const DEFAULT_RATE_LIMITS: RateLimits = {
   intakeUnlisted: { limit: 20, windowMs: 60_000 },
   linkedin: { limit: 60, windowMs: 10 * 60_000 },
   sesFeedback: { limit: 120, windowMs: 60_000 },
+  referral: { limit: 60, windowMs: 60_000 },
 };
 
 export interface AppOptions {
@@ -78,6 +82,7 @@ export function createApp(o: AppOptions = {}): Hono<AppEnv> {
   const intake = new FixedWindowLimiter(limits.intakeUnlisted, lo);
   const linkedin = new FixedWindowLimiter(limits.linkedin, lo);
   const feedback = new FixedWindowLimiter(limits.sesFeedback, lo);
+  const referral = new FixedWindowLimiter(limits.referral, lo);
 
   const app = new Hono<AppEnv>();
 
@@ -86,6 +91,8 @@ export function createApp(o: AppOptions = {}): Hono<AppEnv> {
   const isLinkedin = (c: Context<AppEnv>): boolean => c.req.path.startsWith('/linkedin/') || /^\/c\/[^/]+\/linkedin$/.test(c.req.path);
   app.use('*', rateLimit(linkedin, { applies: isLinkedin, key: clientKey, onLimit: tooManyText }));
   app.use(FEEDBACK_PATH, rateLimit(feedback, { applies: () => true, key: clientKey, onLimit: tooManyText }));
+  app.use('/r/*', rateLimit(referral, { applies: () => true, key: clientKey, onLimit: tooManyText }));
+  app.use('/api/referrer/*', rateLimit(referral, { applies: () => true, key: clientKey, onLimit: tooManyText }));
   app.use('/v1/*', rateLimit(intake, {
     applies: () => true,
     key: (c) => {
@@ -109,6 +116,7 @@ export function createApp(o: AppOptions = {}): Hono<AppEnv> {
   app.route('/', intakeRoutes);
   app.route('/', createLinkedinRoutes(o.linkedin));
   app.route('/', fakeSigninRoutes);
+  app.route('/', referralRoutes);
   app.route('/', pageRoutes);
   app.route('/admin', adminRoutes);
 

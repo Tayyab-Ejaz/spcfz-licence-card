@@ -1,6 +1,6 @@
 // The suggested captions (src/linkedin/captions.ts), shared by the studio and the server's default caption.
 import { describe, expect, it } from 'vitest';
-import { REFER_LINE, captionFor } from '../src/linkedin/captions.js';
+import { REFER_FALLBACK, captionFor, referLine } from '../src/linkedin/captions.js';
 import { defaultCaption } from '../src/linkedin/caption.js';
 
 const base = { company: 'Cedar & Quill Publishing FZE', role: 'Founder', activity: 'Book publishing' };
@@ -11,13 +11,14 @@ describe('captionFor', () => {
       "Some personal news: I've officially started a new role as Founder at Cedar & Quill Publishing FZE, my own business, focusing on book publishing.\n\n"
       + "I'm grateful to everyone who helped me believe that this dream was worth following.\n\n"
       + 'Thank you @SPC Free Zone, Sharjah for helping me get my business license.\n\n'
-      + `${REFER_LINE.en}\n\n#NewBusiness #Founder #SPCFreeZone`,
+      + 'Are you also planning to start a business in the UAE in the near future? Click the link below!\n'
+      + 'https://www.spcfz.ae/single-visa-promotion/\n\n#NewBusiness #Founder #SPCFreeZone',
     );
     expect(captionFor({ ...base, lang: 'en', tone: 'pro', focus: 'both' })).toBe(
       "Pleased to announce that I've launched a business named Cedar & Quill Publishing FZE in the UAE. The focus will be on book publishing.\n\n"
       + "Need support with this field or want an expert's opinion? Send me a connection request or drop a message, I'd be glad to connect with you!\n\n"
       + 'Proudly licensed with @SPC Free Zone, Sharjah.\n\n'
-      + `${REFER_LINE.en}\n\n#NewBusiness #Founder #SPCFreeZone`,
+      + `${referLine('en')}\n\n#NewBusiness #Founder #SPCFreeZone`,
     );
   });
 
@@ -27,7 +28,9 @@ describe('captionFor', () => {
         const c = captionFor({ ...base, role: lang === 'ar' ? 'المؤسس' : 'Founder', lang, tone, focus, activity });
         const where = `${lang} ${tone} ${focus} activity=${activity || 'none'}`;
         expect(c, where).toContain('@SPC Free Zone');
-        expect(c, where).toContain(REFER_LINE[lang]);
+        expect(c, where).toContain(referLine(lang));
+        expect(c, where).toContain(REFER_FALLBACK[lang]);
+        expect(c, where).not.toMatch(/AED 1,500|1500 درهم/); // SPC's new wording, 20 November 2026
         expect(c.includes('Cedar & Quill'), where).toBe(focus !== 'personal');
         expect(/focusing on \.|focus will be on \.| \.|،\s*\.|  /.test(c), where).toBe(false);
         if (activity) expect(c.toLowerCase(), where).toContain('book publishing');
@@ -43,8 +46,11 @@ describe('captionFor', () => {
   });
 
   it('is what a post from the welcome email starts with', () => {
-    const card = { company_name_en: 'Cedar & Quill Publishing FZE', company_name_ar: null, activity_category: 'Book publishing', activity_category_ar: null, founder_name_en: 'Layla Haddad' };
-    expect(defaultCaption(card, 'en')).toBe(captionFor({ ...base, lang: 'en', tone: 'warm', focus: 'both' }));
-    expect(defaultCaption({ ...card, founder_name_en: null }, 'en')).toContain('Some news: Cedar & Quill Publishing FZE is now officially in business');
+    const card = { company_name_en: 'Cedar & Quill Publishing FZE', company_name_ar: null, activity_category: 'Book publishing', activity_category_ar: null, founder_name_en: 'Layla Haddad', ref_code: null };
+    expect(defaultCaption(card, 'en', 'https://licensed.spcfz.ae')).toBe(captionFor({ ...base, lang: 'en', tone: 'warm', focus: 'both' }));
+    expect(defaultCaption({ ...card, founder_name_en: null }, 'en', 'https://licensed.spcfz.ae')).toContain('Some news: Cedar & Quill Publishing FZE is now officially in business');
+    // With a referral code the link is the owner's own, in the caption's language.
+    expect(defaultCaption({ ...card, ref_code: 'K7Q2MXA' }, 'en', 'https://licensed.spcfz.ae')).toContain('\nhttps://licensed.spcfz.ae/r/K7Q2MXA\n');
+    expect(defaultCaption({ ...card, ref_code: 'K7Q2MXA' }, 'ar', 'https://licensed.spcfz.ae')).toContain('\nhttps://licensed.spcfz.ae/r/K7Q2MXA/ar\n');
   });
 });

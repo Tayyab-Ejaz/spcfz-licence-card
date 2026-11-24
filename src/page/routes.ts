@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import type { Context } from 'hono';
 import type { AppEnv, Lang, MetricKind } from '../types.js';
 import { isLang, isSize } from '../types.js';
-import { bumpMetric, getCardByToken, getSettings } from '../db/cards.js';
+import { bumpMetric, ensureRefCode, getCardByToken, getSettings } from '../db/cards.js';
 import type { MetricKey } from '../db/cards.js';
 import { background } from '../util/background.js';
 import { TOKEN_RE, bytesToBase64 } from '../util/crypto.js';
@@ -115,7 +115,9 @@ pageRoutes.get('/c/:token', async (c) => {
   if (!card.is_test) safeMetric(c, { card_id: card.id, kind: 'view', lang, network: via === 'email' || via === 'whatsapp' ? via : null });
   const linkedin = linkedinEnabled(c.env);
   const review = reviewLink(settings) !== null;
-  return c.html(renderStudioShell({ card, lang, nonce, gtmContainer, baseUrl: c.env.BASE_URL, linkedin, review }), 200);
+  // The caption's link is the owner's referral link (src/referral/): cards made before codes existed get one now.
+  const withCode = await ensureRefCode(c.env.DB, card);
+  return c.html(renderStudioShell({ card: withCode, lang, nonce, gtmContainer, baseUrl: c.env.BASE_URL, linkedin, review }), 200);
 });
 
 // ------------------------------------------------------------------ Google review button (./review.ts)

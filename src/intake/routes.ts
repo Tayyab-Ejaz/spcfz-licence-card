@@ -152,7 +152,7 @@ function makeHandler(cfg: RouteConfig) {
         route: cfg.route, outcome: result.outcome, licence_number: result.card.licence_number, card_id: result.card.id,
         ...(result.notes.length ? { notes: result.notes } : {}),
       });
-      // notes: what was received but not used (a phone number we cannot WhatsApp); only present when there is one.
+      // notes: what was received but not used (a phone number we cannot read); only present when there is one.
       return c.json(
         {
           status: 'accepted', card_id: result.card.id, page_url: result.page_url, ready: result.card.status === 'ready',

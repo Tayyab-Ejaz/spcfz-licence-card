@@ -152,14 +152,15 @@ export function validateCanonical(input: Record<string, unknown>, opts: { today?
   const customer_email = optionalEmail(input, 'customer_email', errors);
   const cc_email = optionalEmail(input, 'cc_email', errors);
 
-  // customer_phone: optional; where the welcome WhatsApp message goes. A number that is not a mobile we can place
+  // customer_phone: optional; the owner's mobile. The welcome WhatsApp message goes to it (src/whatsapp/), and it is
+  // the referrer's phone on leads from their referral link (src/referral/). A number that is not a mobile we can read
   // is dropped with a note, never an error: the card must not wait for a typo in a phone number.
   const notes: string[] = [];
   let customer_phone: string | null = null;
   const rawPhone = input['customer_phone'];
   if (!isBlank(rawPhone)) {
     customer_phone = normalisePhone(rawPhone);
-    if (customer_phone === null) notes.push('customer_phone: not a mobile number in a form we can read (add the country code, e.g. +91…); no WhatsApp message');
+    if (customer_phone === null) notes.push('customer_phone: not a mobile number in a form we can read (add the country code, e.g. +91…); not kept');
   }
 
   // preferred_language: optional, en or ar in any common spelling, default en.

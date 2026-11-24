@@ -132,10 +132,11 @@ Rewritten 12 November 2026 to SPC's new copy ("LI Milestone Email (1).docx"); th
 | backToCard | العودة إلى بطاقتي | Back to my card |
 | fine | لا يُنشر شيء قبل أن تضغط «انشر الآن»، ويُنشر مرة واحدة فقط. يتم تسجيل دخولك بأمان عبر لينكدإن نفسه: لا تطّلع المنطقة الحرة على كلمة مرورك، وينتهي وصولنا إلى حسابك فور النشر. | Nothing is posted until you press Post now, and it is posted once. Your sign-in is handled securely by LinkedIn: SPC Free Zone never sees your password, and our access ends once you post. |
 | tooLong | يسمح لينكدإن بـ 3,000 حرف كحد أقصى. يرجى اختصار النص. | LinkedIn allows up to 3,000 characters. Please shorten the text. |
-| postedTitle | إعلانك منشور الآن | Your announcement is live |
+| postedTitle | تم نشر منشورك | Your post is live |
 | postedLead | {company} الآن على صفحتك في لينكدإن. | {company} is now on your LinkedIn feed. |
-| viewPost | شاهد منشورك على لينكدإن | View your post on LinkedIn |
-| postedTip | نصيحة: أشِر إلى شركائك وفريقك في تعليق، ليصل المنشور إلى شبكاتهم أيضاً. | Tip: tag your co-founders and team in a comment, so it reaches their networks too. |
+| viewPost | شاهده على لينكدإن | View on LinkedIn |
+| downloadAsk | تريد مشاركة بطاقتك على حساباتك الأخرى في وسائل التواصل الاجتماعي؟ اضغط لتنزيلها! | Want to share your card on other social media accounts? Click to download it! |
+| downloadButton | نزّل بطاقتي | Download my card |
 | problemTitle | لم يُنشر منشورك | Your post was not published |
 | tryAgain | حاول مرة أخرى | Try again |
 | signInAgain | سجّل الدخول إلى لينكدإن مجدداً | Sign in to LinkedIn again |
@@ -152,8 +153,8 @@ Rewritten 12 November 2026 to SPC's new copy ("LI Milestone Email (1).docx"); th
 | errUpstream | تعذّر الوصول إلى لينكدإن. حاول مرة أخرى بعد قليل. | We could not reach LinkedIn. Try again in a moment. |
 | errImage | تعذّر تجهيز صورة بطاقتك. عد إلى بطاقتك وحاول مرة أخرى. | Your card picture could not be prepared. Go back to your card and try again. |
 | title | النشر على لينكدإن · المنطقة الحرة لمدينة الشارقة للنشر | Post to LinkedIn · SPC Free Zone |
-| reviewAsk | كيف كانت تجربتك في الحصول على رخصتك من المنطقة الحرة لمدينة الشارقة للنشر؟ | How was getting your license with SPC Free Zone? |
-| reviewBody | تقييم قصير على Google يساعد روّاد الأعمال الآخرين في العثور علينا. | A short Google review helps other founders find us. |
+| reviewAsk | كيف كانت تجربتك مع المنطقة الحرة لمدينة الشارقة للنشر؟ | How was your experience with SPC Free Zone? |
+| reviewBody | اترك تقييماً على Google! | Leave a review on Google! |
 | reviewButton | اكتب تقييماً على Google | Leave a Google review |
 
 ## Comments suggested in the LinkedIn post alert (src/mail/post-alert.ts, suggestedComments; 5 November 2026)
@@ -190,14 +191,14 @@ suggested caption; the English and Arabic pages differ, so each links its own.
 
 | | Arabic | English |
 |---|---|---|
-| Refer a Friend | هل تعرف شخصاً يخطط لتأسيس عمله في دولة الإمارات؟ رشّحه للمنطقة الحرة لمدينة الشارقة للنشر واكسب ما يصل إلى 1500 درهم إماراتي:<br>https://www.spcfz.ae/ar/refer-a-friend/?utm_campaign=Linkedin%20Milestone | Know someone planning to start a business in the UAE? Refer them to SPC Free Zone and earn up to AED 1,500:<br>https://www.spcfz.ae/refer-a-friend/?utm_campaign=Linkedin%20Milestone |
+| Refer a Friend | هل تخطط أنت أيضاً لتأسيس عمل في دولة الإمارات قريباً؟ اضغط على الرابط أدناه!<br>https://www.spcfz.ae/ar/refer-a-friend/?utm_campaign=Linkedin%20Milestone | Are you also planning to start a business in the UAE in the near future? Click the link below!<br>https://www.spcfz.ae/refer-a-friend/?utm_campaign=Linkedin%20Milestone |
 
 Headlines on the card (tools/build-studio.mjs, CONTENT_LOGIC), and the email picture's headline
 (src/page/card-image.ts, the first one):
 
 | | Arabic | English |
 |---|---|---|
-| 1 | مفتوحون للأعمال! | Open for business! |
+| 1 | بدأت مشروعاً جديداً! | I’ve started a new business! (a no-break space keeps "a new business!" together) |
 | 2 | اليوم الأول! | Day one! |
 | 3 | أصبح الأمر رسمياً! | It's official! |
 | 4 | أبوابنا مفتوحة الآن. | Now open for business. |

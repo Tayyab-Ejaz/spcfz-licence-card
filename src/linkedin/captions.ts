@@ -5,17 +5,29 @@
 
 export type CaptionLang = 'en' | 'ar';
 
-/**
- * The campaign the Refer a Friend link carries, so SPC's analytics can tell visits from these posts apart (SPC,
- * 9 November 2026: utm_campaign=Linkedin Milestone; the space written %20 so the link stays one piece in a post).
- */
-export const REFER_UTM = '?utm_campaign=Linkedin%20Milestone';
-
-/** SPC's Refer a Friend page, before the hashtags (3 November 2026). */
-export const REFER_LINE: Record<CaptionLang, string> = {
-  en: `Know someone planning to start a business in the UAE? Refer them to SPC Free Zone and earn up to AED 1,500:\nhttps://www.spcfz.ae/refer-a-friend/${REFER_UTM}`,
-  ar: `هل تعرف شخصاً يخطط لتأسيس عمله في دولة الإمارات؟ رشّحه للمنطقة الحرة لمدينة الشارقة للنشر واكسب ما يصل إلى 1500 درهم إماراتي:\nhttps://www.spcfz.ae/ar/refer-a-friend/${REFER_UTM}`,
+/** The invitation before the hashtags (3 November 2026; SPC's wording of 20 November 2026). */
+export const REFER_TEXT: Record<CaptionLang, string> = {
+  en: 'Are you also planning to start a business in the UAE in the near future? Click the link below!',
+  ar: 'هل تخطط أنت أيضاً لتأسيس عمل في دولة الإمارات قريباً؟ اضغط على الرابط أدناه!',
 };
+
+/**
+ * Where the link goes when the card has no referral link (never, once src/referral/ has given it a code): SPC's
+ * landing page for referred friends, without any tracking (SPC, 24 November 2026: "our link shouldn't show the
+ * details").
+ */
+export const REFER_FALLBACK: Record<CaptionLang, string> = {
+  en: 'https://www.spcfz.ae/single-visa-promotion/',
+  ar: 'https://www.spcfz.ae/ar/single-visa-promotion/',
+};
+
+/**
+ * The invitation and the owner's own referral link (SPC, 24 November 2026: the link is the owner's, so a friend's
+ * lead reaches Zoho with them as the referrer; src/referral/). `url` is the card's BASE_URL/r/<code>[/ar].
+ */
+export function referLine(lang: CaptionLang, url?: string | null): string {
+  return `${REFER_TEXT[lang]}\n${url || REFER_FALLBACK[lang]}`;
+}
 
 export interface CaptionInput {
   lang: CaptionLang;
@@ -26,6 +38,8 @@ export interface CaptionInput {
   company: string;
   role: string;
   activity: string;
+  /** The owner's referral link in this language (src/referral/links.ts); the plain landing page when missing. */
+  referUrl?: string | null;
 }
 
 const lowerFirst = (s: string): string => (s ? s.charAt(0).toLowerCase() + s.slice(1) : s);
@@ -62,7 +76,7 @@ function english(i: CaptionInput, pro: boolean, focus: string): string {
     body += '\n\nProudly licensed with @SPC Free Zone, Sharjah.';
   }
   const tags = focus === 'company' ? '#NewBusiness #SPCFreeZone' : '#NewBusiness #Founder #SPCFreeZone';
-  return `${body}\n\n${REFER_LINE.en}\n\n${tags}`;
+  return `${body}\n\n${referLine('en', i.referUrl)}\n\n${tags}`;
 }
 
 function arabic(i: CaptionInput, pro: boolean, focus: string): string {
@@ -89,5 +103,5 @@ function arabic(i: CaptionInput, pro: boolean, focus: string): string {
         : `يسعدني أن أعلن أنني أطلقت مشروعاً باسم ${co} في دولة الإمارات.${theFocus}\n\n${reach}`;
     body += '\n\nبترخيص من @SPC Free Zone في الشارقة، بكل فخر.';
   }
-  return `${body}\n\n${REFER_LINE.ar}\n\n#مشروع_جديد #SPCFreeZone`;
+  return `${body}\n\n${referLine('ar', i.referUrl)}\n\n#مشروع_جديد #SPCFreeZone`;
 }

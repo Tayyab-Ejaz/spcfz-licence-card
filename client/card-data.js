@@ -125,6 +125,7 @@ export function withCardData(Base) {
           if (i === 2) this.tryHeadline();
           const from = this.state.step;
           go(i);
+          if (i === 2 && !this.props.card.designExact) this.setState({ view: 'card' });
           const e = i === 2 ? this.cardIssues() : {};
           if (e.headline || e.name || e.role || e.activity) this.showProblem(from !== 1);
         };
@@ -306,13 +307,18 @@ export function withCardData(Base) {
 
     /**
      * The suggested caption (SPC's content writer, 5 November 2026): one source, src/linkedin/captions.ts, shared with
-     * the server's default caption for posts started from the email. Custom starts empty.
+     * the server's default caption for posts started from the email. Custom starts empty. Its link is the owner's
+     * referral link (src/referral/, 24 November 2026), in the caption's language.
      */
     autoCaption() {
       const s = this.state;
       const ar = s.lang === 'ar';
       const T = ar ? { ...s, ...s.ar } : s;
-      return captionFor({ lang: ar ? 'ar' : 'en', tone: s.tone || 'warm', focus: s.focus, company: T.company || '', role: T.role || '', activity: T.activity || '' });
+      const c = this.props.card || {};
+      return captionFor({
+        lang: ar ? 'ar' : 'en', tone: s.tone || 'warm', focus: s.focus, company: T.company || '', role: T.role || '', activity: T.activity || '',
+        referUrl: ar ? c.refer_ar : c.refer_en,
+      });
     }
 
     /** The shared file is a JPEG: same name, .jpg. Downloads stay PNG. */
@@ -409,15 +415,20 @@ export function withCardData(Base) {
       const key = `spc-review:${c.token}`;
       const asked = () => { try { return !!localStorage.getItem(key); } catch (e) { return false; } };
       if (asked()) return;
-      this.reviewTimer = setTimeout(() => {
+      // One message at a time (SPC, 17 November 2026): it waits until the "downloaded" or "caption copied" toast has
+      // gone, up to a few seconds more.
+      let waits = 0;
+      const fire = () => {
         this.reviewTimer = null;
+        if (this.state.toast && waits++ < 8) { this.reviewTimer = setTimeout(fire, 500); return; }
         // Something else is open (the photo prompt, a phone drawer): ask after the next download or share instead.
         if (this.state.imgAsk || this.state.sheet || asked()) return;
         this.reviewAsked = true;
         try { localStorage.setItem(key, 'asked'); } catch (e) { /* this visit only, then */ }
         this.setState({ reviewAsk: true });
         beacon(c.token, { kind: 'review_ask', lang: this.state.lang, size: this.state.format });
-      }, 1600);
+      };
+      this.reviewTimer = setTimeout(fire, 1600);
     }
 
     reviewVals() {
@@ -514,7 +525,8 @@ export function withCardData(Base) {
       const s = this.state;
       if (!this.cropRef) this.cropRef = { current: null };
       const stageW = s.cropStageW || 300;
-      const stageH = 200;
+      // The Share panel's Adjust view on laptop-height windows: a shorter frame keeps its buttons on the first screen.
+      const stageH = s.deskAdjust && (s.vh || 900) < 820 ? 150 : 200;
       const c = this.cropWindow();
       const zero = { stageH, imgL: 0, imgT: 0, imgW: 0, imgH: 0, winL: 0, winT: 0, winW: 0, winH: 0, innerL: 0, innerT: 0, radius: '0' };
       let crop = zero;
@@ -581,6 +593,7 @@ export function withCardData(Base) {
     detailsNav(v) {
       if (v.mChips || !v.sq || typeof v.next !== 'function') return {};
       const s = this.state;
+      if (s.step === 2 && !this.props.card.designExact) return this.deskAdjusting() ? {} : { back: () => this.openCustomise() };
       if (s.step === 2) {
         // Back from Share lands on the last part, so Back keeps walking through the parts.
         return { back: () => { v.back(); clearTimeout(this.subT); this.setState({ sub: 3 }); this.partScroll = 3; this.scrollToPart(); } };
@@ -806,6 +819,12 @@ export function withCardData(Base) {
         activity: c.activity_en || '',
         lang: c.lang === 'ar' ? 'ar' : 'en',
         photo: null, photoNote: '',
+        // The simple journey (SPC, 17 November 2026; tools/build-studio.mjs): a finished card on arrival. The Standard
+        // style (the one the welcome email pictures), the customer's initials until they add a photo (so nothing asks
+        // for one before sharing), and on desktop the Share step first, with Style and Details behind "More options" (SPC's name, 18 November 2026).
+        // Stacked (a tablet held upright, 760-1079px) the card takes a little over half the height, so the Share
+        // buttons below it are on the first screen (tools/build-studio.mjs FIT_LOGIC).
+        ...(c.designExact === true ? {} : { tpl: 'daylight', imgMode: 'initials', step: 2, view: 'card', mCustom: false, stackFit: 0.55 }),
         ar: { company: c.company_ar || c.company_en, name: nameAr, role: c.role_ar ?? (nameAr ? 'المؤسس' : ''), activity: c.activity_ar || '' },
       };
     }
@@ -903,6 +922,7 @@ export function withCardData(Base) {
       this.watchOutsideTaps();
       this.watchImgAsk(args[1]);
       this.watchReviewAsk();
+      this.watchDeskAdjust();
       this.measureCrop();
       this.scrollToPart(settling);
     }
@@ -972,17 +992,18 @@ export function withCardData(Base) {
 
     fitChrome() {
       if (this.state.sheet || this.flipping) return;   // mid-glide the frame is transformed; measure once it lands
-      const tools = document.querySelector('.m-chips');
+      // The toolbar and, in the simple journey, the Add photo / Customise row under it (either can be hidden).
+      const tools = [...document.querySelectorAll('.m-chips, .m-row')];
       const bar = document.querySelector('.m-bar');
       const card = document.querySelector('[data-lang]');
       const section = card && card.closest('section');
-      if (!tools || !bar || !section) return;
+      if (!tools.length || !bar || !section) return;
       let stage = card;
       while (stage.parentElement && stage.parentElement !== section) stage = stage.parentElement;
       const st = stage.getBoundingClientRect();
       const sec = section.getBoundingClientRect();
       if (!st.height) return;
-      const chrome = Math.round(st.top + window.scrollY + (sec.bottom - st.bottom) + tools.getBoundingClientRect().height + bar.getBoundingClientRect().height);
+      const chrome = Math.round(st.top + window.scrollY + (sec.bottom - st.bottom) + tools.reduce((h, el) => h + el.getBoundingClientRect().height, 0) + bar.getBoundingClientRect().height);
       if (Math.abs(chrome - (this.state.chromeH || 0)) > 1) this.setState({ chromeH: chrome });
     }
 
@@ -1007,6 +1028,113 @@ export function withCardData(Base) {
       if (lines === 2) { this.setState({ stubFit: { key, size, lines: 3 } }); return; }
       if (size > Math.round(base * 0.6)) { this.setState({ stubFit: { key, size: size - 1, lines: 3 } }); return; }
       if (!this.state.stubFit || !this.state.stubFit.lastResort) this.setState({ stubFit: { key, size, lines: 3, lastResort: true } });
+    }
+
+    /**
+     * The simple journey's photo button (SPC, 17 November 2026): the photo prompt's file input, which is on the page
+     * in both layouts, so the "Photo added" note follows (watchImgAsk). A company card takes a logo instead.
+     */
+    addImage(target) {
+      this.target = target;
+      const input = (this.askFileRef && this.askFileRef.current) || (this.fileRef && this.fileRef.current);
+      if (!input) return;
+      if (input === (this.askFileRef && this.askFileRef.current)) this.askedFile = true;
+      input.click();
+    }
+
+    /** Desktop: from the Share step into Style, then Details, whose Next comes back to Share. */
+    openCustomise() {
+      clearTimeout(this.subT);
+      this.setState({ sub: 0 });
+      this.goStep(0);
+    }
+
+    /**
+     * Desktop Adjust (SPC, 19 November 2026): the Share panel turns into "Adjust your photo" in place, with no trip
+     * through the Details step (tools/build-studio.mjs DESK_ADJUST). Back and Done come back to Share.
+     */
+    adjustPhotoDesk() {
+      this.setState({ deskAdjust: true }, () => this.panelTop());
+    }
+
+    closeAdjust() {
+      this.setState({ deskAdjust: false }, () => this.panelTop());
+    }
+
+    /** Open only on the Share step, with a photo on a card about the founder. */
+    deskAdjusting() {
+      const s = this.state;
+      return !this.props.card.designExact && !!s.deskAdjust && s.step === 2 && s.focus !== 'company' && s.imgMode === 'photo' && !!s.photo;
+    }
+
+    /** The view closes for good once it no longer applies, so it does not reopen by itself later. */
+    watchDeskAdjust() {
+      if (this.state.deskAdjust && !this.deskAdjusting()) this.setState({ deskAdjust: false });
+    }
+
+    panelTop() {
+      const pane = document.querySelector('[data-step-panel]');
+      if (pane) pane.scrollTop = 0;
+    }
+
+    /** What the simple journey's photo buttons say and do, for both layouts. */
+    simpleVals(v, exact) {
+      const s = this.state;
+      const company = s.focus === 'company';
+      const shown = company ? s.imgMode === 'logo' && !!s.logo : s.imgMode === 'photo' && !!s.photo;
+      const add = () => this.addImage(company ? 'logo' : 'photo');
+      const adjusting = !exact && !v.mChips && this.deskAdjusting();
+      return {
+        // Desktop. Stacked under the card (under 1080px wide), the panel takes the full width instead of 460px.
+        ...(!exact && (s.vw || 1280) < 1080 && !v.mChips ? { asideMax: 'none' } : {}),
+        showSteps: exact || s.step < 2,
+        showTones: exact,
+        // In Style (opened from Share by "More options"), Back returns to Share instead of "Step 1 of 3".
+        ...(!exact && s.step === 0 ? { canBack: true, noBack: false, back: () => this.goStep(2) } : {}),
+        navBackLabel: !exact && s.step === 2 && !adjusting ? 'More options' : 'Back',
+        navBackIcon: !exact && s.step === 2 && !adjusting ? 'ph-sliders-horizontal' : 'ph-arrow-left',
+        // Adjust your photo, in the Share panel (adjustPhotoDesk): Back and Done return to Share.
+        deskAdjust: adjusting,
+        shareMain: !adjusting,
+        ...(adjusting ? { canBack: true, noBack: false, back: () => this.closeAdjust(), goPortal: () => this.closeAdjust() } : {}),
+        // The Share screen's Done is "Post" with the LinkedIn mark when LinkedIn is on (SPC, 24 November 2026).
+        navPost: !exact && !adjusting && this.props.card.linkedin === true,
+        navDone: exact || adjusting || this.props.card.linkedin !== true,
+        navPostLabel: s.liBusy ? 'Opening…' : 'Post',
+        deskAnother: () => this.addImage('photo'),
+        deskRemove: () => {
+          this.setState({ photo: null, imgMode: 'initials', deskAdjust: false }, () => this.panelTop());
+          this.showToast('Photo removed. Your card shows your initials.');
+        },
+        showPhotoRow: !exact,
+        // On laptop-height windows (under 820px) the row is one line, so Post and Download stay on the first screen.
+        photoRowNoteShow: (s.vh || 900) >= 820,
+        photoRowPad: (s.vh || 900) >= 820 ? '12px 12px 12px 14px' : '8px 8px 8px 12px',
+        // The template on the first screen too (SPC, 18 November 2026): the Style step's picker (tools/build-studio.mjs).
+        showTplTabs: !exact,
+        // Share and Download in one row under Post (SPC, 18 November 2026): short labels there, as on phones.
+        dShareLabel: !exact && s.canShare ? (s.busy ? 'Preparing…' : 'Share') : v.shareLabel,
+        dDlLabel: !exact && s.canShare ? (s.busy ? 'Preparing…' : 'Download') : v.downloadLabel,
+        photoRowIcon: shown ? (company ? 'ph-buildings' : 'ph-image') : company ? 'ph-buildings' : 'ph-camera-plus',
+        photoRowTitle: company ? (shown ? 'Your logo is on the card' : 'Add your logo') : shown ? 'Your photo is on the card' : 'Add your photo',
+        photoRowNote: shown ? (company ? 'Use another logo any time.' : 'Choose what shows, or use another photo.') : 'It makes the card yours. You can skip it.',
+        photoRowAction: shown ? (company ? 'Change' : 'Adjust') : company ? 'Add logo' : 'Add photo',
+        photoRowGo: shown && !company ? () => this.adjustPhotoDesk() : add,
+        // Phones
+        mSimple: !exact,
+        mShowFmt: !!v.noSheet && (exact || !!s.mCustom),
+        // The style switcher stays on the first screen (SPC, 18 November 2026: choose the template here too).
+        mShowStyle: !!v.noSheet,
+        mShowChips: exact || !!s.mCustom,
+        mRowPhoto: !s.mCustom,
+        mRowCols: s.mCustom ? 'minmax(0,1fr)' : 'minmax(0,1fr) minmax(0,1fr)',
+        mPhotoIcon: shown ? (company ? 'ph-buildings' : 'ph-crop') : company ? 'ph-buildings' : 'ph-camera-plus',
+        mPhotoLabel: company ? (shown ? 'Change logo' : 'Add logo') : shown ? 'Adjust photo' : 'Add photo',
+        mPhotoGo: shown ? () => this.setState({ sheet: 'photo' }) : add,
+        mCustomIcon: s.mCustom ? 'ph-check' : 'ph-sliders-horizontal',
+        mCustomLabel: s.mCustom ? 'Done' : 'More options',
+        toggleCustom: () => this.setState((st) => ({ mCustom: !st.mCustom })),
+      };
     }
 
     renderVals() {
@@ -1089,6 +1217,7 @@ export function withCardData(Base) {
         mBarCols: liOn ? 'minmax(0,1fr) minmax(0,1fr)' : 'minmax(0,1fr)',
         portalUrl: PORTAL_URL,
         goPortal: () => window.location.assign(PORTAL_URL),
+        ...this.simpleVals(v, exact),
         ...this.detailsNav(v),
         ...this.imgAskVals(),
         ...this.reviewVals(),

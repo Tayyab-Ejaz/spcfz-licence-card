@@ -15,7 +15,7 @@ export type Accepted =
   | {
     ok: true; outcome: UpsertOutcome; card: CardRow; page_url: string; email: QueueResult | 'not-sent' | 'error';
     whatsapp: WhatsappQueueResult | 'not-sent' | 'error';
-    /** Received but not used, e.g. a phone number we cannot WhatsApp (src/intake/validate.ts). */
+    /** Received but not used, e.g. a phone number we cannot read (src/intake/validate.ts). */
     notes: string[];
   };
 

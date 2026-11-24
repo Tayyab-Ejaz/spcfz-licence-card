@@ -345,7 +345,9 @@ client/card-data.js):
   (Download, Share and the "Add your photo?" path; Safari on a Mac too).
   Drawing a fresh SVG twice did not help, as each new SVG starts the decoding
   over. On Safari's engine the SVG is now made once and drawn at full size
-  every 100 ms until two drawings agree (at least 400 ms, at most 4 s), and
+  every 100 ms until two drawings agree (at least 400 ms, at most 5 s) and,
+  since 17 November 2026, every photo or logo place shows a picture rather
+  than one flat colour (two empty drawings could agree on a busy machine);
   the last drawing is kept. Chrome and Android are unchanged.
 - **Who it is about, there and back** (12 November 2026, client/card-data.js
   setFocus): "The company" swaps the photo for the logo or the initials, as
@@ -354,6 +356,35 @@ client/card-data.js):
   share a card without the photo they had added. The photo now comes back,
   unless another image was chosen in between (a logo added on the company
   card stays).
+- **The simple journey** (17 November 2026, SPC: "simplify the user journey,
+  currently it's too complex"; tools/build-studio.mjs and client/card-data.js
+  simpleVals). The card is finished when the customer arrives: Standard,
+  Portrait, "I've started a new business!", their licence details, and their initials
+  until they add a photo, so nothing asks for a photo before sharing. Desktop
+  opens on the Share step without the step bar: the template picker (18
+  November 2026: the Style step's own picture tiles, copied from the design
+  at build time), "Add your photo" (one line on windows under 820px tall),
+  then Post to LinkedIn, with Share and Download side by side under it
+  (short labels, as on phones; they stack when the panel is too narrow, and
+  where the browser cannot share files "Download card" takes the row). SPC's
+  order; on laptop-height windows the panel scrolls to the buttons ("See
+  more"). And
+  "More options" (named by SPC, 18 November 2026; first "Customise card") in
+  the Back button's place, which opens Style and Details
+  (Back in Style returns to Share; Next through Details leads back to it).
+  The Share step shows the card itself, not the feed mock-up. Phones open on
+  the card with its style switcher (18 November 2026), "Add photo" and
+  "More options", and the LinkedIn / Share bar; More options shows the size switch
+  and the six-button toolbar, and Done folds them away. One caption:
+  the Warm / Professional / Custom tabs are gone. On a tablet held upright
+  (760-1079px, the panel under the card) the card takes 55% of the height and
+  the panel the full width, so the Share buttons are on the first screen. The
+  review request waits
+  until the confirmation toast has gone. Shortest paths: download with no
+  changes, 1 click or tap (was 7 on desktop with the photo question, 2 on
+  phones); add a photo and post to LinkedIn, 2 (was 7 on desktop, 4 on
+  phones). The journey before it is tagged `journey-before-simplify`.
+  `tools/journey-test.mjs` drives either journey on 14 device profiles.
 - **Link preview** (19 October 2026): the card page carries Open Graph and
   Twitter tags, so a pasted link shows a preview in WhatsApp, LinkedIn,
   iMessage and Slack: "<company> is officially licensed", the issue date, and
@@ -367,7 +398,10 @@ client/card-data.js):
   (a config written to the temp folder at first use).
 - **Desktop Done** (18 October 2026): the last step's bar ends with a Done
   button that opens the customer portal in the same tab, in place of the
-  "Step 3 of 3" label.
+  "Step 3 of 3" label. Since 24 November 2026, with LinkedIn on, that button
+  is "Post" with the LinkedIn mark and posts like the big Post to LinkedIn
+  button; Adjust your photo keeps Done (back to Share), and so does a card
+  without LinkedIn.
 - **Test cards** look exactly like live ones; SPC removed the TEST
   watermark on 16 October 2026. Only the browser tab title says [TEST].
 
@@ -538,7 +572,7 @@ What the customer gets, in their preferred language (English or Arabic, right to
   in the SPC Free Zone family. Here’s to many more wins to come!". The subject stays "Your Business Is Official.
   Let the World Know!" (SPC's choice); the preheader is the headline and "Spread the Joy!".
 - Their own card as a picture (the Daylight style since 27 October 2026, SPC's choice: kicker, founder and role,
-  the empty photo tile, "Open for business!", company and activity, "Licensed with"; 1080x1080, drawn by the
+  the empty photo tile, "I've started a new business!", company and activity, "Licensed with"; 1080x1080, drawn by the
   server: `/c/<token>/card/<hash>-v<n>[-ar].jpg`), linked to their studio. It sits in a small editor window, a bar
   with "Your announcement card · Draft" and "Customise →", so it reads as a draft to personalise rather than a
   finished picture (the "Customise your post:" pills under it were removed, SPC, 12 November 2026). The picture
@@ -591,7 +625,8 @@ attached, which the phone share sheet cannot do from a web page.
        -> GET /linkedin/callback   code -> access token -> who they are (name, photo)
        -> GET /linkedin/review     the post as it will appear; caption editable (3,000 characters)
        -> POST /linkedin/publish   upload the picture, create the post (public, main feed)
-       -> GET /linkedin/done       "Your announcement is live", with a link to the post
+       -> GET /linkedin/done       "Your post is live", with a link to the post
+          GET /linkedin/download   "Download my card" there: the posted picture as a file (counted as a download)
 
 - The caption goes as LinkedIn "little text": reserved characters escaped, `#Word` as hashtags and
   "@SPC Free Zone" as a mention of SPC's page when `LINKEDIN_ORG_URN` is set. If LinkedIn refuses the
@@ -625,7 +660,44 @@ expired). The dashboard links to it while ERP_IP_ALLOWLIST is empty. The email g
 MAIL_TEST_ALLOWLIST allows them.
 
 
-## 19. Welcome WhatsApp message (19 November 2026)
+## 19. The owner's referral link (24 November 2026)
+
+SPC asked that the caption's link be the owner's own, so a friend who contacts
+SPC through it earns the owner the referral reward, and that the link show
+nothing about them. The friend lands on SPC's existing referral landing page,
+/single-visa-promotion/ (Arabic: /ar/single-visa-promotion/), with its forms
+and its Zoho feeds unchanged.
+
+- **Code.** Every card has `ref_code`: seven characters from
+  `23456789ABCDEFGHJKMNPQRSTUVWXYZ` (src/referral/code.ts), made when the card
+  is created, or the first time an older card is opened or posted from; never
+  changed. Migration 0011 also adds `customer_phone` (from the ERP, mapped and
+  checked by src/intake/mapper.ts and src/whatsapp/phone.ts).
+- **Link.** The caption (src/linkedin/captions.ts referLine) ends with
+  `BASE_URL/r/<code>`, or `…/r/<code>/ar` in Arabic. `GET /r/<code>[/ar]`
+  (src/referral/routes.ts) counts a `ref_click`, sets the `spcfz_ref` cookie
+  (Domain `.spcfz.ae`, 30 days, HttpOnly, Secure, SameSite=Lax) and redirects
+  to the landing page with nothing added to its address, so NitroPack serves
+  its cached copy as for any visitor (an unknown query parameter would force a
+  slow uncached render). An unknown code redirects without the cookie.
+- **Lookup.** `GET /api/referrer/<code>` with `Authorization: Bearer
+  REFERRER_API_KEY` answers `{code, name, email, phone, company,
+  licence_number, test}`; 401 for a wrong key, 404 for an unknown code or when
+  no key is set. Each answer counts a `ref_lead`. Test cards work but are not
+  counted.
+- **Website.** The spcfz-referral WordPress plugin (workspace
+  `spcfz-referral/`, its README) asks this lookup when form 13 or 12 is sent
+  from the landing page with the cookie, keeps the answer on the entry, and
+  hands it to gf-zoho on the way out: Lead Source "Referral", and Referrer Name,
+  Referrer Email, Referrer Contact No. through three custom-value rows in feeds
+  2 and 1. Nothing else on the site changes.
+- **Admin.** The card page shows the customer mobile, the referral link, and
+  clicks and leads.
+- **Settings.** `REFERRER_API_KEY` (32+ characters, the same key as the
+  plugin's), `REFER_LANDING_EN` / `REFER_LANDING_AR`, `REFER_COOKIE_DOMAIN`
+  (`host` on the local copy, where both sites are localhost).
+
+## 20. Welcome WhatsApp message (19 November 2026)
 
 Beside the welcome email, the customer gets one WhatsApp message through **Gallabox**, SPC's WhatsApp Business
 provider. docs/WHATSAPP.md has the details, the template to create in Gallabox and the steps to switch it on.
@@ -635,7 +707,7 @@ provider. docs/WHATSAPP.md has the details, the template to create in Gallabox a
   libphonenumber-js, with the UAE as the home country, and keeps mobile numbers only. A number it cannot read is
   dropped with a note: the webhook's answer gets `notes`, and nothing is rejected (C6 still applies to
   everything else). The content hash includes the number only when there is one, so older cards keep their hash.
-  Migration 0011.
+  `customer_phone` came with migration 0011 (§19); 0012 adds the message log and the stop list.
 - **Queue.** src/whatsapp/outbox.ts follows the email outbox:
   - one message per card, in the `whatsapp_messages` log;
   - the same retry schedule;

@@ -96,7 +96,7 @@ export const SCENARIOS: readonly Scenario[] = [
   {
     id: 'owner-object',
     label: 'Founder in an owner object',
-    note: 'The founder\'s names and email inside an "owner" object.',
+    note: 'The founder\'s names, email and mobile inside an "owner" object.',
     expect: 'created',
     build: (i) => ({
       licence_number: i.licence,
@@ -198,6 +198,7 @@ export function followUpPayload(kind: FollowUp, card: CardRow, rawBody: string |
     preferred_language: card.preferred_language,
     customer_email: card.customer_email,
     cc_email: card.cc_email,
+    // An update replaces every field, so a follow-up without the mobile would empty it (and the referrer's phone).
     customer_phone: card.customer_phone,
   };
   if (kind === 'renewal') {

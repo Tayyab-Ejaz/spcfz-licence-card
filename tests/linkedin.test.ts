@@ -13,7 +13,7 @@ import { createLinkedinRoutes } from '../src/linkedin/routes.js';
 import { DraftStore, DRAFT_TTL_MS } from '../src/linkedin/drafts.js';
 import { LinkedinError, linkedinClient } from '../src/linkedin/client.js';
 import type { LinkedinClient } from '../src/linkedin/client.js';
-import { defaultCaption, orgUrn, REFER_LINE, toLittleText } from '../src/linkedin/caption.js';
+import { defaultCaption, orgUrn, referLine, toLittleText } from '../src/linkedin/caption.js';
 import { renderPostedPage, renderProblemPage, renderReviewPage } from '../src/linkedin/view.js';
 import { createTestEnv } from './env.js';
 
@@ -213,7 +213,29 @@ describe('sign-in, review and post', () => {
     expect(done).toContain('https://www.linkedin.com/feed/update/urn:li:share:7001/');
     // The Google review request (src/page/review.ts), asked once and counted once however often the page loads.
     expect(done).toContain('LinkedIn can take a minute or two to show a new post.');
-    expect(done).toContain('How was getting your license with SPC Free Zone?');
+    expect(done).toContain('<h1>Your post is live</h1>');
+    expect(done).toContain('>View on LinkedIn<');
+    expect(done).toContain('Want to share your card on other social media accounts? Click to download it!');
+    expect(done).toContain('href="/linkedin/download"');
+    expect(done).not.toContain('Tip:'); // removed at SPC's request, 19 November 2026
+    expect(done).toContain('How was your experience with SPC Free Zone?');
+    expect(done).toContain('Leave a review on Google!');
+    // No way back to the card from here (SPC, 19 November 2026); the download line sits under its button.
+    expect(done).not.toContain('Back to my card');
+    // The order SPC gave: the LinkedIn note above View on LinkedIn, the download button with its line under it, then
+    // the review.
+    const order = ['LinkedIn can take a minute', 'id="go"', 'href="/linkedin/download"', 'Want to share your card', 'How was your experience'].map((t) => done.indexOf(t));
+    expect(order).toEqual([...order].sort((x, y) => x - y));
+
+    // "Download my card": the posted picture as a file, named as the studio names it, counted as a download.
+    const dl = await app.request('/linkedin/download', { headers: { Cookie: cookie } }, env);
+    expect(dl.status).toBe(200);
+    expect(dl.headers.get('Content-Type')).toBe('image/jpeg');
+    expect(dl.headers.get('Content-Disposition')).toBe('attachment; filename="nimbus-publishing-fze-announcement.jpg"');
+    expect(dl.headers.get('Cache-Control')).toBe('private, no-store');
+    expect(Buffer.from(await dl.arrayBuffer()).equals(Buffer.from(await (await app.request('/linkedin/image', { headers: { Cookie: cookie } }, env)).arrayBuffer()))).toBe(true);
+    await flushBackground();
+    expect((await metricsForCard(env.DB, card.id)).filter((m) => m.kind === 'download').map((m) => [m.lang, m.size, m.network, Number(m.count)])).toEqual([['en', 'square', '', 1]]);
     expect(done).toContain(`href="/c/${card.token}/review?from=linkedin"`);
     expect(done).toContain(`spc-review:${card.token}`);
     await app.request('/linkedin/done', { headers: { Cookie: cookie } }, env);
@@ -333,12 +355,18 @@ describe('sign-in, review and post', () => {
     const { cookie } = await signedIn(card);
     clock += DRAFT_TTL_MS + 1;
     expect((await app.request('/linkedin/review', { headers: { Cookie: cookie } }, env)).status).toBe(410);
+    // "Download my card" after the hour shows the timed-out page instead of saving an error as a file.
+    const dl = await app.request('/linkedin/download', { headers: { Cookie: cookie } }, env);
+    expect(dl.status).toBe(410);
+    expect(dl.headers.get('Content-Disposition')).toBeNull();
+    expect(await dl.text()).toContain('This post has timed out');
   });
 
   it('test cards post but are not counted', async () => {
     const card = await seedCard({ is_test: true });
     const { cookie, key } = await signedIn(card);
     expect((await publish(cookie, { k: key, caption: 'x' })).status).toBe(303);
+    expect((await app.request('/linkedin/download', { headers: { Cookie: cookie } }, env)).status).toBe(200);
     await flushBackground();
     expect(await metricsForCard(env.DB, card.id)).toEqual([]);
   });
@@ -364,10 +392,15 @@ describe('starting from the welcome email', () => {
     await app.request(`/linkedin/callback?code=c&state=${stateOf(go)}`, { headers: { Cookie: cookie } }, env);
     const review = await (await app.request('/linkedin/review', { headers: { Cookie: cookie } }, env)).text();
     expect(review).toContain('dir="rtl"');
-    expect(review).toContain(defaultCaption(card, 'ar').split('\n')[0]);
+    expect(review).toContain(defaultCaption(card, 'ar', env.BASE_URL).split('\n')[0]);
+    // The owner's own referral link, in the caption's language (src/referral/).
+    expect(review).toContain(`https://licensed.test/r/${card.ref_code}/ar`);
     const img = await app.request('/linkedin/image', { headers: { Cookie: cookie } }, env);
     const meta = await sharp(Buffer.from(await img.arrayBuffer())).metadata();
     expect([meta.format, meta.width, meta.height]).toEqual(['jpeg', 1080, 1080]);
+    // An Arabic post downloads under the English company name, as the studio names it, with -ar.
+    const dl = await app.request('/linkedin/download', { headers: { Cookie: cookie } }, env);
+    expect(dl.headers.get('Content-Disposition')).toBe('attachment; filename="nimbus-publishing-fze-announcement-ar.jpg"');
   }, 20_000);
 
   it('expired cards, and LinkedIn not set up, lead to the card page', async () => {
@@ -446,12 +479,13 @@ describe('caption as LinkedIn little text', () => {
     expect(toLittleText('#مشروع_جديد #SPCFreeZone', null)).toBe('{hashtag|\\#|مشروع\\_جديد} {hashtag|\\#|SPCFreeZone}');
   });
 
-  it('names the Refer a Friend page before the hashtags, as a plain link', () => {
-    const card = { company_name_en: 'Bluefin Publishing FZE', company_name_ar: null, activity_category: 'Publishing', activity_category_ar: null, founder_name_en: 'Layla' };
+  it('ends with the owner\'s referral link before the hashtags, a plain link with nothing about them in it', () => {
+    const card = { company_name_en: 'Bluefin Publishing FZE', company_name_ar: null, activity_category: 'Publishing', activity_category_ar: null, founder_name_en: 'Layla', ref_code: 'K7Q2MXA' };
     for (const lang of ['en', 'ar'] as const) {
-      const caption = defaultCaption(card, lang);
-      const url = `${lang === 'en' ? 'https://www.spcfz.ae/refer-a-friend/' : 'https://www.spcfz.ae/ar/refer-a-friend/'}?utm_campaign=Linkedin%20Milestone`;
-      expect(caption).toContain(`${REFER_LINE[lang]}\n\n#`);
+      const caption = defaultCaption(card, lang, 'https://licensed.spcfz.ae');
+      const url = lang === 'en' ? 'https://licensed.spcfz.ae/r/K7Q2MXA' : 'https://licensed.spcfz.ae/r/K7Q2MXA/ar';
+      expect(caption).toContain(`${referLine(lang, url)}\n\n#`);
+      expect(caption).not.toMatch(/utm_|refer-a-friend|Layla\/|Bluefin\//);
       expect(caption).toContain(`\n${url}\n`);
       // LinkedIn's post format reserves "_": escaped for the API, shown as "_" in the post.
       expect(toLittleText(caption, 'urn:li:organization:1')).toContain(`\n${url.replace('_', '\\_')}\n`);
@@ -467,7 +501,7 @@ describe('caption as LinkedIn little text', () => {
 
 describe('the header pill', () => {
   const review = renderReviewPage({ lang: 'en', nonce: 'n', name: 'Layla Haddad', picture: null, company: 'Cedar & Quill', caption: 'Hi', formKey: 'k', imageUrl: '/i.png', cardUrl: '/c/x' });
-  const posted = renderPostedPage({ lang: 'ar', nonce: 'n', company: 'Cedar & Quill', postUrl: 'https://www.linkedin.com/feed/update/urn:li:share:1', imageUrl: null, cardUrl: '/c/x' });
+  const posted = renderPostedPage({ lang: 'ar', nonce: 'n', company: 'Cedar & Quill', postUrl: 'https://www.linkedin.com/feed/update/urn:li:share:1', imageUrl: null, downloadUrl: '/linkedin/download' });
 
   it('takes you to the main button: Post now on review, View your post once posted', () => {
     for (const page of [review, posted]) {
@@ -476,7 +510,7 @@ describe('the header pill', () => {
       expect(page).toContain("getElementById('go')");
     }
     expect(review).toMatch(/<button class="btn primary" id="go" type="submit"/);
-    expect(posted).toMatch(/<a class="btn primary" id="go" href="https:\/\/www\.linkedin\.com\/feed/);
+    expect(posted).toMatch(/<a class="pbtn pbtn-main" id="go" href="https:\/\/www\.linkedin\.com\/feed/);
     expect(review).toMatch(/<script nonce="n">[^]*getElementById\('caption'\)/); // the review script still runs
   });
 

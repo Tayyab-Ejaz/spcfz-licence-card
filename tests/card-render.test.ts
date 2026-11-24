@@ -1,7 +1,7 @@
 // Which browsers make the card image from the Safari-safe copy (client/card-render.js needsSafeCopy).
 import { describe, expect, it } from 'vitest';
 // @ts-expect-error plain JavaScript module without type declarations
-import { needsSafeCopy } from '../client/card-render.js';
+import { isFlat, needsSafeCopy } from '../client/card-render.js';
 
 const UA = {
   iphoneSafari: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1',
@@ -24,5 +24,20 @@ describe('needsSafeCopy', () => {
     expect(needsSafeCopy(UA.macChrome, 'MacIntel', 0)).toBe(false);
     expect(needsSafeCopy(UA.android, 'Linux armv8l', 5)).toBe(false);
     expect(needsSafeCopy(UA.windowsEdge, 'Win32', 0)).toBe(false);
+  });
+});
+
+describe('isFlat', () => {
+  // A 4 x 4 RGBA image: the left half one colour, the right half a checkerboard.
+  const data = new Uint8ClampedArray(4 * 4 * 4);
+  for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) {
+    const v = x < 2 ? 214 : (x + y) % 2 ? 30 : 230;
+    data.set([v, v, v, 255], (y * 4 + x) * 4);
+  }
+  it('sees an empty frame (one colour) as flat', () => {
+    expect(isFlat(data, 4, { x: 0, y: 0, w: 2, h: 4 })).toBe(true);
+  });
+  it('sees a picture as not flat', () => {
+    expect(isFlat(data, 4, { x: 2, y: 0, w: 2, h: 4 })).toBe(false);
   });
 });
