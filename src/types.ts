@@ -121,9 +121,8 @@ export interface Env {
   GALLABOX_ACCOUNT_ID?: string;
   /** Gallabox's API, default https://server.gallabox.com/devapi. */
   GALLABOX_API_URL?: string;
-  /** The approved template names in Gallabox: English, and Arabic (Arabic customers get English when it is not set). */
+  /** The approved template's name in Gallabox (default licence_card_welcome). English only: every customer gets it. */
   WHATSAPP_TEMPLATE_EN?: string;
-  WHATSAPP_TEMPLATE_AR?: string;
   /** image (default): the template has an image header and gets the customer's card picture. none: it has no header. */
   WHATSAPP_HEADER?: 'image' | 'none';
 

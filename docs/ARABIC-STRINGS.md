@@ -203,18 +203,6 @@ Headlines on the card (tools/build-studio.mjs, CONTENT_LOGIC), and the email pic
 | 3 | أصبح الأمر رسمياً! | It's official! |
 | 4 | أبوابنا مفتوحة الآن. | Now open for business. |
 
-## Welcome WhatsApp message (src/whatsapp/message.ts, TEMPLATE_TEXT; 19 November 2026)
-
-Claude's draft. The English follows SPC's welcome email copy. Both are pasted into Gallabox as the two templates
-(docs/WHATSAPP.md), where Meta approves them.
-
-| Key | Arabic | English |
-|---|---|---|
-| body | مرحباً {{name}}، تهانينا! أصبحت {{company}} مرخّصة رسمياً في المنطقة الحرة لمدينة الشارقة للنشر. صمّمنا لك بطاقة إعلان مخصصة لتساعدك على مشاركة الخبر. أضف صورتك، ثم شاركها على لينكدإن أو نزّلها. | Hi {{name}}, congratulations! {{company}} is officially licensed at SPC Free Zone. We’ve built a personalised announcement card to help you break the news. Add your photo, then share it on LinkedIn or download it. |
-| footer | المنطقة الحرة لمدينة الشارقة للنشر | SPC Free Zone |
-| button | افتح بطاقتي | Open my card |
-| no founder name ({{name}}) | بك («مرحباً بك،») | there ("Hi there,") |
-
 ## Open wording questions
 
 1. The official Arabic name of SPC Free Zone as used on the live site should

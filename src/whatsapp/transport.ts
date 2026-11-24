@@ -113,7 +113,7 @@ export function whatsappTransportFromEnv(env: Env, fetchImpl: typeof fetch = fet
         const id = `${new Date().toISOString().replace(/[:.]/g, '-')}-${m.to.replace(/\D/g, '')}`;
         const body = gallaboxTemplateBody(m.message, { channelId: env.GALLABOX_CHANNEL_ID || '(GALLABOX_CHANNEL_ID)', phone: m.to, name: m.name });
         writeFileSync(path.join(dir, `${id}.json`), `${JSON.stringify(body, null, 2)}\n`);
-        writeFileSync(path.join(dir, `${id}.txt`), `To: ${m.to} (${m.name})\nTemplate: ${m.message.template}\n${m.message.imageUrl ? `Picture: ${m.message.imageUrl}\n` : ''}\n${m.message.text}\n\n[ ${TEMPLATE_TEXT[m.message.lang].button} ] ${m.message.studioUrl}\n`);
+        writeFileSync(path.join(dir, `${id}.txt`), `To: ${m.to} (${m.name})\nTemplate: ${m.message.template}\n${m.message.imageUrl ? `Picture: ${m.message.imageUrl}\n` : ''}\n${m.message.text}\n\n[ ${TEMPLATE_TEXT.button} ] ${m.message.studioUrl}\n`);
         return { id: `file:${id}` };
       },
       async delivery() {

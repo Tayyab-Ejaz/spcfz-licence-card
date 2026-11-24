@@ -174,10 +174,9 @@ export function readConfig(source: ConfigSource, envFile: string | null = null):
   if (gbUrl !== undefined && !/^https:\/\//.test(gbUrl) && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(gbUrl)) errors.push('GALLABOX_API_URL must be an https:// address');
   const waHeader = text(source, 'WHATSAPP_HEADER')?.toLowerCase();
   if (waHeader !== undefined && waHeader !== 'image' && waHeader !== 'none') errors.push('WHATSAPP_HEADER must be image or none');
-  for (const k of ['WHATSAPP_TEMPLATE_EN', 'WHATSAPP_TEMPLATE_AR'] as const) {
-    const t = text(source, k);
-    if (t !== undefined && !/^[a-z0-9_]{1,512}$/.test(t)) errors.push(`${k} must be a WhatsApp template name: lower-case letters, digits and underscores`);
-  }
+  const waTemplate = text(source, 'WHATSAPP_TEMPLATE_EN');
+  if (waTemplate !== undefined && !/^[a-z0-9_]{1,512}$/.test(waTemplate)) errors.push('WHATSAPP_TEMPLATE_EN must be a WhatsApp template name: lower-case letters, digits and underscores');
+  if (text(source, 'WHATSAPP_TEMPLATE_AR') !== undefined) warnings.push('WHATSAPP_TEMPLATE_AR is ignored: the WhatsApp message is English for every customer (SPC, 24 November 2026)');
   if (waMode === 'gallabox' && !text(source, 'GALLABOX_ACCOUNT_ID')) warnings.push('GALLABOX_ACCOUNT_ID is not set: WhatsApp messages are sent, but whether they were delivered and read is not read back');
   if (waMode === 'off') warnings.push('WhatsApp is off (no GALLABOX_API_KEY): welcome WhatsApp messages are queued in the admin but not sent');
   if (waMode === 'file') warnings.push('WHATSAPP_TRANSPORT=file: WhatsApp messages are written to DATA_DIR/whatsapp-outbox');
@@ -244,8 +243,7 @@ export function readConfig(source: ConfigSource, envFile: string | null = null):
     GALLABOX_CHANNEL_ID: gbChannel,
     GALLABOX_ACCOUNT_ID: text(source, 'GALLABOX_ACCOUNT_ID'),
     GALLABOX_API_URL: gbUrl,
-    WHATSAPP_TEMPLATE_EN: text(source, 'WHATSAPP_TEMPLATE_EN'),
-    WHATSAPP_TEMPLATE_AR: text(source, 'WHATSAPP_TEMPLATE_AR'),
+    WHATSAPP_TEMPLATE_EN: waTemplate,
     WHATSAPP_HEADER: waHeader === 'none' ? 'none' : waHeader === 'image' ? 'image' : undefined,
     REFERRER_API_KEY: referKey,
     REFER_LANDING_EN: landing.REFER_LANDING_EN,

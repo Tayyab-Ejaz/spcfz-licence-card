@@ -718,7 +718,7 @@ provider. docs/WHATSAPP.md has the details, the template to create in Gallabox a
   Messages the ERP triggers (actor null) wait for 09:00–21:00 Dubai time; staff actions go out at once.
 - **Sending.** src/whatsapp/transport.ts posts Gallabox's template message (`POST /devapi/messages/whatsapp`,
   headers apiKey/apiSecret). The request carries:
-  - the template name (English, or Arabic when `WHATSAPP_TEMPLATE_AR` is set);
+  - the template name (`WHATSAPP_TEMPLATE_EN`; English for every customer, SPC's decision of 24 November 2026);
   - the body values `name` and `company`;
   - the card picture as the image header;
   - the button's URL suffix `<token>?lang=xx&via=whatsapp`.
@@ -731,7 +731,7 @@ provider. docs/WHATSAPP.md has the details, the template to create in Gallabox a
 - **Replies** stay in Gallabox's inbox, where the team works. The service never reads them.
 - **Admin.**
   - The card page: the mobile row, the message log with WhatsApp's status, Send it again, Stop / Allow, and a
-    preview in both languages.
+    preview.
   - Create and CSV import take `customer_phone`, with a "Send the welcome WhatsApp message" box.
   - Settings: the test numbers and the WhatsApp status.
   - Test flow: a WhatsApp step with a pill.

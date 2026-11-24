@@ -457,11 +457,10 @@ ${card.customer_email ? h`<form method="post" action="/admin/cards/${card.id}/em
           : wa.status === 'skipped' ? ['off', wa.last_error?.startsWith('test card') ? 'Not a test number: skipped' : 'Skipped']
             : ['bad', 'Failed'];
   const s4 = step(4, 'The welcome WhatsApp message', waState[0], waState[1], h`
-${card.customer_phone ? h`<p>To <b dir="ltr">${formatPhone(card.customer_phone)}</b>, in ${card.preferred_language === 'ar' && i.env.WHATSAPP_TEMPLATE_AR ? 'Arabic' : 'English'}.</p>` : h`<p class="muted">Add customer_phone to the payload (your number from Settings → WhatsApp test numbers) to test the message.</p>`}
+${card.customer_phone ? h`<p>To <b dir="ltr">${formatPhone(card.customer_phone)}</b>, in English.</p>` : h`<p class="muted">Add customer_phone to the payload (your number from Settings → WhatsApp test numbers) to test the message.</p>`}
 ${i.whatsapp.length ? whatsappTable(i.whatsapp.filter((m) => m.kind === 'welcome')) : EMPTY}
 ${wa && wa.status === 'sent' && i.status.whatsapp === 'file' ? h`<p class="muted">Local copy: the message is a file in DATA_DIR/whatsapp-outbox.</p>` : EMPTY}
-<div class="actions"><a class="btn secondary" href="/admin/cards/${card.id}/whatsapp-preview?lang=en" target="_blank" rel="noopener">Preview the message</a>
-<a class="btn secondary" href="/admin/cards/${card.id}/whatsapp-preview?lang=ar" target="_blank" rel="noopener">Arabic message</a>
+<div class="actions"><a class="btn secondary" href="/admin/cards/${card.id}/whatsapp-preview" target="_blank" rel="noopener">Preview the message</a>
 ${card.customer_phone ? h`<form method="post" action="/admin/cards/${card.id}/whatsapp">${csrfField(i.token)}<input type="hidden" name="back" value="/admin/test-flow/runs/${ev.id}"><button class="btn secondary" type="submit">Send it again</button></form>` : EMPTY}</div>`);
 
   // 5. LinkedIn

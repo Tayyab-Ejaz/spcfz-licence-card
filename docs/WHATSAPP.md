@@ -4,6 +4,9 @@
 mobile number, the customer gets one WhatsApp message beside the welcome email: their card picture, a short
 congratulation and an **Open my card** button that opens their studio.
 
+**English only** (SPC, 24 November 2026): every customer gets the English message, whatever their preferred
+language. The welcome email still follows the customer's language.
+
 ## How it works
 
 - **Trigger:** the same moments as the welcome email (src/intake/accept.ts). That covers the ERP webhook,
@@ -36,19 +39,18 @@ congratulation and an **Open my card** button that opens their studio.
 ## The template (create it in Gallabox)
 
 WhatsApp only lets a business start a chat with a template Meta has approved. The words live in Gallabox; the
-service sends the template's name and fills in its blanks. Create two templates: English, and Arabic in the same
-shape.
+service sends the template's name and fills in its blanks. Create one template, in English:
 
-| Part | English: `licence_card_welcome` | Arabic: `licence_card_welcome_ar` |
-|---|---|---|
-| Category | Utility | Utility |
-| Language | English | Arabic |
-| Header | Image (for the sample, any card picture) | Image |
-| Body | see below | see below |
-| Footer | SPC Free Zone | المنطقة الحرة لمدينة الشارقة للنشر |
-| Button | Visit website, "Open my card", dynamic URL `https://licensed.spcfz.ae/c/{{1}}` | "افتح بطاقتي", the same URL |
+| Part | `licence_card_welcome` |
+|---|---|
+| Category | Utility |
+| Language | English |
+| Header | Image (for the sample, any card picture) |
+| Body | see below |
+| Footer | SPC Free Zone |
+| Button | Visit website, "Open my card", dynamic URL `https://licensed.spcfz.ae/c/{{1}}` |
 
-Body, English (Claude's draft, made from SPC's welcome email copy):
+Body (Claude's draft, made from SPC's welcome email copy):
 
 ```
 Hi {{name}}, congratulations! {{company}} is officially licensed at SPC Free Zone.
@@ -56,26 +58,17 @@ Hi {{name}}, congratulations! {{company}} is officially licensed at SPC Free Zon
 We’ve built a personalised announcement card to help you break the news. Add your photo, then share it on LinkedIn or download it.
 ```
 
-Body, Arabic (Claude's draft, for review):
-
-```
-مرحباً {{name}}، تهانينا! أصبحت {{company}} مرخّصة رسمياً في المنطقة الحرة لمدينة الشارقة للنشر.
-
-صمّمنا لك بطاقة إعلان مخصصة لتساعدك على مشاركة الخبر. أضف صورتك، ثم شاركها على لينكدإن أو نزّلها.
-```
-
 What the service fills in:
 
-- `{{name}}` is the founder's first name. Without a founder it is "there" in English ("Hi there,") and "بك" in
-  Arabic ("مرحباً بك،").
-- `{{company}}` is the company name; the Arabic template uses the Arabic name when there is one.
+- `{{name}}` is the founder's first name (English). Without one it is "there" ("Hi there,").
+- `{{company}}` is the company's English name.
 - The button's `{{1}}` is the customer's own part of the link, `<token>?lang=en&via=whatsapp`.
 - The image is the same card picture the welcome email shows (`/c/<token>/card/…jpg`).
 
-The admin's **Preview** buttons show the message with these words. If SPC changes the words in Gallabox, change
+The admin's **Preview** button shows the message with these words. If SPC changes the words in Gallabox, change
 `TEMPLATE_TEXT` in src/whatsapp/message.ts too, so the preview stays true.
 
-Notes for whoever creates the templates:
+Notes for whoever creates the template:
 
 - **Name the variables `name` and `company`.** If Gallabox only offers numbered variables ({{1}}, {{2}}), use
   {{1}} for the name and {{2}} for the company and tell the developer. It is a one-line change in
@@ -83,9 +76,7 @@ Notes for whoever creates the templates:
 - **Utility, not Marketing.** Meta decides the category from the wording. Marketing costs about three times as
   much, and Meta limits how many marketing messages each person receives, so some would not arrive. Keep the
   wording about the licence and the card. If Meta files it as Marketing anyway, it still works.
-- **Template names** are free to choose. If they differ from the defaults, set `WHATSAPP_TEMPLATE_EN` /
-  `WHATSAPP_TEMPLATE_AR`.
-- **Arabic customers get the English template until `WHATSAPP_TEMPLATE_AR` is set.**
+- **The template name** is free to choose. If it is not `licence_card_welcome`, set `WHATSAPP_TEMPLATE_EN`.
 - **No image header?** Set `WHATSAPP_HEADER=none`.
 
 ## Turn it on (production)
@@ -93,9 +84,16 @@ Notes for whoever creates the templates:
 Each server write below needs the owner's yes at the time (CLAUDE.md). The secrets are typed by the owner, never
 by Claude.
 
-1. In Gallabox, copy the API key and API secret (Settings → API keys, app.gallabox.com/apikey). Also copy the
-   **channel id** of the WhatsApp number to send from, and the **account id** (both in Gallabox's settings).
-2. Create and get approval for the templates above.
+1. In Gallabox, create an API key (Settings → API keys, app.gallabox.com/apikey) and copy the key and the
+   secret. Give it only the permissions the service uses (Gallabox asks for them when the key is made):
+   - **send WhatsApp messages**: `POST /devapi/messages/whatsapp`, the template message;
+   - **read messages / message status**: `GET /devapi/accounts/<account id>/messages/<id>/status`, whether it was
+     delivered and read.
+
+   Nothing else: no contacts, users, conversations, templates, webhooks or billing. Also copy the **channel id**
+   of the marketing team's WhatsApp number and the **account id** (each in its own settings page, with a Copy
+   button).
+2. Create the template above and get it approved.
 3. Add to `/opt/spcfz-licence-card/licence-card.env`, typing the secret yourself:
 
    ```
@@ -105,7 +103,6 @@ by Claude.
    GALLABOX_CHANNEL_ID=<channel id>
    GALLABOX_ACCOUNT_ID=<account id>
    WHATSAPP_TEMPLATE_EN=licence_card_welcome
-   WHATSAPP_TEMPLATE_AR=licence_card_welcome_ar
    ```
 
 4. Recreate the container (docs/RUNBOOK.md, Secrets). The service refuses to start if the key, secret or channel
@@ -118,11 +115,10 @@ To switch it off again: `WHATSAPP_TRANSPORT=off` and recreate the container. Mes
 
 ## Before real customers get it
 
-- **Consent.** Meta requires that a customer agreed to hear from SPC on WhatsApp. Check that the licence
-  application (or the ERP) records it. If the ERP holds a yes/no per customer, it can send it; adding a field that
-  holds the message back is a small change.
-- **The ERP field.** The mobile number arrives only once the ERP sends it (docs/ERP-WEBHOOK.md, version 0.3).
-  The ERP integration is on hold.
+- **Consent.** Meta requires that a customer agreed to hear from SPC on WhatsApp. SPC agreed to this on
+  24 November 2026 and covers it on its side; the service does not check it.
+- **The ERP field.** The mobile number comes from the ERP (SPC, 24 November 2026; docs/ERP-WEBHOOK.md,
+  version 0.3). Until the ERP sends it, only cards staff create with a mobile get the message.
 
 ## Troubleshooting
 

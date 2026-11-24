@@ -206,7 +206,7 @@ describe('who gets it, and when', () => {
 describe('the message', () => {
   it('fills the template from the card, with the card picture and a per-customer button', async () => {
     const card = await seedCard({ fields: { founder_name_en: '  Layla\nHaddad ', company_name_en: 'Nimbus\tPublishing   FZE' } });
-    const m = welcomeWhatsapp(card, { baseUrl: 'https://licensed.test/', lang: 'en', templates: {}, header: 'image' });
+    const m = welcomeWhatsapp(card, { baseUrl: 'https://licensed.test/', header: 'image' });
     expect(m.template).toBe('licence_card_welcome');
     expect(m.values).toEqual({ name: 'Layla', company: 'Nimbus Publishing FZE' });
     expect(m.buttonSuffix).toBe(`${card.token}?lang=en&via=whatsapp`);
@@ -214,19 +214,25 @@ describe('the message', () => {
     expect(m.text).toContain('Hi Layla, congratulations! Nimbus Publishing FZE is officially licensed at SPC Free Zone.');
   });
 
-  it('Arabic customers get the Arabic template only once it exists; no founder name reads naturally', async () => {
-    const card = await seedCard({ fields: { preferred_language: 'ar', founder_name_en: null, founder_name_ar: null } });
-    const english = welcomeWhatsapp(card, { baseUrl: 'https://licensed.test', lang: 'ar', templates: { en: 'welcome_en' }, header: 'none' });
-    expect([english.lang, english.template, english.values.name, english.imageUrl]).toEqual(['en', 'welcome_en', 'there', null]);
-    const arabic = welcomeWhatsapp(card, { baseUrl: 'https://licensed.test', lang: 'ar', templates: { en: 'welcome_en', ar: 'welcome_ar' }, header: 'image' });
-    expect([arabic.lang, arabic.template, arabic.values.company, arabic.values.name]).toEqual(['ar', 'welcome_ar', 'نيمبوس للنشر', 'بك']);
-    expect(arabic.text.startsWith('مرحباً بك، تهانينا!')).toBe(true);
-    expect(arabic.imageUrl).toMatch(/-ar\.jpg$/);
+  it('is English for every customer, Arabic-speaking ones included (SPC, 24 November 2026); no founder name reads naturally', async () => {
+    const card = await seedCard({ fields: { preferred_language: 'ar', founder_name_en: null, founder_name_ar: 'ليلى حداد' } });
+    const m = welcomeWhatsapp(card, { baseUrl: 'https://licensed.test', template: 'welcome_en', header: 'image' });
+    expect([m.template, m.values.name, m.values.company]).toEqual(['welcome_en', 'there', 'Nimbus Publishing FZE']);
+    expect(m.text.startsWith('Hi there, congratulations!')).toBe(true);
+    expect(m.buttonSuffix).toBe(`${card.token}?lang=en&via=whatsapp`);
+    expect(m.imageUrl).not.toMatch(/-ar\.jpg$/);
+    expect(welcomeWhatsapp(card, { baseUrl: 'https://licensed.test', header: 'none' }).imageUrl).toBeNull();
+  });
+
+  it('queues and logs the message as English, whatever the customer\'s language', async () => {
+    const card = await seedCard({ fields: { preferred_language: 'ar' } });
+    expect(await queueWelcomeWhatsapp(env, card, { actor: ACTOR })).toBe('queued');
+    expect((await whatsappForCard(env.DB, card.id))[0]?.lang).toBe('en');
   });
 
   it("builds Gallabox's template request: digits-only phone, named values, image header, URL button", async () => {
     const card = await seedCard();
-    const m = welcomeWhatsapp(card, { baseUrl: 'https://licensed.test', lang: 'en', templates: {}, header: 'image' });
+    const m = welcomeWhatsapp(card, { baseUrl: 'https://licensed.test', header: 'image' });
     expect(gallaboxTemplateBody(m, { channelId: 'ch1', phone: LAYLA, name: 'Layla Haddad' })).toEqual({
       channelId: 'ch1',
       channelType: 'whatsapp',
@@ -255,7 +261,7 @@ describe('Gallabox', () => {
     }) as unknown as typeof fetch;
     const t = whatsappTransportFromEnv(gbEnv, fetchImpl);
     const card = await seedCard();
-    const message = welcomeWhatsapp(card, { baseUrl: env.BASE_URL, lang: 'en', templates: {}, header: 'image' });
+    const message = welcomeWhatsapp(card, { baseUrl: env.BASE_URL, header: 'image' });
     expect(await t?.send({ to: LAYLA, name: 'Layla Haddad', message })).toEqual({ id: '6690f72bc78c4af10bf384ff' });
     expect(calls[0]?.url).toBe('https://server.gallabox.com/devapi/messages/whatsapp');
     expect(calls[0]?.init.headers).toMatchObject({ apiKey: 'key-123', apiSecret: 'secret-456' });
@@ -266,7 +272,7 @@ describe('Gallabox', () => {
     const fetchImpl = (async () => new Response(JSON.stringify({ message: 'Template not found' }), { status: 400 })) as unknown as typeof fetch;
     const t = whatsappTransportFromEnv(gbEnv, fetchImpl);
     const card = await seedCard();
-    const message = welcomeWhatsapp(card, { baseUrl: env.BASE_URL, lang: 'en', templates: {}, header: 'image' });
+    const message = welcomeWhatsapp(card, { baseUrl: env.BASE_URL, header: 'image' });
     const err = await t?.send({ to: LAYLA, name: 'x', message }).catch((e: unknown) => e);
     expect(err).toBeInstanceOf(GallaboxError);
     expect(String((err as Error).message)).toBe('Gallabox answered 400: Template not found');
@@ -393,15 +399,13 @@ describe('admin', () => {
     expect((await post(`/admin/cards/${none.id}/whatsapp`)).headers.get('Location')).toBe(`/admin/cards/${none.id}?m=wa-none`);
   });
 
-  it('previews the message in either language', async () => {
-    const card = await seedCard();
-    const en = await (await get(`/admin/cards/${card.id}/whatsapp-preview?lang=en`)).text();
-    expect(en).toContain('Hi Layla, congratulations!');
-    expect(en).toContain('Open my card');
-    const ar = await (await get(`/admin/cards/${card.id}/whatsapp-preview?lang=ar`)).text();
-    expect(ar).toContain('dir="rtl"');
-    expect(ar).toContain('افتح بطاقتي');
-    expect(ar).toContain('Arabic customers get the English message for now');
+  it('previews the message, in English even for an Arabic-speaking customer', async () => {
+    const card = await seedCard({ fields: { preferred_language: 'ar' } });
+    const page = await (await get(`/admin/cards/${card.id}/whatsapp-preview?lang=ar`)).text();
+    expect(page).toContain('Hi Layla, congratulations!');
+    expect(page).toContain('Open my card');
+    expect(page).toContain('Every customer gets this English message.');
+    expect(page).not.toContain('dir="rtl"');
   });
 
   it('keeps the WhatsApp test numbers in Settings, and refuses ones it cannot read', async () => {

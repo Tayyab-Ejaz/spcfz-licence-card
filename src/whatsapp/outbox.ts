@@ -47,7 +47,7 @@ export async function queueWelcomeWhatsapp(env: Env, card: CardRow, o: { actor: 
   if (!card.customer_phone) return 'no-phone';
   if (card.status === 'expired' || isPast(card.expires_at, nowDate.getTime())) return 'expired';
   if (!o.force && (await hasActiveWhatsapp(env.DB, card.id, 'welcome'))) return 'already-sent';
-  const base = { card_id: card.id, kind: 'welcome' as const, to_phone: card.customer_phone, lang: card.preferred_language, actor: o.actor, now };
+  const base = { card_id: card.id, kind: 'welcome' as const, to_phone: card.customer_phone, lang: 'en', actor: o.actor, now };
   if (await whatsappSuppression(env.DB, card.customer_phone)) {
     await insertWhatsapp(env.DB, { ...base, status: 'skipped', last_error: 'stopped: staff stopped WhatsApp messages to this number' });
     return 'stopped';
@@ -79,14 +79,13 @@ export async function processWhatsapp(env: Env, transport: WhatsappTransport | n
   const summary: WhatsappSummary = { sent: 0, retried: 0, failed: 0, skipped: 0, checked: 0 };
   if (!transport) return summary;
   const nowStr = nowIso(now);
-  const templates = { en: env.WHATSAPP_TEMPLATE_EN, ar: env.WHATSAPP_TEMPLATE_AR };
   const header = env.WHATSAPP_HEADER === 'none' ? 'none' : 'image';
   for (const m of await dueWhatsapp(env.DB, nowStr, 10)) {
     const card = await getCardById(env.DB, m.card_id);
     if (!card) { await markWhatsappSkipped(env.DB, m.id, 'card no longer exists'); summary.skipped++; continue; }
     if (card.status === 'expired' || isPast(card.expires_at, now.getTime())) { await markWhatsappSkipped(env.DB, m.id, 'card expired before sending'); summary.skipped++; continue; }
     if (await whatsappSuppression(env.DB, m.to_phone)) { await markWhatsappSkipped(env.DB, m.id, 'stopped: staff stopped WhatsApp messages to this number'); summary.skipped++; continue; }
-    const message = welcomeWhatsapp(card, { baseUrl: env.BASE_URL, lang: m.lang === 'ar' ? 'ar' : 'en', templates, header });
+    const message = welcomeWhatsapp(card, { baseUrl: env.BASE_URL, template: env.WHATSAPP_TEMPLATE_EN, header });
     try {
       const sent = await transport.send({ to: m.to_phone, name: recipientName(card), message });
       const checkAt = transport.mode === 'gallabox' && env.GALLABOX_ACCOUNT_ID ? nextCheck(nowStr, 0, now) : null;

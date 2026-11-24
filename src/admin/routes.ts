@@ -398,7 +398,7 @@ ${kv([
   ['Test cards may email', c.env.MAIL_TEST_ALLOWLIST || 'spcfz.ae (default)'],
   ['Emails so far', h`${counts.sent} sent, ${counts.queued} queued, ${counts.failed} failed, ${counts.skipped} skipped`],
   ['WhatsApp sending', waMode === 'gallabox'
-    ? h`<span class="badge ready">on</span> through Gallabox, template ${c.env.WHATSAPP_TEMPLATE_EN || 'licence_card_welcome'}${c.env.WHATSAPP_TEMPLATE_AR ? ` / ${c.env.WHATSAPP_TEMPLATE_AR}` : ' (Arabic customers get English: no WHATSAPP_TEMPLATE_AR)'}${c.env.GALLABOX_ACCOUNT_ID ? '' : '; delivery is not read back (no GALLABOX_ACCOUNT_ID)'}`
+    ? h`<span class="badge ready">on</span> through Gallabox, template ${c.env.WHATSAPP_TEMPLATE_EN || 'licence_card_welcome'}, in English for every customer${c.env.GALLABOX_ACCOUNT_ID ? '' : '; delivery is not read back (no GALLABOX_ACCOUNT_ID)'}`
     : waMode === 'file' ? h`<span class="badge pending">files</span> written to DATA_DIR/whatsapp-outbox (local copy)` : h`<span class="badge expired">off</span> messages are queued but not sent until Gallabox is set up`],
   ['WhatsApp so far', h`${wa.sent} sent (${wa.delivered} delivered, ${wa.read} read, ${wa.undelivered} not delivered), ${wa.queued} queued, ${wa.failed} failed, ${wa.skipped} skipped`],
   ['Post to LinkedIn', c.env.LINKEDIN_FAKE === '1' ? h`<span class="badge pending">pretend</span> local copy: posts go to DATA_DIR/linkedin-outbox` : linkedinEnabled(c.env) ? h`<span class="badge ready">on</span>${c.env.LINKEDIN_ORG_URN ? ' with an @SPC Free Zone mention' : ' (no SPC page id: @SPC Free Zone stays plain text)'}` : h`<span class="badge expired">off</span> the button is hidden until the LinkedIn app is set up`],
@@ -735,9 +735,8 @@ ${eventsTable(events.rows)}`;
   app.get('/cards/:id/whatsapp-preview', async (c) => {
     const card = await getCardById(c.env.DB, c.req.param('id'));
     if (!card) return notFoundPage(c, 'card');
-    const lang = c.req.query('lang') === 'ar' ? 'ar' : 'en';
     c.header('Content-Security-Policy', "default-src 'none'; img-src 'self' https: http://localhost:* data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'");
-    return c.html(whatsappPreviewPage(c.env, card, lang));
+    return c.html(whatsappPreviewPage(c.env, card));
   });
 
   // The welcome email exactly as the customer gets it (images load from BASE_URL).

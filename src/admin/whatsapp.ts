@@ -1,8 +1,8 @@
 // Admin, the welcome WhatsApp message (19 November 2026): the card page's section, the preview of the message as the
 // customer sees it, and the settings lines. The routes are in ./routes.ts.
-import type { CardRow, Env, Lang } from '../types.js';
+import type { CardRow, Env } from '../types.js';
 import type { WhatsappRow, WhatsappSuppressionRow } from '../db/whatsapp.js';
-import { DEFAULT_TEMPLATE, TEMPLATE_TEXT, welcomeWhatsapp } from '../whatsapp/message.js';
+import { TEMPLATE_TEXT, welcomeWhatsapp } from '../whatsapp/message.js';
 import { formatPhone } from '../whatsapp/phone.js';
 import type { RawHtml } from '../util/html.js';
 import { EMPTY, actionForm, fmtDateTime, h, table } from './layout.js';
@@ -70,8 +70,7 @@ ${card.customer_phone
     ? h`${actionForm(`/admin/cards/${card.id}/whatsapp`, already ? 'Send it again' : 'Send WhatsApp message', token, 'btn small')}
 ${stop ? actionForm(`/admin/cards/${card.id}/whatsapp-allow`, 'Allow WhatsApp again', token, 'btn small secondary') : actionForm(`/admin/cards/${card.id}/whatsapp-stop`, 'Stop WhatsApp to this number', token, 'btn small secondary')}`
     : h`<span class="muted">No mobile number on this card.</span>`}
-<a class="btn small secondary" href="/admin/cards/${card.id}/whatsapp-preview?lang=en" target="_blank" rel="noopener">Preview (English)</a>
-<a class="btn small secondary" href="/admin/cards/${card.id}/whatsapp-preview?lang=ar" target="_blank" rel="noopener">Preview (Arabic)</a>
+<a class="btn small secondary" href="/admin/cards/${card.id}/whatsapp-preview" target="_blank" rel="noopener">Preview</a>
 </div>`;
 }
 
@@ -93,24 +92,19 @@ body{margin:0;background:#d1d7db;font-family:-apple-system,'Segoe UI',Helvetica,
 .time{padding:0 9px 6px;font-size:11px;color:#667781;text-align:end}
 .btn{display:block;border-top:1px solid #e9edef;text-align:center;padding:10px 8px;color:#027eb5;font-size:14.2px;text-decoration:none;font-weight:500}
 .btn:before{content:'↗ '}
-[dir=rtl] .btn:before{content:'↖ '}
 `;
 
 /** A WhatsApp-style picture of the message, from the draft wording (the template approved in Gallabox is what goes out). */
-export function whatsappPreviewPage(env: Env, card: CardRow, lang: Lang): string {
-  // The Arabic preview shows the Arabic wording even before WHATSAPP_TEMPLATE_AR is set (the note says so).
-  const templates = { en: env.WHATSAPP_TEMPLATE_EN, ar: env.WHATSAPP_TEMPLATE_AR || DEFAULT_TEMPLATE.ar };
-  const m = welcomeWhatsapp(card, { baseUrl: env.BASE_URL, lang, templates, header: env.WHATSAPP_HEADER === 'none' ? 'none' : 'image' });
-  const t = TEMPLATE_TEXT[m.lang];
+export function whatsappPreviewPage(env: Env, card: CardRow): string {
+  const m = welcomeWhatsapp(card, { baseUrl: env.BASE_URL, template: env.WHATSAPP_TEMPLATE_EN, header: env.WHATSAPP_HEADER === 'none' ? 'none' : 'image' });
+  const t = TEMPLATE_TEXT;
   const body = m.text.slice(0, m.text.lastIndexOf(t.footer)).trim();
   const base = env.BASE_URL.replace(/\/+$/, '');
-  const dir = m.lang === 'ar' ? 'rtl' : 'ltr';
-  const noArabic = lang === 'ar' && !env.WHATSAPP_TEMPLATE_AR;
   const dubai = new Date(Date.now() + 4 * 3600_000).toISOString().slice(11, 16);
-  return `<!doctype html><html lang="${m.lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>WhatsApp preview · ${h`${card.company_name_en}`}</title><style>${PREVIEW_CSS}</style></head><body>
-${h`<div class="note"><b>Preview of the draft wording.</b> WhatsApp sends the template approved in Gallabox (<b>${m.template}</b>), so the words there are what the customer reads. To ${card.customer_phone ? formatPhone(card.customer_phone) : 'no number on this card'}.${noArabic ? ' WHATSAPP_TEMPLATE_AR is not set, so Arabic customers get the English message for now; this is how the Arabic one will look.' : ''}</div>`}
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>WhatsApp preview · ${h`${card.company_name_en}`}</title><style>${PREVIEW_CSS}</style></head><body>
+${h`<div class="note"><b>Preview of the draft wording.</b> WhatsApp sends the template approved in Gallabox (<b>${m.template}</b>), so the words there are what the customer reads. To ${card.customer_phone ? formatPhone(card.customer_phone) : 'no number on this card'}. Every customer gets this English message.</div>`}
 <div class="phone"><div class="bar"><img src="${base}/apple-touch-icon.png" alt=""><div>SPC Free Zone<small>Business account</small></div></div>
-<div class="chat" dir="${dir}"><div class="bubble">
+<div class="chat"><div class="bubble">
 ${m.imageUrl ? h`<div class="pic"><img src="${m.imageUrl}" alt="The customer's card picture"></div>` : ''}
 ${h`<div class="text">${body}</div><div class="foot">${t.footer}</div><div class="time">${dubai}</div><a class="btn" href="${m.studioUrl}" target="_blank" rel="noopener">${t.button}</a>`}
 </div></div></div>

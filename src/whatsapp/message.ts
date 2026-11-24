@@ -7,34 +7,28 @@
 //   footer  SPC Free Zone
 //   button  a website button, "Open my card", URL https://licensed.spcfz.ae/c/{{1}} (the part after /c/ is per customer)
 //
-// TEMPLATE_TEXT is Claude's draft (English from SPC's welcome email copy; Arabic for review). It is what the admin's
-// preview shows and what is pasted into Gallabox; once Meta approves a template, the approved words are what goes out.
-import type { CardRow, Lang } from '../types.js';
+// TEMPLATE_TEXT is Claude's draft, from SPC's welcome email copy. It is what the admin's preview shows and what is pasted
+// into Gallabox; once Meta approves the template, the approved words are what goes out.
+//
+// English only: SPC decided on 24 November 2026 that every customer gets the English message, whatever their preferred
+// language (the welcome email still follows it). The button opens the studio in English to match.
+import type { CardRow } from '../types.js';
 import { cardImagePath } from '../page/studio.js';
 import { phoneDigits } from './phone.js';
 
 export const TEMPLATE_TEXT = {
-  en: {
-    body: 'Hi {{name}}, congratulations! {{company}} is officially licensed at SPC Free Zone.\n\nWe’ve built a personalised announcement card to help you break the news. Add your photo, then share it on LinkedIn or download it.',
-    footer: 'SPC Free Zone',
-    button: 'Open my card',
-    /** {{name}} when the licence has no founder name. */
-    noName: 'there',
-  },
-  ar: {
-    body: 'مرحباً {{name}}، تهانينا! أصبحت {{company}} مرخّصة رسمياً في المنطقة الحرة لمدينة الشارقة للنشر.\n\nصمّمنا لك بطاقة إعلان مخصصة لتساعدك على مشاركة الخبر. أضف صورتك، ثم شاركها على لينكدإن أو نزّلها.',
-    footer: 'المنطقة الحرة لمدينة الشارقة للنشر',
-    button: 'افتح بطاقتي',
-    noName: 'بك',
-  },
+  body: 'Hi {{name}}, congratulations! {{company}} is officially licensed at SPC Free Zone.\n\nWe’ve built a personalised announcement card to help you break the news. Add your photo, then share it on LinkedIn or download it.',
+  footer: 'SPC Free Zone',
+  button: 'Open my card',
+  /** {{name}} when the licence has no founder name. */
+  noName: 'there',
 } as const;
 
-/** The default template names, used until WHATSAPP_TEMPLATE_EN / _AR say otherwise. */
-export const DEFAULT_TEMPLATE = { en: 'licence_card_welcome', ar: 'licence_card_welcome_ar' } as const;
+/** The template's name in Gallabox, used until WHATSAPP_TEMPLATE_EN says otherwise. */
+export const DEFAULT_TEMPLATE = 'licence_card_welcome';
 
 export interface WelcomeWhatsapp {
   template: string;
-  lang: Lang;
   /** The template's blanks. */
   values: { name: string; company: string };
   /** The website button's part after https://licensed.spcfz.ae/c/ */
@@ -57,29 +51,19 @@ const firstName = (full: string | null): string | null => {
   return w[0] ?? null;
 };
 
-/**
- * The message for a card. Arabic customers get the Arabic template when WHATSAPP_TEMPLATE_AR is set, the English one
- * otherwise (English first, SPC). The button opens the studio in the message's language, counted as a WhatsApp visit.
- */
-export function welcomeWhatsapp(
-  card: CardRow,
-  o: { baseUrl: string; lang: Lang; templates: { en?: string; ar?: string }; header: 'image' | 'none' },
-): WelcomeWhatsapp {
-  const lang: Lang = o.lang === 'ar' && o.templates.ar ? 'ar' : 'en';
-  const t = TEMPLATE_TEXT[lang];
-  const ar = lang === 'ar';
+/** The message for a card, in English. The button opens the studio, counted as a WhatsApp visit. */
+export function welcomeWhatsapp(card: CardRow, o: { baseUrl: string; template?: string; header: 'image' | 'none' }): WelcomeWhatsapp {
+  const t = TEMPLATE_TEXT;
   const base = o.baseUrl.replace(/\/+$/, '');
-  const company = oneLine((ar && card.company_name_ar) || card.company_name_en);
-  const founder = (ar ? card.founder_name_ar || card.founder_name_en : card.founder_name_en) || null;
-  const name = oneLine(firstName(founder) ?? t.noName);
-  const buttonSuffix = `${card.token}?lang=${lang}&via=whatsapp`;
+  const company = oneLine(card.company_name_en);
+  const name = oneLine(firstName(card.founder_name_en) ?? t.noName);
+  const buttonSuffix = `${card.token}?lang=en&via=whatsapp`;
   const text = `${t.body.replace('{{name}}', name).replace('{{company}}', company)}\n\n${t.footer}`;
   return {
-    template: (ar ? o.templates.ar : o.templates.en) || DEFAULT_TEMPLATE[lang],
-    lang,
+    template: o.template || DEFAULT_TEMPLATE,
     values: { name, company },
     buttonSuffix,
-    imageUrl: o.header === 'none' ? null : `${base}${cardImagePath(card, lang)}`,
+    imageUrl: o.header === 'none' ? null : `${base}${cardImagePath(card, 'en')}`,
     studioUrl: `${base}/c/${buttonSuffix}`,
     text,
   };
