@@ -85,13 +85,15 @@ Each server write below needs the owner's yes at the time (CLAUDE.md). The secre
 by Claude.
 
 1. In Gallabox, create an API key (Settings → API keys, app.gallabox.com/apikey) and copy the key and the
-   secret. Gallabox lists the key's permissions as checkboxes in groups (24 November 2026: a **Contact** group
-   with `read`, `readMany`, `export`, `view`, `manage`, `create`, `update`, `delete`, `createMany`, `import`, then
-   restrictions named `not-…`). The service makes two calls: `POST /devapi/messages/whatsapp` (the template
-   message) and `GET /devapi/accounts/<account id>/messages/<id>/status` (whether it was delivered and read).
-   Gallabox does not say which box each call needs; sending is filed under Contact (its restriction
-   `not-send-whatsapp-template` sits there), so tick:
-   - **Contact: `read`, `create`, `update`**, and nothing else in the group;
+   secret. Gallabox lists the key's permissions as checkboxes in groups, each with `read`, `readMany`, `export`,
+   `view`, `manage`, `create`, `update`, `delete`, `createMany`, `import` and restrictions named `not-…`. The
+   service makes two calls: `POST /devapi/messages/whatsapp` (the template message) and
+   `GET /devapi/accounts/<account id>/messages/<id>/status` (whether it was delivered and read). Tick:
+   - **Message: `read`**: without it the status call answers 403 "Don't have access to read Message" (seen
+     24 November 2026);
+   - **Message: `create`**: for sending (Gallabox checks the request before the permission, so this was not
+     provable without a real send);
+   - **Contact: `read`, `create`, `update`**: sending to a new number makes a contact in Gallabox;
    - **none of the `not-…` boxes.** They take abilities away: `not-send-whatsapp-template` would stop the very
      message this service sends, and `not-trigger-bot` could change how a bot on the marketing number behaves.
 
