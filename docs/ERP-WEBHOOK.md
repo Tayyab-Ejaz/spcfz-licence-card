@@ -116,11 +116,29 @@ We email the card to the customer within a minute. You may also put `page_url`
 into your licence-issued email; it is the same card. The page is ready as soon
 as we answer: the customer builds and downloads the card in the browser.
 
+When we received something but did not keep it (today, only a mobile number we
+cannot read), the answer also lists it in `notes`. The card is made all the same:
+
+```json
+{
+  "status": "accepted",
+  "card_id": "01J9ZK4Q7W…",
+  "page_url": "https://licensed.spcfz.ae/c/7Hk2bQpX9sLm3nVd8rTy1w",
+  "ready": true,
+  "notes": ["customer_phone: not a mobile number in a form we can read (add the country code, e.g. +91…); not kept"]
+}
+```
+
 Sending the same licence twice is safe. You get the same `page_url` back.
 A renewal is the same licence number with a later expiry date: send it the
 same way, and the existing card comes back with the same `page_url`.
 Sending the same licence with corrected details updates the card behind the
 same address.
+
+Please send the whole record every time, renewals and corrections included. An
+update replaces the card's details, so a field left out is emptied: a renewal
+without the mobile number removes it, and the customer's referral leads then
+reach SPC without their phone.
 
 | Status | Meaning | What to do |
 |---|---|---|

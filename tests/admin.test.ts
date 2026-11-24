@@ -538,6 +538,14 @@ describe('test flow', () => {
     expect(page).toMatch(/<td>LicenseNo<\/td><td>licence_number<\/td>/);
   });
 
+  it('every scenario that carries a mobile keeps it on the card, however the ERP names it', async () => {
+    for (const scenario of ['typical', 'erp-style', 'owner-object']) {
+      const id = runId((await post('/admin/test-flow', { payload: await payloadOf(scenario) })).res);
+      const card = await getCardById(env.DB, (await getEvent(env.DB, id))?.card_id ?? '');
+      expect(card?.customer_phone, scenario).toBe('+971500000000');
+    }
+  });
+
   it('refuses text that is not a JSON object, without logging a run', async () => {
     const before = (await listEvents(env.DB, { route: 'test' })).total;
     const { res } = await post('/admin/test-flow', { payload: '{ not json' });
@@ -557,6 +565,7 @@ describe('test flow', () => {
     expect(renewed?.outcome).toBe('updated');
     const card = await getCardById(env.DB, renewed?.card_id ?? '');
     expect(await emailsForCard(env.DB, card?.id ?? '')).toHaveLength(1); // no second welcome email
+    expect(card?.customer_phone).toBe('+971500000000'); // the renewal carries the mobile, so it is not emptied
     const exp = await post(`/admin/test-flow/runs/${first}/next`, { kind: 'expire' });
     const page = await (await get(exp.res.headers.get('Location') ?? '')).res.text();
     expect(page).toContain('Expected “updated” and got “updated”');

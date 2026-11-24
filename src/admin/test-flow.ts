@@ -61,12 +61,13 @@ export const SCENARIOS: readonly Scenario[] = [
       expiry_date: i.nextYear,
       preferred_language: 'en',
       customer_email: i.email,
+      customer_mobile: '+971 50 000 0000',
     }),
   },
   {
     id: 'erp-style',
     label: 'ERP-style field names',
-    note: 'Capitalised names, DD/MM/YYYY dates, an activity list, and two fields we do not use.',
+    note: 'Capitalised names, DD/MM/YYYY dates, an activity list, the mobile as MobileNumber, and a field we do not use.',
     expect: 'created',
     build: (i) => ({
       LicenseNo: i.licence,
@@ -85,13 +86,13 @@ export const SCENARIOS: readonly Scenario[] = [
   {
     id: 'owner-object',
     label: 'Founder in an owner object',
-    note: 'The founder\'s names and email inside an "owner" object.',
+    note: 'The founder\'s names, email and mobile inside an "owner" object.',
     expect: 'created',
     build: (i) => ({
       licence_number: i.licence,
       company_name: 'Cedarline Media FZ-LLC',
       activity: 'Digital media production',
-      owner: { full_name: 'Omar Haddad', name_ar: 'عمر حداد', email: i.email },
+      owner: { full_name: 'Omar Haddad', name_ar: 'عمر حداد', email: i.email, mobile: '050 000 0000' },
       issue_date: i.today,
       licence_expiry: i.nextYear,
     }),
@@ -186,6 +187,8 @@ export function followUpPayload(kind: FollowUp, card: CardRow, rawBody: string |
     preferred_language: card.preferred_language,
     customer_email: card.customer_email,
     cc_email: card.cc_email,
+    // An update replaces every field, so a follow-up without the mobile would empty it (and the referrer's phone).
+    customer_mobile: card.customer_phone,
   };
   if (kind === 'renewal') {
     const from = card.licence_expires_on && card.licence_expires_on > today ? card.licence_expires_on : today;
