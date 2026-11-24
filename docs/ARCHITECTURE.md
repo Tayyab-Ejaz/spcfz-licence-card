@@ -398,7 +398,10 @@ client/card-data.js):
   (a config written to the temp folder at first use).
 - **Desktop Done** (18 October 2026): the last step's bar ends with a Done
   button that opens the customer portal in the same tab, in place of the
-  "Step 3 of 3" label.
+  "Step 3 of 3" label. Since 24 November 2026, with LinkedIn on, that button
+  is "Post" with the LinkedIn mark and posts like the big Post to LinkedIn
+  button; Adjust your photo keeps Done (back to Share), and so does a card
+  without LinkedIn.
 - **Test cards** look exactly like live ones; SPC removed the TEST
   watermark on 16 October 2026. Only the browser tab title says [TEST].
 

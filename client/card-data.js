@@ -1092,6 +1092,10 @@ export function withCardData(Base) {
         deskAdjust: adjusting,
         shareMain: !adjusting,
         ...(adjusting ? { canBack: true, noBack: false, back: () => this.closeAdjust(), goPortal: () => this.closeAdjust() } : {}),
+        // The Share screen's Done is "Post" with the LinkedIn mark when LinkedIn is on (SPC, 24 November 2026).
+        navPost: !exact && !adjusting && this.props.card.linkedin === true,
+        navDone: exact || adjusting || this.props.card.linkedin !== true,
+        navPostLabel: s.liBusy ? 'Opening…' : 'Post',
         deskAnother: () => this.addImage('photo'),
         deskRemove: () => {
           this.setState({ photo: null, imgMode: 'initials', deskAdjust: false }, () => this.panelTop());
