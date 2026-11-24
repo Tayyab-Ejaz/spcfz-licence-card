@@ -85,14 +85,21 @@ Each server write below needs the owner's yes at the time (CLAUDE.md). The secre
 by Claude.
 
 1. In Gallabox, create an API key (Settings → API keys, app.gallabox.com/apikey) and copy the key and the
-   secret. Give it only the permissions the service uses (Gallabox asks for them when the key is made):
-   - **send WhatsApp messages**: `POST /devapi/messages/whatsapp`, the template message;
-   - **read messages / message status**: `GET /devapi/accounts/<account id>/messages/<id>/status`, whether it was
-     delivered and read.
+   secret. Gallabox lists the key's permissions as checkboxes in groups (24 November 2026: a **Contact** group
+   with `read`, `readMany`, `export`, `view`, `manage`, `create`, `update`, `delete`, `createMany`, `import`, then
+   restrictions named `not-…`). The service makes two calls: `POST /devapi/messages/whatsapp` (the template
+   message) and `GET /devapi/accounts/<account id>/messages/<id>/status` (whether it was delivered and read).
+   Gallabox does not say which box each call needs; sending is filed under Contact (its restriction
+   `not-send-whatsapp-template` sits there), so tick:
+   - **Contact: `read`, `create`, `update`**, and nothing else in the group;
+   - **none of the `not-…` boxes.** They take abilities away: `not-send-whatsapp-template` would stop the very
+     message this service sends, and `not-trigger-bot` could change how a bot on the marketing number behaves.
 
-   Nothing else: no contacts, users, conversations, templates, webhooks or billing. Also copy the **channel id**
-   of the marketing team's WhatsApp number and the **account id** (each in its own settings page, with a Copy
-   button).
+   If the first test send answers 401 or 403, the key is missing a permission: add the one Gallabox names, never
+   `manage`, `delete`, `export` or `import`.
+
+   Also copy the **channel id** of the marketing team's WhatsApp number and the **account id** (each in its own
+   settings page, with a Copy button).
 2. Create the template above and get it approved.
 3. Add to `/opt/spcfz-licence-card/licence-card.env`, typing the secret yourself:
 
