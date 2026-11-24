@@ -48,6 +48,7 @@ async function seedCard(o: SeedOptions = {}): Promise<CardRow> {
       licence_expires_on: null,
       customer_email: null,
       cc_email: null,
+      customer_phone: null,
       ...o.fields,
     },
     content_hash: `hash-${seq}`,
@@ -533,7 +534,7 @@ describe('test flow', () => {
   it('names the ERP fields the card does not use', async () => {
     const { res } = await post('/admin/test-flow', { payload: await payloadOf('erp-style') });
     const page = await (await get(res.headers.get('Location') ?? '')).res.text();
-    expect(page).toContain('Not used by the card: <b>Branch, MobileNumber</b>');
+    expect(page).toContain('Not used by the card: <b>Branch</b>');
     expect(page).toMatch(/<td>LicenseNo<\/td><td>licence_number<\/td>/);
   });
 

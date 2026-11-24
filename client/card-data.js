@@ -307,13 +307,18 @@ export function withCardData(Base) {
 
     /**
      * The suggested caption (SPC's content writer, 5 November 2026): one source, src/linkedin/captions.ts, shared with
-     * the server's default caption for posts started from the email. Custom starts empty.
+     * the server's default caption for posts started from the email. Custom starts empty. Its link is the owner's
+     * referral link (src/referral/, 24 November 2026), in the caption's language.
      */
     autoCaption() {
       const s = this.state;
       const ar = s.lang === 'ar';
       const T = ar ? { ...s, ...s.ar } : s;
-      return captionFor({ lang: ar ? 'ar' : 'en', tone: s.tone || 'warm', focus: s.focus, company: T.company || '', role: T.role || '', activity: T.activity || '' });
+      const c = this.props.card || {};
+      return captionFor({
+        lang: ar ? 'ar' : 'en', tone: s.tone || 'warm', focus: s.focus, company: T.company || '', role: T.role || '', activity: T.activity || '',
+        referUrl: ar ? c.refer_ar : c.refer_en,
+      });
     }
 
     /** The shared file is a JPEG: same name, .jpg. Downloads stay PNG. */

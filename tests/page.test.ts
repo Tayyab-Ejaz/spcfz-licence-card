@@ -44,6 +44,7 @@ async function seedCard(o: SeedOptions = {}): Promise<CardRow> {
       licence_expires_on: null,
       customer_email: null,
       cc_email: null,
+      customer_phone: null,
       ...o.fields,
     },
     content_hash: `hash-${seq}`,
@@ -116,6 +117,8 @@ describe('GET /c/:token', () => {
     expect(embedded(body)).toEqual({
       token: card.token, company_en: 'Nimbus Publishing FZE', company_ar: null, licence_number: card.licence_number,
       issued_on: '2026-10-01', activity_en: 'Publishing', activity_ar: null, name_en: null, name_ar: null, lang: 'en', is_test: false, linkedin: false, review: true,
+      // The owner's referral link for the caption (src/referral/): only the code, nothing about the owner.
+      refer_en: `https://licensed.test/r/${card.ref_code}`, refer_ar: `https://licensed.test/r/${card.ref_code}/ar`,
     });
   });
 

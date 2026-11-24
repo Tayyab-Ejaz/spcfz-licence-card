@@ -2,9 +2,14 @@
 import type { CanonicalFields, Lang } from '../types.js';
 import { stripHtml } from '../util/html.js';
 import { parseDate, todayInDubai } from '../util/time.js';
+import { normalisePhone } from '../whatsapp/phone.js';
 import { isBlank } from './common.js';
 
-export type ValidationResult = { ok: true; fields: CanonicalFields } | { ok: false; errors: string[] };
+/**
+ * notes: what was received but not used, without rejecting the licence (a phone number we cannot WhatsApp). A
+ * WhatsApp problem never stops the card, as a mail problem never does.
+ */
+export type ValidationResult = { ok: true; fields: CanonicalFields; notes: string[] } | { ok: false; errors: string[] };
 
 export const LIMITS = {
   licence_number: { min: 3, max: 40 },
@@ -147,6 +152,18 @@ export function validateCanonical(input: Record<string, unknown>, opts: { today?
   const customer_email = optionalEmail(input, 'customer_email', errors);
   const cc_email = optionalEmail(input, 'cc_email', errors);
 
+  // customer_phone: optional; the owner's mobile, sent to Zoho as the referrer's phone on leads from their referral
+  // link (src/referral/, 24 November 2026; ported from the WhatsApp branch, where the welcome message goes to it).
+  // A number that is not a mobile we can read is dropped with a note, never an error: the card must not wait for a
+  // typo in a phone number.
+  const notes: string[] = [];
+  let customer_phone: string | null = null;
+  const rawPhone = input['customer_phone'];
+  if (!isBlank(rawPhone)) {
+    customer_phone = normalisePhone(rawPhone);
+    if (customer_phone === null) notes.push('customer_phone: not a mobile number in a form we can read (add the country code, e.g. +91…); not kept');
+  }
+
   // preferred_language: optional, en or ar in any common spelling, default en.
   let preferred_language: Lang = 'en';
   const rawLang = input['preferred_language'];
@@ -173,6 +190,8 @@ export function validateCanonical(input: Record<string, unknown>, opts: { today?
       licence_expires_on,
       customer_email,
       cc_email,
+      customer_phone,
     },
+    notes,
   };
 }

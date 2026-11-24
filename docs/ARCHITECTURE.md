@@ -659,3 +659,40 @@ again (unchanged), a renewal (updated), a correction (updated), and a lapsed lic
 expired). The dashboard links to it while ERP_IP_ALLOWLIST is empty. The email goes to the signed-in person when
 MAIL_TEST_ALLOWLIST allows them.
 
+
+## 19. The owner's referral link (24 November 2026)
+
+SPC asked that the caption's link be the owner's own, so a friend who contacts
+SPC through it earns the owner the referral reward, and that the link show
+nothing about them. The friend lands on SPC's existing referral landing page,
+/single-visa-promotion/ (Arabic: /ar/single-visa-promotion/), with its forms
+and its Zoho feeds unchanged.
+
+- **Code.** Every card has `ref_code`: seven characters from
+  `23456789ABCDEFGHJKMNPQRSTUVWXYZ` (src/referral/code.ts), made when the card
+  is created, or the first time an older card is opened or posted from; never
+  changed. Migration 0011 also adds `customer_phone` (from the ERP, mapped and
+  checked as in the WhatsApp branch: src/intake/mapper.ts, src/whatsapp/phone.ts).
+- **Link.** The caption (src/linkedin/captions.ts referLine) ends with
+  `BASE_URL/r/<code>`, or `…/r/<code>/ar` in Arabic. `GET /r/<code>[/ar]`
+  (src/referral/routes.ts) counts a `ref_click`, sets the `spcfz_ref` cookie
+  (Domain `.spcfz.ae`, 30 days, HttpOnly, Secure, SameSite=Lax) and redirects
+  to the landing page with nothing added to its address, so NitroPack serves
+  its cached copy as for any visitor (an unknown query parameter would force a
+  slow uncached render). An unknown code redirects without the cookie.
+- **Lookup.** `GET /api/referrer/<code>` with `Authorization: Bearer
+  REFERRER_API_KEY` answers `{code, name, email, phone, company,
+  licence_number, test}`; 401 for a wrong key, 404 for an unknown code or when
+  no key is set. Each answer counts a `ref_lead`. Test cards work but are not
+  counted.
+- **Website.** The spcfz-referral WordPress plugin (workspace
+  `spcfz-referral/`, its README) asks this lookup when form 13 or 12 is sent
+  from the landing page with the cookie, keeps the answer on the entry, and
+  hands it to gf-zoho on the way out: Lead Source "Referral", and Referrer Name,
+  Referrer Email, Referrer Contact No. through three custom-value rows in feeds
+  2 and 1. Nothing else on the site changes.
+- **Admin.** The card page shows the customer mobile, the referral link, and
+  clicks and leads.
+- **Settings.** `REFERRER_API_KEY` (32+ characters, the same key as the
+  plugin's), `REFER_LANDING_EN` / `REFER_LANDING_AR`, `REFER_COOKIE_DOMAIN`
+  (`host` on the local copy, where both sites are localhost).

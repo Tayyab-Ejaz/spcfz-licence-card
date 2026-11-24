@@ -10,7 +10,11 @@ import { validateCanonical } from './validate.js';
 
 export type Accepted =
   | { ok: false; errors: string[] }
-  | { ok: true; outcome: UpsertOutcome; card: CardRow; page_url: string; email: QueueResult | 'not-sent' | 'error' };
+  | {
+    ok: true; outcome: UpsertOutcome; card: CardRow; page_url: string; email: QueueResult | 'not-sent' | 'error';
+    /** Received but not used, e.g. a phone number we cannot read (src/intake/validate.ts). */
+    notes: string[];
+  };
 
 export async function acceptPayload(
   env: Env,
@@ -30,5 +34,5 @@ export async function acceptPayload(
       console.error('welcome email not queued', { card_id: result.card.id, message: err instanceof Error ? err.message : String(err) });
     }
   }
-  return { ok: true, outcome: result.outcome, card: result.card, page_url: result.page_url, email };
+  return { ok: true, outcome: result.outcome, card: result.card, page_url: result.page_url, email, notes: validated.notes };
 }

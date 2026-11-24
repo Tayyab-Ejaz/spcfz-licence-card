@@ -43,6 +43,7 @@ async function seedCard(o: { fields?: Partial<CanonicalFields>; is_test?: boolea
       licence_expires_on: '2027-09-30',
       customer_email: 'layla@nimbus.example',
       cc_email: null,
+      customer_phone: null,
       ...o.fields,
     },
     content_hash: `0123456789abcdef${seq}`,

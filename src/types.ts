@@ -105,6 +105,18 @@ export interface Env {
   LINKEDIN_ALERT_TO?: string;
   /** The SNS topic whose SES bounces and complaints POST /aws/ses-feedback accepts (src/mail/ses-feedback.ts); off turns it off. */
   SES_FEEDBACK_TOPIC?: string;
+
+  /**
+   * The owner's referral link (src/referral/, 24 November 2026). BASE_URL/r/<code> sets the REFER_COOKIE cookie and
+   * opens the landing page, whose forms send the lead to Zoho; the website then asks GET /api/referrer/<code> who
+   * the referrer is, with this key as a Bearer token. At least 32 characters; without it the lookup answers 404.
+   */
+  REFERRER_API_KEY?: string;
+  /** Where a click on the link goes, English and Arabic. Default SPC's /single-visa-promotion/ and /ar/single-visa-promotion/. */
+  REFER_LANDING_EN?: string;
+  REFER_LANDING_AR?: string;
+  /** The cookie's domain, so www.spcfz.ae receives it: default .spcfz.ae; "host" for the local copy (no Domain attribute). */
+  REFER_COOKIE_DOMAIN?: string;
 }
 
 export type MailTransportMode = 'smtp' | 'file' | 'off';
@@ -155,6 +167,7 @@ export interface CanonicalFields {
   licence_expires_on: string | null;  // YYYY-MM-DD, the licence's last valid day; the card expires after it
   customer_email: string | null;      // where the welcome email goes; personal data, never shown on the page
   cc_email: string | null;            // an optional copy of the welcome email, e.g. the account manager
+  customer_phone: string | null;      // the owner's mobile (+971501234567), the referrer's phone on referral leads; personal data, never shown on the page
 }
 
 export type CardStatus = 'pending' | 'ready' | 'failed' | 'expired';
@@ -173,6 +186,11 @@ export interface CardRow extends CanonicalFields {
   updated_at: string;
   rendered_at: string | null;
   expires_at: string | null;
+  /**
+   * The owner's referral code (24 November 2026, src/referral/): the caption's link is BASE_URL/r/<ref_code>. Seven
+   * characters from REF_ALPHABET, made when the card is created (or first shown, for cards made before); never changes.
+   */
+  ref_code: string | null;
 }
 
 export type IntakeRoute = 'production' | 'test';
@@ -203,7 +221,12 @@ export interface EventRow {
 export type LinkedinStep = 'li_start' | 'li_signin' | 'li_cancel' | 'li_post' | 'li_fail';
 /** The Google review request (src/page/review.ts): shown in the studio, and a press of its button. */
 export type ReviewStep = 'review_ask' | 'review_click';
-export type MetricKind = 'view' | 'download' | 'share' | 'caption' | LinkedinStep | ReviewStep;
+/**
+ * The owner's referral link (src/referral/): a click on it, and a lead the website sent with its code (counted when
+ * the website asks who the code belongs to). Test cards are not counted.
+ */
+export type ReferralStep = 'ref_click' | 'ref_lead';
+export type MetricKind = 'view' | 'download' | 'share' | 'caption' | LinkedinStep | ReviewStep | ReferralStep;
 
 /** What `upsertFromCanonical` reports back. */
 export type UpsertOutcome = 'created' | 'unchanged' | 'updated';

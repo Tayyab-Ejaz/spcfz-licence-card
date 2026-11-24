@@ -2,15 +2,21 @@
 // and the conversion of any caption into LinkedIn's "little text" format, where "@SPC Free Zone" becomes a real
 // mention of SPC's company page and hashtags become LinkedIn hashtags.
 import type { CardRow, Lang } from '../types.js';
+import { referUrl } from '../referral/links.js';
 import { captionFor } from './captions.js';
 
-export { REFER_LINE } from './captions.js';
+export { referLine } from './captions.js';
 
 /**
  * The caption the studio suggests first (Warm; "you and your company", or "the company" when the licence names no
- * founder), for posts started from the welcome email. The role is the studio's default, Founder.
+ * founder), for posts started from the welcome email. The role is the studio's default, Founder. The link is the
+ * owner's referral link (src/referral/) when the card has a code.
  */
-export function defaultCaption(card: Pick<CardRow, 'company_name_en' | 'company_name_ar' | 'activity_category' | 'activity_category_ar' | 'founder_name_en'>, lang: Lang): string {
+export function defaultCaption(
+  card: Pick<CardRow, 'company_name_en' | 'company_name_ar' | 'activity_category' | 'activity_category_ar' | 'founder_name_en' | 'ref_code'>,
+  lang: Lang,
+  baseUrl: string,
+): string {
   const ar = lang === 'ar';
   return captionFor({
     lang,
@@ -19,6 +25,7 @@ export function defaultCaption(card: Pick<CardRow, 'company_name_en' | 'company_
     company: ar ? card.company_name_ar || card.company_name_en : card.company_name_en,
     role: ar ? 'المؤسس' : 'Founder',
     activity: (ar ? card.activity_category_ar : card.activity_category) ?? '',
+    referUrl: referUrl(baseUrl, card.ref_code, lang),
   });
 }
 

@@ -12,6 +12,8 @@ import {
   expireCard, insertEvent, listCards, listEvents, metricsForCard, metricsTotals, setCardStatus, setLicenceExpiry, setSetting,
 } from '../db/cards.js';
 import { pageUrl } from '../storage.js';
+import { referUrl } from '../referral/links.js';
+import { formatPhone } from '../whatsapp/phone.js';
 import { csvToObjects } from '../util/csv.js';
 import { raw } from '../util/html.js';
 import type { RawHtml } from '../util/html.js';
@@ -202,7 +204,7 @@ interface CreateField {
   key: keyof CanonicalFields;
   label: string;
   required: boolean;
-  type: 'text' | 'date' | 'email';
+  type: 'text' | 'date' | 'email' | 'tel';
   hint: string;
 }
 
@@ -218,6 +220,7 @@ const CREATE_FIELDS: readonly CreateField[] = [
   { key: 'issued_on', label: 'Issued on', required: false, type: 'date', hint: 'Today in Asia/Dubai when empty.' },
   { key: 'customer_email', label: 'Customer email', required: false, type: 'email', hint: 'Optional. The welcome email with the card goes here.' },
   { key: 'cc_email', label: 'Copy to', required: false, type: 'email', hint: 'Optional. Gets a copy of the welcome email, e.g. the account manager.' },
+  { key: 'customer_phone', label: 'Customer mobile', required: false, type: 'tel', hint: 'Optional. Sent to Zoho as the referrer\'s phone when a friend comes through the owner\'s referral link. 050 123 4567 for the UAE; other countries with their code, e.g. +91 98765 43210.' },
   { key: 'licence_expires_on', label: 'Licence expires on', required: false, type: 'date', hint: "Optional. The card shows \"expired\" after this day; it never expires when empty." },
 ];
 
@@ -300,7 +303,7 @@ interface ImportFormOptions {
 
 function importForm(c: Context<AppEnv>, o: ImportFormOptions): Response | Promise<Response> {
   const token = csrfToken(c);
-  const body = h`<p class="muted">Header row with canonical column names: <code>licence_number</code> and <code>company_name_en</code> are required; <code>company_name_ar</code>, <code>licence_type</code>, <code>activity_category</code>, <code>activity_category_ar</code>, <code>founder_name_en</code>, <code>founder_name_ar</code>, <code>issued_on</code>, <code>licence_expires_on</code>, <code>customer_email</code>, <code>cc_email</code> and <code>preferred_language</code> are optional. Headers are matched case-insensitively. Up to ${IMPORT_CAP} rows per run.</p>
+  const body = h`<p class="muted">Header row with canonical column names: <code>licence_number</code> and <code>company_name_en</code> are required; <code>company_name_ar</code>, <code>licence_type</code>, <code>activity_category</code>, <code>activity_category_ar</code>, <code>founder_name_en</code>, <code>founder_name_ar</code>, <code>issued_on</code>, <code>licence_expires_on</code>, <code>customer_email</code>, <code>cc_email</code>, <code>customer_phone</code> and <code>preferred_language</code> are optional. Headers are matched case-insensitively. Up to ${IMPORT_CAP} rows per run.</p>
 <form class="form" method="post" action="/admin/import" enctype="multipart/form-data">${csrfField(token)}
 <label>CSV file<input type="file" name="file" accept=".csv,text/csv"></label>
 <label>…or paste CSV<textarea name="csv" rows="10" dir="auto">${o.csv ?? ''}</textarea></label>
@@ -559,6 +562,10 @@ ${kv([
   ['Licence expires on', card.licence_expires_on ?? h`<span class="muted">not known: the card does not expire</span>`],
   ['Customer email', card.customer_email ?? h`<span class="muted">none: no welcome email</span>`],
   ['Copy to', card.cc_email],
+  ['Customer mobile', card.customer_phone ? h`<span dir="ltr">${formatPhone(card.customer_phone)}</span>` : h`<span class="muted">none: referral leads reach Zoho without the referrer's phone</span>`],
+  ['Referral link', card.ref_code
+    ? h`<code>${referUrl(c.env.BASE_URL, card.ref_code, 'en')}</code> <span class="muted">(Arabic: …/ar)</span>`
+    : h`<span class="muted">made the first time the card is opened</span>`],
   ['Preferred language', card.preferred_language],
   ['Status', badge(card.status)],
   ['Test card', card.is_test ? 'yes' : 'no'],
@@ -597,6 +604,8 @@ ${card.customer_email
 <p class="muted">${card.is_test ? 'Test cards are not counted.' : LI_STEPS.map(([k, label]) => `${label} ${metrics.filter((m) => m.kind === k).reduce((n, m) => n + Number(m.count), 0)}`).join(' · ')}</p>
 ${table(['When', 'Status', 'Post'], posts.map((p) => [h`${fmtDateTime(p.created_at)}`, h`${p.status}`, p.post_urn ? h`<a href="https://www.linkedin.com/feed/update/${p.post_urn}/" target="_blank" rel="noopener">View on LinkedIn</a>` : h`<span class="muted">${p.error ?? ''}</span>`]), 'No posts through "Post to LinkedIn" yet.')}
 ${alerts.length ? h`<p class="muted">Alerts to SPC about these posts:</p>${emailsTable(alerts)}` : EMPTY}
+<h2>Referral link</h2>
+<p class="muted">${card.is_test ? 'Test cards are not counted.' : `Clicks ${metrics.filter((m) => m.kind === 'ref_click').reduce((n, m) => n + Number(m.count), 0)} · Leads sent to Zoho with this owner as the referrer ${metrics.filter((m) => m.kind === 'ref_lead').reduce((n, m) => n + Number(m.count), 0)}`}</p>
 <h2>Metrics (all time)</h2>
 ${table(
   ['Kind', 'Lang', 'Size', 'Network', 'Count'],

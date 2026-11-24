@@ -67,10 +67,26 @@ function ensureEnvFile() {
     'FIELD_MAP={}',
     'GTM_CONTAINER=',
     ...LOCAL_EXTRAS,
+    ...referralExtras(),
     '',
   ];
   writeFileSync(ENV_FILE, lines.join('\n'), { mode: 0o600 });
   return true;
+}
+
+/**
+ * The owner's referral link (24 November 2026, src/referral/): on this copy it opens the site-local copy of SPC's
+ * website (localhost:8081), and the cookie is host-only so that site, on the same host, receives it. The key is the
+ * one site-local's spcfz-referral plugin uses (Settings there: spcfz_referral_settings).
+ */
+function referralExtras() {
+  return [
+    '# Referral link: opens site-local (localhost:8081); host-only cookie; the website looks codes up with this key.',
+    'REFER_LANDING_EN=http://localhost:8081/single-visa-promotion/',
+    'REFER_LANDING_AR=http://localhost:8081/ar/single-visa-promotion/',
+    'REFER_COOKIE_DOMAIN=host',
+    `REFERRER_API_KEY=${randomBytes(32).toString('base64url')}`,
+  ];
 }
 
 /** Welcome emails as files, the sample cards' example.com addresses allowed, and a pretend LinkedIn (27 October 2026). */
@@ -92,6 +108,10 @@ function upgradeEnvFile() {
   if (!/^MAIL_TRANSPORT=/m.test(next)) {
     next = next.replace(/\n*$/, '\n') + LOCAL_EXTRAS.join('\n') + '\n';
     say(`updated ${ENV_FILE}: welcome emails go to files, and Post to LinkedIn uses a pretend LinkedIn`);
+  }
+  if (!/^REFER_COOKIE_DOMAIN=/m.test(next)) {
+    next = next.replace(/\n*$/, '\n') + referralExtras().join('\n') + '\n';
+    say(`updated ${ENV_FILE}: the referral link opens site-local (localhost:8081)`);
   }
   if (next !== text) {
     writeFileSync(ENV_FILE, next, { mode: 0o600 });

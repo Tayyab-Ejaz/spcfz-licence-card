@@ -159,6 +159,28 @@ export function readConfig(source: ConfigSource, envFile: string | null = null):
   const liVersion = text(source, 'LINKEDIN_API_VERSION');
   if (liVersion !== undefined && !/^20\d{4}$/.test(liVersion)) errors.push('LINKEDIN_API_VERSION must look like 202606 (YYYYMM)');
 
+  // The owner's referral link (src/referral/routes.ts).
+  const referKey = text(source, 'REFERRER_API_KEY');
+  if (referKey !== undefined && referKey.length < 32) errors.push('REFERRER_API_KEY must be at least 32 characters');
+  if (referKey === undefined) warnings.push('REFERRER_API_KEY is not set: the website cannot look up referral codes, so referral leads reach Zoho without the referrer');
+  const landing: Record<'REFER_LANDING_EN' | 'REFER_LANDING_AR', string | undefined> = {
+    REFER_LANDING_EN: text(source, 'REFER_LANDING_EN'),
+    REFER_LANDING_AR: text(source, 'REFER_LANDING_AR'),
+  };
+  for (const [k, v] of Object.entries(landing)) {
+    if (v === undefined) continue;
+    try {
+      const u = new URL(v);
+      if (u.protocol !== 'https:' && u.protocol !== 'http:') throw new Error('scheme');
+    } catch {
+      errors.push(`${k} must be an http(s) URL, got ${JSON.stringify(v)}`);
+    }
+  }
+  const cookieDomain = text(source, 'REFER_COOKIE_DOMAIN');
+  if (cookieDomain !== undefined && cookieDomain.toLowerCase() !== 'host' && !/^\.?[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(cookieDomain)) {
+    errors.push('REFER_COOKIE_DOMAIN must be a domain such as .spcfz.ae, or host');
+  }
+
   const allowlist = text(source, 'ERP_IP_ALLOWLIST') ?? '';
   if (!allowlist) warnings.push('ERP_IP_ALLOWLIST is empty: both intake routes reject every request');
   if (!text(source, 'WEBHOOK_SECRET_CURRENT')) warnings.push('WEBHOOK_SECRET_CURRENT is not set: the production intake route accepts nothing');
@@ -194,6 +216,10 @@ export function readConfig(source: ConfigSource, envFile: string | null = null):
     LINKEDIN_FAKE: liFake,
     LINKEDIN_ALERT_TO: alertTo,
     SES_FEEDBACK_TOPIC: feedbackTopic,
+    REFERRER_API_KEY: referKey,
+    REFER_LANDING_EN: landing.REFER_LANDING_EN,
+    REFER_LANDING_AR: landing.REFER_LANDING_AR,
+    REFER_COOKIE_DOMAIN: cookieDomain,
   };
   return { ok: true, config: { vars, host, port, dataDir, trustProxy, envFile, warnings } };
 }

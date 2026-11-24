@@ -2,6 +2,7 @@
 import type {
   CanonicalFields, CardRow, CardSource, CardStatus, D1Database, EventOutcome, EventRoute, EventRow, MetricKind, SettingKey,
 } from '../types.js';
+import { newRefCode } from '../referral/code.js';
 import { ulid } from '../util/crypto.js';
 import { nowIso } from '../util/time.js';
 
@@ -26,7 +27,7 @@ function rowToEvent(r: RawEvent): EventRow {
 
 const CARD_COLS =
   'id, token, licence_number, is_test, company_name_en, company_name_ar, licence_type, activity_category, activity_category_ar, founder_name_en, founder_name_ar, issued_on, ' +
-  'preferred_language, content_hash, status, render_error, source, template_version, created_at, updated_at, rendered_at, expires_at, licence_expires_on, customer_email, cc_email';
+  'preferred_language, content_hash, status, render_error, source, template_version, created_at, updated_at, rendered_at, expires_at, licence_expires_on, customer_email, cc_email, customer_phone, ref_code';
 
 // ------------------------------------------------------------------ cards
 
@@ -57,24 +58,34 @@ export interface NewCard {
   expires_at: string | null;
 }
 
+/** A UNIQUE failure on ref_code: another card drew the same code (about 1 in 27.5 billion); draw again. */
+const isRefClash = (err: unknown): boolean => err instanceof Error && /UNIQUE/i.test(err.message) && /ref_code/.test(err.message);
+
 export async function insertCard(db: D1Database, c: NewCard): Promise<CardRow> {
   const id = ulid();
   const ts = nowIso();
   const f = c.fields;
-  await db
-    .prepare(
-      `INSERT INTO cards (id, token, licence_number, is_test, company_name_en, company_name_ar, licence_type, activity_category,
-         issued_on, preferred_language, content_hash, status, render_error, source, template_version, created_at, updated_at, rendered_at, expires_at,
-         activity_category_ar, founder_name_en, founder_name_ar, licence_expires_on, customer_email, cc_email)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 'ready', NULL, ?12, NULL, ?13, ?13, NULL, ?14, ?15, ?16, ?17, ?18, ?19, ?20)`,
-    )
-    .bind(
-      id, c.token, f.licence_number, c.is_test ? 1 : 0, f.company_name_en, f.company_name_ar, f.licence_type,
-      f.activity_category, f.issued_on, f.preferred_language, c.content_hash, c.source, ts, c.expires_at,
-      f.activity_category_ar, f.founder_name_en, f.founder_name_ar, f.licence_expires_on ?? null,
-      f.customer_email ?? null, f.cc_email ?? null,
-    )
-    .run();
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await db
+        .prepare(
+          `INSERT INTO cards (id, token, licence_number, is_test, company_name_en, company_name_ar, licence_type, activity_category,
+             issued_on, preferred_language, content_hash, status, render_error, source, template_version, created_at, updated_at, rendered_at, expires_at,
+             activity_category_ar, founder_name_en, founder_name_ar, licence_expires_on, customer_email, cc_email, customer_phone, ref_code)
+           VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, 'ready', NULL, ?12, NULL, ?13, ?13, NULL, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22)`,
+        )
+        .bind(
+          id, c.token, f.licence_number, c.is_test ? 1 : 0, f.company_name_en, f.company_name_ar, f.licence_type,
+          f.activity_category, f.issued_on, f.preferred_language, c.content_hash, c.source, ts, c.expires_at,
+          f.activity_category_ar, f.founder_name_en, f.founder_name_ar, f.licence_expires_on ?? null,
+          f.customer_email ?? null, f.cc_email ?? null, f.customer_phone ?? null, newRefCode(),
+        )
+        .run();
+      break;
+    } catch (err) {
+      if (attempt >= 5 || !isRefClash(err)) throw err;
+    }
+  }
   const row = await getCardById(db, id);
   if (!row) throw new Error('insertCard: row not found after insert');
   return row;
@@ -89,16 +100,38 @@ export async function updateCardFields(
       `UPDATE cards SET licence_number = ?2, company_name_en = ?3, company_name_ar = ?4, licence_type = ?5, activity_category = ?6,
          issued_on = ?7, preferred_language = ?8, content_hash = ?9, source = ?10, status = 'ready', render_error = NULL, updated_at = ?11,
          activity_category_ar = ?12, founder_name_en = ?13, founder_name_ar = ?14, licence_expires_on = ?15,
-         customer_email = ?16, cc_email = ?17
+         customer_email = ?16, cc_email = ?17, customer_phone = ?18
        WHERE id = ?1`,
     )
     .bind(
       id, fields.licence_number, fields.company_name_en, fields.company_name_ar, fields.licence_type, fields.activity_category,
       fields.issued_on, fields.preferred_language, content_hash, source, nowIso(), fields.activity_category_ar,
       fields.founder_name_en, fields.founder_name_ar, fields.licence_expires_on ?? null,
-      fields.customer_email ?? null, fields.cc_email ?? null,
+      fields.customer_email ?? null, fields.cc_email ?? null, fields.customer_phone ?? null,
     )
     .run();
+}
+
+/**
+ * The card's referral code (src/referral/), made now for a card created before codes existed. Never changes once
+ * set: the UPDATE only fills an empty one, and a card that got one meanwhile keeps it.
+ */
+export async function ensureRefCode(db: D1Database, card: CardRow): Promise<CardRow> {
+  if (card.ref_code) return card;
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await db.prepare('UPDATE cards SET ref_code = ?2 WHERE id = ?1 AND ref_code IS NULL').bind(card.id, newRefCode()).run();
+      break;
+    } catch (err) {
+      if (attempt >= 5 || !isRefClash(err)) throw err;
+    }
+  }
+  return (await getCardById(db, card.id)) ?? card;
+}
+
+export async function getCardByRefCode(db: D1Database, code: string): Promise<CardRow | null> {
+  const r = await db.prepare(`SELECT ${CARD_COLS} FROM cards WHERE ref_code = ?1`).bind(code).first<RawCard>();
+  return r ? rowToCard(r) : null;
 }
 
 export interface StatusUpdate {
@@ -348,6 +381,7 @@ export async function metricsTotals(db: D1Database, sinceDay: string): Promise<R
     .all<{ kind: MetricKind; count: number }>();
   const out: Record<MetricKind, number> = {
     view: 0, download: 0, share: 0, caption: 0, li_start: 0, li_signin: 0, li_cancel: 0, li_post: 0, li_fail: 0, review_ask: 0, review_click: 0,
+    ref_click: 0, ref_lead: 0,
   };
   for (const row of r.results ?? []) out[row.kind] = Number(row.count);
   return out;

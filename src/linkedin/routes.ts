@@ -10,7 +10,7 @@ import { getCookie, setCookie } from 'hono/cookie';
 import sharp from 'sharp';
 import type { AppEnv, CardRow, Env, Lang, LinkedinStep, Size } from '../types.js';
 import { SIZES, SIZE_NAMES, isLang } from '../types.js';
-import { bumpMetric, getCardByToken, getSettings } from '../db/cards.js';
+import { bumpMetric, ensureRefCode, getCardByToken, getSettings } from '../db/cards.js';
 import { insertLinkedinPost } from '../db/linkedin.js';
 import { queuePostAlert } from '../mail/outbox.js';
 import { background } from '../util/background.js';
@@ -210,7 +210,7 @@ export function createLinkedinRoutes(o: LinkedinRouteOptions = {}): Hono<AppEnv>
       source: 'studio',
       image: bytes,
       imageType: type,
-      caption: cleanCaption(form['caption']) || defaultCaption(card, lang),
+      caption: cleanCaption(form['caption']) || defaultCaption(await ensureRefCode(c.env.DB, card), lang, c.env.BASE_URL),
     });
     countStep(c, d, 'li_start');
     setDraftCookie(c, d);
@@ -249,7 +249,7 @@ export function createLinkedinRoutes(o: LinkedinRouteOptions = {}): Hono<AppEnv>
       source: 'email',
       image: new Uint8Array(image),
       imageType: 'image/jpeg',
-      caption: defaultCaption(card, lang),
+      caption: defaultCaption(await ensureRefCode(c.env.DB, card), lang, c.env.BASE_URL),
     });
     countStep(c, d, 'li_start');
     setDraftCookie(c, d);

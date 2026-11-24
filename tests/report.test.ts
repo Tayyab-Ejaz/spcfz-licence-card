@@ -21,7 +21,7 @@ async function seed(env: ReturnType<typeof createTestEnv>, o: { company: string;
     fields: {
       licence_number: `SPC-R-${seq}`, company_name_en: o.company, company_name_ar: null, licence_type: null, activity_category: 'Publishing',
       activity_category_ar: null, founder_name_en: null, founder_name_ar: null, issued_on: '2026-10-01', preferred_language: 'en',
-      licence_expires_on: null, customer_email: null, cc_email: null,
+      licence_expires_on: null, customer_email: null, cc_email: null, customer_phone: null,
     },
     content_hash: `h${seq}`, source: 'manual', expires_at: null,
   });

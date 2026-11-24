@@ -13,7 +13,7 @@ import { createLinkedinRoutes } from '../src/linkedin/routes.js';
 import { DraftStore, DRAFT_TTL_MS } from '../src/linkedin/drafts.js';
 import { LinkedinError, linkedinClient } from '../src/linkedin/client.js';
 import type { LinkedinClient } from '../src/linkedin/client.js';
-import { defaultCaption, orgUrn, REFER_LINE, toLittleText } from '../src/linkedin/caption.js';
+import { defaultCaption, orgUrn, referLine, toLittleText } from '../src/linkedin/caption.js';
 import { renderPostedPage, renderProblemPage, renderReviewPage } from '../src/linkedin/view.js';
 import { createTestEnv } from './env.js';
 
@@ -84,6 +84,7 @@ async function seedCard(o: { fields?: Partial<CanonicalFields>; is_test?: boolea
       licence_expires_on: null,
       customer_email: null,
       cc_email: null,
+      customer_phone: null,
       ...o.fields,
     },
     content_hash: `hash-${seq}`,
@@ -391,7 +392,9 @@ describe('starting from the welcome email', () => {
     await app.request(`/linkedin/callback?code=c&state=${stateOf(go)}`, { headers: { Cookie: cookie } }, env);
     const review = await (await app.request('/linkedin/review', { headers: { Cookie: cookie } }, env)).text();
     expect(review).toContain('dir="rtl"');
-    expect(review).toContain(defaultCaption(card, 'ar').split('\n')[0]);
+    expect(review).toContain(defaultCaption(card, 'ar', env.BASE_URL).split('\n')[0]);
+    // The owner's own referral link, in the caption's language (src/referral/).
+    expect(review).toContain(`https://licensed.test/r/${card.ref_code}/ar`);
     const img = await app.request('/linkedin/image', { headers: { Cookie: cookie } }, env);
     const meta = await sharp(Buffer.from(await img.arrayBuffer())).metadata();
     expect([meta.format, meta.width, meta.height]).toEqual(['jpeg', 1080, 1080]);
@@ -476,12 +479,13 @@ describe('caption as LinkedIn little text', () => {
     expect(toLittleText('#مشروع_جديد #SPCFreeZone', null)).toBe('{hashtag|\\#|مشروع\\_جديد} {hashtag|\\#|SPCFreeZone}');
   });
 
-  it('names the Refer a Friend page before the hashtags, as a plain link', () => {
-    const card = { company_name_en: 'Bluefin Publishing FZE', company_name_ar: null, activity_category: 'Publishing', activity_category_ar: null, founder_name_en: 'Layla' };
+  it('ends with the owner\'s referral link before the hashtags, a plain link with nothing about them in it', () => {
+    const card = { company_name_en: 'Bluefin Publishing FZE', company_name_ar: null, activity_category: 'Publishing', activity_category_ar: null, founder_name_en: 'Layla', ref_code: 'K7Q2MXA' };
     for (const lang of ['en', 'ar'] as const) {
-      const caption = defaultCaption(card, lang);
-      const url = `${lang === 'en' ? 'https://www.spcfz.ae/refer-a-friend/' : 'https://www.spcfz.ae/ar/refer-a-friend/'}?utm_campaign=Linkedin%20Milestone`;
-      expect(caption).toContain(`${REFER_LINE[lang]}\n\n#`);
+      const caption = defaultCaption(card, lang, 'https://licensed.spcfz.ae');
+      const url = lang === 'en' ? 'https://licensed.spcfz.ae/r/K7Q2MXA' : 'https://licensed.spcfz.ae/r/K7Q2MXA/ar';
+      expect(caption).toContain(`${referLine(lang, url)}\n\n#`);
+      expect(caption).not.toMatch(/utm_|refer-a-friend|Layla\/|Bluefin\//);
       expect(caption).toContain(`\n${url}\n`);
       // LinkedIn's post format reserves "_": escaped for the API, shown as "_" in the post.
       expect(toLittleText(caption, 'urn:li:organization:1')).toContain(`\n${url.replace('_', '\\_')}\n`);
