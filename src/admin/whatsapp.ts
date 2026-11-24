@@ -94,19 +94,18 @@ body{margin:0;background:#d1d7db;font-family:-apple-system,'Segoe UI',Helvetica,
 .btn:before{content:'↗ '}
 `;
 
-/** A WhatsApp-style picture of the message, from the draft wording (the template approved in Gallabox is what goes out). */
+/** A WhatsApp-style picture of the message, from the approved wording copied into TEMPLATE_TEXT. */
 export function whatsappPreviewPage(env: Env, card: CardRow): string {
-  const m = welcomeWhatsapp(card, { baseUrl: env.BASE_URL, template: env.WHATSAPP_TEMPLATE_EN, header: env.WHATSAPP_HEADER === 'none' ? 'none' : 'image' });
+  const m = welcomeWhatsapp(card, { baseUrl: env.BASE_URL, template: env.WHATSAPP_TEMPLATE_EN, header: env.WHATSAPP_HEADER === 'image' ? 'image' : 'none' });
   const t = TEMPLATE_TEXT;
-  const body = m.text.slice(0, m.text.lastIndexOf(t.footer)).trim();
   const base = env.BASE_URL.replace(/\/+$/, '');
   const dubai = new Date(Date.now() + 4 * 3600_000).toISOString().slice(11, 16);
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>WhatsApp preview · ${h`${card.company_name_en}`}</title><style>${PREVIEW_CSS}</style></head><body>
-${h`<div class="note"><b>Preview of the draft wording.</b> WhatsApp sends the template approved in Gallabox (<b>${m.template}</b>), so the words there are what the customer reads. To ${card.customer_phone ? formatPhone(card.customer_phone) : 'no number on this card'}. Every customer gets this English message.</div>`}
+${h`<div class="note"><b>Preview.</b> WhatsApp sends the template approved in Gallabox (<b>${m.template}</b>); these are its words as copied on 24 November 2026. To ${card.customer_phone ? formatPhone(card.customer_phone) : 'no number on this card'}. Every customer gets this English message.</div>`}
 <div class="phone"><div class="bar"><img src="${base}/apple-touch-icon.png" alt=""><div>SPC Free Zone<small>Business account</small></div></div>
 <div class="chat"><div class="bubble">
 ${m.imageUrl ? h`<div class="pic"><img src="${m.imageUrl}" alt="The customer's card picture"></div>` : ''}
-${h`<div class="text">${body}</div><div class="foot">${t.footer}</div><div class="time">${dubai}</div><a class="btn" href="${m.studioUrl}" target="_blank" rel="noopener">${t.button}</a>`}
+${h`<div class="text">${m.text}</div><div class="time">${dubai}</div><a class="btn" href="${m.studioUrl}" target="_blank" rel="noopener">${t.button}</a>`}
 </div></div></div>
 </body></html>`;
 }

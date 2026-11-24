@@ -38,6 +38,7 @@ import { DEFAULT_REPORT_TO, queueReport, reportRecipients, reportSends } from '.
 import { linkedinEnabled } from '../linkedin/client.js';
 import { suppressWhatsapp, unsuppressWhatsapp, whatsappCounts, whatsappForCard, whatsappSuppression } from '../db/whatsapp.js';
 import { queueWelcomeWhatsapp, testPhones } from '../whatsapp/outbox.js';
+import { DEFAULT_TEMPLATE } from '../whatsapp/message.js';
 import { formatPhone, parsePhoneList } from '../whatsapp/phone.js';
 import { WHATSAPP_FLASH, whatsappMode, whatsappPreviewPage, whatsappSection } from './whatsapp.js';
 import { acceptPayload } from '../intake/accept.js';
@@ -398,7 +399,7 @@ ${kv([
   ['Test cards may email', c.env.MAIL_TEST_ALLOWLIST || 'spcfz.ae (default)'],
   ['Emails so far', h`${counts.sent} sent, ${counts.queued} queued, ${counts.failed} failed, ${counts.skipped} skipped`],
   ['WhatsApp sending', waMode === 'gallabox'
-    ? h`<span class="badge ready">on</span> through Gallabox, template ${c.env.WHATSAPP_TEMPLATE_EN || 'licence_card_welcome'}, in English for every customer${c.env.GALLABOX_ACCOUNT_ID ? '' : '; delivery is not read back (no GALLABOX_ACCOUNT_ID)'}`
+    ? h`<span class="badge ready">on</span> through Gallabox, template ${c.env.WHATSAPP_TEMPLATE_EN || DEFAULT_TEMPLATE}, in English for every customer${c.env.GALLABOX_ACCOUNT_ID ? '' : '; delivery is not read back (no GALLABOX_ACCOUNT_ID)'}`
     : waMode === 'file' ? h`<span class="badge pending">files</span> written to DATA_DIR/whatsapp-outbox (local copy)` : h`<span class="badge expired">off</span> messages are queued but not sent until Gallabox is set up`],
   ['WhatsApp so far', h`${wa.sent} sent (${wa.delivered} delivered, ${wa.read} read, ${wa.undelivered} not delivered), ${wa.queued} queued, ${wa.failed} failed, ${wa.skipped} skipped`],
   ['Post to LinkedIn', c.env.LINKEDIN_FAKE === '1' ? h`<span class="badge pending">pretend</span> local copy: posts go to DATA_DIR/linkedin-outbox` : linkedinEnabled(c.env) ? h`<span class="badge ready">on</span>${c.env.LINKEDIN_ORG_URN ? ' with an @SPC Free Zone mention' : ' (no SPC page id: @SPC Free Zone stays plain text)'}` : h`<span class="badge expired">off</span> the button is hidden until the LinkedIn app is set up`],
@@ -731,7 +732,7 @@ ${eventsTable(events.rows)}`;
     return c.redirect(`/admin/cards/${card.id}?m=wa-allow`, 303);
   });
 
-  // The WhatsApp message as the customer sees it, from the draft wording (src/whatsapp/message.ts).
+  // The WhatsApp message as the customer sees it, from the approved wording (src/whatsapp/message.ts).
   app.get('/cards/:id/whatsapp-preview', async (c) => {
     const card = await getCardById(c.env.DB, c.req.param('id'));
     if (!card) return notFoundPage(c, 'card');

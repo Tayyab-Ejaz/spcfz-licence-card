@@ -79,7 +79,7 @@ export async function processWhatsapp(env: Env, transport: WhatsappTransport | n
   const summary: WhatsappSummary = { sent: 0, retried: 0, failed: 0, skipped: 0, checked: 0 };
   if (!transport) return summary;
   const nowStr = nowIso(now);
-  const header = env.WHATSAPP_HEADER === 'none' ? 'none' : 'image';
+  const header = env.WHATSAPP_HEADER === 'image' ? 'image' : 'none';
   for (const m of await dueWhatsapp(env.DB, nowStr, 10)) {
     const card = await getCardById(env.DB, m.card_id);
     if (!card) { await markWhatsappSkipped(env.DB, m.id, 'card no longer exists'); summary.skipped++; continue; }

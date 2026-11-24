@@ -1,8 +1,8 @@
 # The welcome WhatsApp message
 
 19 November 2026. SPC sends WhatsApp through **Gallabox**. When a licence card is created with the customer's
-mobile number, the customer gets one WhatsApp message beside the welcome email: their card picture, a short
-congratulation and an **Open my card** button that opens their studio.
+mobile number, the customer gets one WhatsApp message beside the welcome email: a short congratulation with the
+link to their studio, and a **View My Post** button that opens it too.
 
 **English only** (SPC, 24 November 2026): every customer gets the English message, whatever their preferred
 language. The welcome email still follows the customer's language.
@@ -31,53 +31,59 @@ language. The welcome email still follows the customer's language.
 - **Stopping:** the card page has **Stop WhatsApp to this number**. Use it when a customer asks, or when the
   number belongs to someone else. **Allow WhatsApp again** undoes it.
 - **Test cards** only message the numbers in Admin → Settings → WhatsApp test numbers.
-- **Counted:** the button's link ends in `?via=whatsapp`, so the admin and the monthly report count visits from
+- **Counted:** the message's link and its button end in `?via=whatsapp`, so the admin and the monthly report count visits from
   WhatsApp separately from visits from the email.
 - **Local copy:** `WHATSAPP_TRANSPORT=file` writes each message to `DATA_DIR/whatsapp-outbox`: a `.txt` as the
   customer would read it, and the Gallabox request as `.json`. Nothing is sent.
 
-## The template (create it in Gallabox)
+## The template (approved in Gallabox)
 
 WhatsApp only lets a business start a chat with a template Meta has approved. The words live in Gallabox; the
-service sends the template's name and fills in its blanks. Create one template, in English:
+service sends the template's name and fills in its blanks. SPC's approved template, read back from Gallabox's API
+on 24 November 2026 (Gallabox id `6afe9a1555cdaaae78f0acd7`):
 
-| Part | `licence_card_welcome` |
+| Part | `19112026_linkedin_milestone` |
 |---|---|
-| Category | Utility |
+| Category | Marketing |
 | Language | English |
-| Header | Image (for the sample, any card picture) |
-| Body | see below |
-| Footer | SPC Free Zone |
-| Button | Visit website, "Open my card", dynamic URL `https://licensed.spcfz.ae/c/{{1}}` |
-
-Body (Claude's draft, made from SPC's welcome email copy):
+| Channel | SPC Free Zone- Marketing |
+| Header | none |
+| Body | below, with one variable, `{{variable_1}}` |
+| Footer | none |
+| Button | Visit website, "View My Post", dynamic URL `https://licensed.spcfz.ae/c/{{1}}` |
 
 ```
-Hi {{name}}, congratulations! {{company}} is officially licensed at SPC Free Zone.
+*You're Officially A Business Owner: Let Everyone Know!*
+Congratulations on starting your business!
 
-We’ve built a personalised announcement card to help you break the news. Add your photo, then share it on LinkedIn or download it.
+We've made a personalised announcement card to help you share the news with your network. Want to try a different design or make changes to the content? Click the link below: {{variable_1}}
+
+Welcome to the SPC Free Zone family! We wish you success in the years to come.
 ```
 
 What the service fills in:
 
-- `{{name}}` is the founder's first name (English). Without one it is "there" ("Hi there,").
-- `{{company}}` is the company's English name.
-- The button's `{{1}}` is the customer's own part of the link, `<token>?lang=en&via=whatsapp`.
-- The image is the same card picture the welcome email shows (`/c/<token>/card/…jpg`).
+- `{{variable_1}}` is the customer's studio link, `https://licensed.spcfz.ae/c/<token>?lang=en&via=whatsapp`.
+- The button's `{{1}}` is the same link's part after `/c/`, `<token>?lang=en&via=whatsapp`.
 
-The admin's **Preview** button shows the message with these words. If SPC changes the words in Gallabox, change
-`TEMPLATE_TEXT` in src/whatsapp/message.ts too, so the preview stays true.
+In Gallabox's request that is `bodyValues: { variable_1: <link> }` and one URL `buttonValues` entry. The first
+real send (24 November 2026, to SPC's own phone, test card TEST-REF-261124-9368) was **delivered** with exactly
+that shape.
 
-Notes for whoever creates the template:
+The admin's **Preview** button shows the message with these words. They are copied into `TEMPLATE_TEXT` in
+src/whatsapp/message.ts; if SPC changes the template in Gallabox, change that too, so the preview stays true.
 
-- **Name the variables `name` and `company`.** If Gallabox only offers numbered variables ({{1}}, {{2}}), use
-  {{1}} for the name and {{2}} for the company and tell the developer. It is a one-line change in
-  `welcomeWhatsapp` (src/whatsapp/message.ts).
-- **Utility, not Marketing.** Meta decides the category from the wording. Marketing costs about three times as
-  much, and Meta limits how many marketing messages each person receives, so some would not arrive. Keep the
-  wording about the licence and the card. If Meta files it as Marketing anyway, it still works.
-- **The template name** is free to choose. If it is not `licence_card_welcome`, set `WHATSAPP_TEMPLATE_EN`.
-- **No image header?** Set `WHATSAPP_HEADER=none`.
+Notes:
+
+- **A new template needs a code change if its variables differ.** Gallabox refuses a send whose values do not
+  match the template, so a new variable, a different variable name or a header means changing `welcomeWhatsapp`
+  (src/whatsapp/message.ts). A new template with the same shape only needs `WHATSAPP_TEMPLATE_EN`.
+- **Marketing, not Utility.** Meta filed this template as Marketing. Marketing costs more per message (Gallabox
+  shows new UAE rates), and Meta limits how many marketing messages each person receives, so some welcomes may
+  not arrive (error 131049 in the table below). A Utility template, worded about the licence and the card, would
+  avoid both; that is SPC's call.
+- **No picture.** The template has no header, so the message carries no card picture. `WHATSAPP_HEADER=image`
+  would send the card picture as an image header, but only for a template that has one.
 
 ## Turn it on (production)
 
@@ -111,14 +117,15 @@ by Claude.
    GALLABOX_API_SECRET=<api secret>
    GALLABOX_CHANNEL_ID=<channel id>
    GALLABOX_ACCOUNT_ID=<account id>
-   WHATSAPP_TEMPLATE_EN=licence_card_welcome
    ```
+
+   `WHATSAPP_TEMPLATE_EN` is only needed for a template other than `19112026_linkedin_milestone`.
 
 4. Recreate the container (docs/RUNBOOK.md, Secrets). The service refuses to start if the key, secret or channel
    is missing, and logs `mail {"transport":"smtp","whatsapp":"gallabox"}` when it is on.
 5. Admin → Settings → WhatsApp test numbers: add your own number.
 6. Admin → Test flow → Typical licence → Send as the ERP. Step 4 on the run page follows the message: sent, then
-   delivered and read. Check it on the phone: the card picture shows, and Open my card opens the card.
+   delivered and read. Check it on the phone: the link in the text and the View My Post button both open the card.
 
 To switch it off again: `WHATSAPP_TRANSPORT=off` and recreate the container. Messages stay queued in the admin.
 
@@ -134,9 +141,9 @@ To switch it off again: `WHATSAPP_TRANSPORT=off` and recreate the container. Mes
 | On the card page | Meaning |
 |---|---|
 | failed, "Gallabox answered 401" | Wrong API key or secret. |
-| failed, "Gallabox answered 400: …template…" | The template name is wrong or not approved yet, or its variables differ from `name` / `company`. |
+| failed, "Gallabox answered 400/422: …template…" | The template name is wrong or not approved yet, or its variables differ from `variable_1` and the one URL button. |
 | sent, then "not delivered: … (131026)" | The number is not on WhatsApp, or cannot receive it. |
-| sent, then "not delivered: … (131049)" | Meta held back a marketing message; see "Utility, not Marketing". |
+| sent, then "not delivered: … (131049)" | Meta held back a marketing message; see "Marketing, not Utility". |
 | sent, "accepted by Gallabox" and nothing more | `GALLABOX_ACCOUNT_ID` is not set, so delivery is not read back. |
 | skipped, "test card: …" | Add the number to Admin → Settings → WhatsApp test numbers. |
 | queued, "goes at 09:00" | The ERP sent it at night; it waits for Dubai morning. |

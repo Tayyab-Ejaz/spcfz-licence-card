@@ -718,10 +718,11 @@ provider. docs/WHATSAPP.md has the details, the template to create in Gallabox a
   Messages the ERP triggers (actor null) wait for 09:00–21:00 Dubai time; staff actions go out at once.
 - **Sending.** src/whatsapp/transport.ts posts Gallabox's template message (`POST /devapi/messages/whatsapp`,
   headers apiKey/apiSecret). The request carries:
-  - the template name (`WHATSAPP_TEMPLATE_EN`; English for every customer, SPC's decision of 24 November 2026);
-  - the body values `name` and `company`;
-  - the card picture as the image header;
-  - the button's URL suffix `<token>?lang=xx&via=whatsapp`.
+  - the template name (`WHATSAPP_TEMPLATE_EN`, default `19112026_linkedin_milestone`; English for every customer,
+    SPC's decision of 24 November 2026);
+  - the body value `variable_1`, the customer's studio link;
+  - no header (the approved template has none; `WHATSAPP_HEADER=image` would add the card picture);
+  - the button's URL suffix `<token>?lang=en&via=whatsapp`.
 
   `WHATSAPP_TRANSPORT=file` writes it to `DATA_DIR/whatsapp-outbox` instead (the local copy).
 - **Delivery.** Read back from Gallabox (`GET /devapi/accounts/:accountId/messages/:id/status`) at 2 min, 15 min,
@@ -736,5 +737,6 @@ provider. docs/WHATSAPP.md has the details, the template to create in Gallabox a
   - Settings: the test numbers and the WhatsApp status.
   - Test flow: a WhatsApp step with a pill.
   - The monthly report counts visits from WhatsApp separately.
-- **Wording.** The template text lives in Gallabox (Meta approves it). `TEMPLATE_TEXT` in src/whatsapp/message.ts is
-  the draft to paste there and what the admin preview shows.
+- **Wording.** The template text lives in Gallabox (Meta approves it): `19112026_linkedin_milestone`, no header, the
+  studio link as `{{variable_1}}` and a "View My Post" URL button (docs/WHATSAPP.md). `TEMPLATE_TEXT` in
+  src/whatsapp/message.ts is a copy of its words, for the admin preview.

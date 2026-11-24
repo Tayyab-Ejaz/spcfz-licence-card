@@ -49,8 +49,10 @@ export async function insertWhatsapp(
   return id;
 }
 
+// Newest first. Two rows logged in the same millisecond (a staff send right after the ERP queued one) keep the order
+// they were written in: rowid, not the ULID, whose random tail would order them by chance.
 export async function whatsappForCard(db: D1Database, cardId: string): Promise<WhatsappRow[]> {
-  return (await db.prepare('SELECT * FROM whatsapp_messages WHERE card_id = ?1 ORDER BY created_at DESC, id DESC').bind(cardId).all<WhatsappRow>()).results ?? [];
+  return (await db.prepare('SELECT * FROM whatsapp_messages WHERE card_id = ?1 ORDER BY created_at DESC, rowid DESC').bind(cardId).all<WhatsappRow>()).results ?? [];
 }
 
 /** Has this card already had (or is about to have) a WhatsApp message of this kind? */

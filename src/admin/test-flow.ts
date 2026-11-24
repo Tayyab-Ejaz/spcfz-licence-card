@@ -489,7 +489,7 @@ ${alert ? h`<p>Alert to SPC, <b>${alert.to_email}</b>: ${alert.status === 'sent'
   const s7 = step(7, 'Check by hand', 'off', 'On a phone and a computer', h`
 <ul class="tf-check">
 <li>Open the email on your phone and on a computer; try both buttons.</li>
-<li>Open the WhatsApp message on your phone: the card picture shows, and Open my card opens the card.</li>
+<li>Open the WhatsApp message on your phone: the link in the text and the View My Post button both open the card.</li>
 <li>On the card: switch styles and sizes, add a photo, edit the caption, then Share (phone) and Download (computer).</li>
 <li>Paste the card's link into WhatsApp: the preview shows the company's name.</li>
 <li>Switch to Arabic and check the card, the caption and the email.</li>
