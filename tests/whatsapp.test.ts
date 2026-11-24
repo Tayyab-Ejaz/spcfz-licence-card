@@ -204,28 +204,27 @@ describe('who gets it, and when', () => {
 });
 
 describe('the message', () => {
-  it("fills the approved template from the card: the studio link in the text and a per-customer button, no picture", async () => {
+  it("fills the approved template from the card: its card picture, the studio link in the text and a per-customer button", async () => {
     const card = await seedCard({ fields: { founder_name_en: 'Layla Haddad', company_name_en: 'Nimbus Publishing FZE' } });
-    const m = welcomeWhatsapp(card, { baseUrl: 'https://licensed.test/', header: 'none' });
+    const m = welcomeWhatsapp(card, { baseUrl: 'https://licensed.test/', header: 'image' });
     const link = `https://licensed.test/c/${card.token}?lang=en&via=whatsapp`;
-    expect(m.template).toBe('19112026_linkedin_milestone');
+    expect(m.template).toBe('24112026_linkedin_milestone');
     expect(m.values).toEqual({ variable_1: link });
     expect(m.buttonSuffix).toBe(`${card.token}?lang=en&via=whatsapp`);
     expect(m.studioUrl).toBe(link);
-    expect(m.imageUrl).toBeNull();
+    expect(m.imageUrl).toMatch(new RegExp(`^https://licensed\\.test/c/${card.token}/card/[0-9a-f]{10}-v\\d+\\.jpg$`));
     expect(m.text).toContain(`Click the link below: ${link}\n\nWelcome to the SPC Free Zone family!`);
     expect(m.text).not.toContain('{{');
   });
 
-  it('is English for every customer, Arabic-speaking ones included (SPC, 24 November 2026); a picture only when asked', async () => {
+  it('is English for every customer, Arabic-speaking ones included (SPC, 24 November 2026); no picture for a template without one', async () => {
     const card = await seedCard({ fields: { preferred_language: 'ar', founder_name_en: null, founder_name_ar: 'ليلى حداد' } });
     const m = welcomeWhatsapp(card, { baseUrl: 'https://licensed.test', template: 'welcome_en', header: 'none' });
     expect(m.template).toBe('welcome_en');
     expect(m.values.variable_1).toBe(`https://licensed.test/c/${card.token}?lang=en&via=whatsapp`);
     expect(m.text.startsWith("*You're Officially A Business Owner")).toBe(true);
-    const withPicture = welcomeWhatsapp(card, { baseUrl: 'https://licensed.test', header: 'image' });
-    expect(withPicture.imageUrl).toMatch(new RegExp(`^https://licensed\\.test/c/${card.token}/card/[0-9a-f]{10}-v\\d+\\.jpg$`));
-    expect(withPicture.imageUrl).not.toMatch(/-ar\.jpg$/);
+    expect(m.imageUrl).toBeNull();
+    expect(welcomeWhatsapp(card, { baseUrl: 'https://licensed.test', header: 'image' }).imageUrl).not.toMatch(/-ar\.jpg$/);
   });
 
   it('queues and logs the message as English, whatever the customer\'s language', async () => {
@@ -234,9 +233,9 @@ describe('the message', () => {
     expect((await whatsappForCard(env.DB, card.id))[0]?.lang).toBe('en');
   });
 
-  it("builds Gallabox's template request as delivered on 24 November 2026: digits-only phone, variable_1, URL button, no header", async () => {
+  it("builds Gallabox's template request: digits-only phone, the card picture header, variable_1, URL button", async () => {
     const card = await seedCard();
-    const m = welcomeWhatsapp(card, { baseUrl: 'https://licensed.test', header: 'none' });
+    const m = welcomeWhatsapp(card, { baseUrl: 'https://licensed.test', header: 'image' });
     expect(gallaboxTemplateBody(m, { channelId: 'ch1', phone: LAYLA, name: 'Layla Haddad' })).toEqual({
       channelId: 'ch1',
       channelType: 'whatsapp',
@@ -244,19 +243,21 @@ describe('the message', () => {
       whatsapp: {
         type: 'template',
         template: {
-          templateName: '19112026_linkedin_milestone',
+          templateName: '24112026_linkedin_milestone',
           bodyValues: { variable_1: `https://licensed.test/c/${card.token}?lang=en&via=whatsapp` },
+          headerValues: { mediaUrl: m.imageUrl, mediaName: 'announcement-card.jpg' },
           buttonValues: [{ index: 0, sub_type: 'url', parameters: { type: 'text', text: `${card.token}?lang=en&via=whatsapp` } }],
         },
       },
     });
   });
 
-  it('adds the card picture as an image header only with WHATSAPP_HEADER=image', async () => {
+  it('sends no header for a template without one (WHATSAPP_HEADER=none, the 19112026 template, delivered 24 November 2026)', async () => {
     const card = await seedCard();
-    const m = welcomeWhatsapp(card, { baseUrl: 'https://licensed.test', header: 'image' });
+    const m = welcomeWhatsapp(card, { baseUrl: 'https://licensed.test', template: '19112026_linkedin_milestone', header: 'none' });
     const body = gallaboxTemplateBody(m, { channelId: 'ch1', phone: LAYLA, name: 'Layla Haddad' }) as { whatsapp: { template: Record<string, unknown> } };
-    expect(body.whatsapp.template.headerValues).toEqual({ mediaUrl: m.imageUrl, mediaName: 'announcement-card.jpg' });
+    expect(body.whatsapp.template.templateName).toBe('19112026_linkedin_milestone');
+    expect(body.whatsapp.template).not.toHaveProperty('headerValues');
   });
 });
 
@@ -318,9 +319,9 @@ describe('the outbox', () => {
     const later = await seedCard();
     await queueWelcomeWhatsapp(env, later, { actor: null, now: new Date('2026-11-19T19:00:00Z') });
     expect(await processWhatsapp(env, t, now)).toMatchObject({ sent: 1, retried: 0 });
-    expect(t.sent.map((s) => [s.to, s.name, s.message.template])).toEqual([[LAYLA, 'Layla Haddad', '19112026_linkedin_milestone']]);
+    expect(t.sent.map((s) => [s.to, s.name, s.message.template])).toEqual([[LAYLA, 'Layla Haddad', '24112026_linkedin_milestone']]);
     const [m] = await whatsappForCard(env.DB, card.id);
-    expect([m?.status, m?.provider_id, m?.template, m?.check_at]).toEqual(['sent', 'gb-1', '19112026_linkedin_milestone', null]);
+    expect([m?.status, m?.provider_id, m?.template, m?.check_at]).toEqual(['sent', 'gb-1', '24112026_linkedin_milestone', null]);
     expect((await whatsappForCard(env.DB, later.id))[0]?.status).toBe('queued');
   });
 

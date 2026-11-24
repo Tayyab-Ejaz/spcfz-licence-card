@@ -96,7 +96,7 @@ body{margin:0;background:#d1d7db;font-family:-apple-system,'Segoe UI',Helvetica,
 
 /** A WhatsApp-style picture of the message, from the approved wording copied into TEMPLATE_TEXT. */
 export function whatsappPreviewPage(env: Env, card: CardRow): string {
-  const m = welcomeWhatsapp(card, { baseUrl: env.BASE_URL, template: env.WHATSAPP_TEMPLATE_EN, header: env.WHATSAPP_HEADER === 'image' ? 'image' : 'none' });
+  const m = welcomeWhatsapp(card, { baseUrl: env.BASE_URL, template: env.WHATSAPP_TEMPLATE_EN, header: env.WHATSAPP_HEADER === 'none' ? 'none' : 'image' });
   const t = TEMPLATE_TEXT;
   const base = env.BASE_URL.replace(/\/+$/, '');
   const dubai = new Date(Date.now() + 4 * 3600_000).toISOString().slice(11, 16);

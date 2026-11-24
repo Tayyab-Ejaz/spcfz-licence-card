@@ -1,13 +1,14 @@
 // The welcome WhatsApp message (19 November 2026). WhatsApp only lets a business start a chat with a template Meta has
 // approved, so the wording lives in Gallabox, not here: the service sends the template's name and fills its blanks.
 //
-// The template SPC got approved (Gallabox, 19 November 2026; read back through the API on 24 November):
-//   name      19112026_linkedin_milestone, English, Marketing, on the "SPC Free Zone- Marketing" number
-//   header    none
+// The template SPC got approved (Gallabox, 24 November 2026; read back through the API the same day):
+//   name      24112026_linkedin_milestone, English, Marketing, on the "SPC Free Zone- Marketing" number
+//   header    image: the customer's own card picture (/c/<token>/card/….jpg), the same one the welcome email shows
 //   body      TEMPLATE_TEXT.body below, with ONE variable, {{variable_1}}: the customer's studio link
 //   footer    none
 //   button    a website button, "View My Post", URL https://licensed.spcfz.ae/c/{{1}} (the part after /c/ is per customer)
-// The first real send (24 November 2026, to SPC's own phone) was delivered with exactly this shape.
+// Its predecessor 19112026_linkedin_milestone is the same without the header (WHATSAPP_TEMPLATE_EN=19112026_linkedin_milestone
+// with WHATSAPP_HEADER=none); the first real send, to SPC's own phone on 24 November 2026, was delivered with that one.
 //
 // TEMPLATE_TEXT is a copy of the approved words, for the admin's preview and the local outbox. If SPC changes the
 // template in Gallabox, change it here too; a new variable or a header needs a code change, because Gallabox refuses
@@ -28,7 +29,7 @@ export const TEMPLATE_TEXT = {
 } as const;
 
 /** The template's name in Gallabox, used until WHATSAPP_TEMPLATE_EN says otherwise. */
-export const DEFAULT_TEMPLATE = '19112026_linkedin_milestone';
+export const DEFAULT_TEMPLATE = '24112026_linkedin_milestone';
 
 export interface WelcomeWhatsapp {
   template: string;
@@ -36,7 +37,7 @@ export interface WelcomeWhatsapp {
   values: { variable_1: string };
   /** The website button's part after https://licensed.spcfz.ae/c/ */
   buttonSuffix: string;
-  /** The card picture for an image header, or null: the approved template has no header (WHATSAPP_HEADER=image adds one). */
+  /** The card picture for the image header, or null for a template without one (WHATSAPP_HEADER=none). */
   imageUrl: string | null;
   /** The whole studio link: the body's {{variable_1}}, and where the button goes. */
   studioUrl: string;

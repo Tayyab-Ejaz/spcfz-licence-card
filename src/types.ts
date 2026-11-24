@@ -121,9 +121,9 @@ export interface Env {
   GALLABOX_ACCOUNT_ID?: string;
   /** Gallabox's API, default https://server.gallabox.com/devapi. */
   GALLABOX_API_URL?: string;
-  /** The approved template's name in Gallabox (default 19112026_linkedin_milestone). English only: every customer gets it. */
+  /** The approved template's name in Gallabox (default 24112026_linkedin_milestone). English only: every customer gets it. */
   WHATSAPP_TEMPLATE_EN?: string;
-  /** none (default): the approved template has no header. image: the template has an image header and gets the customer's card picture. */
+  /** image (default): the template's header is the customer's card picture. none: a template without a header (19112026_linkedin_milestone). */
   WHATSAPP_HEADER?: 'image' | 'none';
 
   /**

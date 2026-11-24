@@ -1,8 +1,8 @@
 # The welcome WhatsApp message
 
 19 November 2026. SPC sends WhatsApp through **Gallabox**. When a licence card is created with the customer's
-mobile number, the customer gets one WhatsApp message beside the welcome email: a short congratulation with the
-link to their studio, and a **View My Post** button that opens it too.
+mobile number, the customer gets one WhatsApp message beside the welcome email: their own card picture, a short
+congratulation with the link to their studio, and a **View My Post** button that opens it too.
 
 **English only** (SPC, 24 November 2026): every customer gets the English message, whatever their preferred
 language. The welcome email still follows the customer's language.
@@ -40,14 +40,14 @@ language. The welcome email still follows the customer's language.
 
 WhatsApp only lets a business start a chat with a template Meta has approved. The words live in Gallabox; the
 service sends the template's name and fills in its blanks. SPC's approved template, read back from Gallabox's API
-on 24 November 2026 (Gallabox id `6afe9a1555cdaaae78f0acd7`):
+on 24 November 2026 (Gallabox id `6b057a72fa6579f26637877e`):
 
-| Part | `19112026_linkedin_milestone` |
+| Part | `24112026_linkedin_milestone` |
 |---|---|
 | Category | Marketing |
 | Language | English |
 | Channel | SPC Free Zone- Marketing |
-| Header | none |
+| Header | Image: the customer's own card picture (Meta's sample was test card TEST-REF-261124-9368's picture) |
 | Body | below, with one variable, `{{variable_1}}` |
 | Footer | none |
 | Button | Visit website, "View My Post", dynamic URL `https://licensed.spcfz.ae/c/{{1}}` |
@@ -65,10 +65,16 @@ What the service fills in:
 
 - `{{variable_1}}` is the customer's studio link, `https://licensed.spcfz.ae/c/<token>?lang=en&via=whatsapp`.
 - The button's `{{1}}` is the same link's part after `/c/`, `<token>?lang=en&via=whatsapp`.
+- The header picture is the customer's card picture, `https://licensed.spcfz.ae/c/<token>/card/<hash>-v<n>.jpg`
+  (1080 × 1080 JPEG, about 60 KB; WhatsApp's limit is 5 MB). It is drawn from the ERP's details, so it shows the
+  empty photo outline until the customer adds a photo in the studio.
 
-In Gallabox's request that is `bodyValues: { variable_1: <link> }` and one URL `buttonValues` entry. The first
-real send (24 November 2026, to SPC's own phone, test card TEST-REF-261124-9368) was **delivered** with exactly
-that shape.
+In Gallabox's request that is `headerValues: { mediaUrl, mediaName }`, `bodyValues: { variable_1: <link> }` and
+one URL `buttonValues` entry.
+
+The earlier template `19112026_linkedin_milestone` (Gallabox id `6afe9a1555cdaaae78f0acd7`) is the same without the
+header. To use it: `WHATSAPP_TEMPLATE_EN=19112026_linkedin_milestone` and `WHATSAPP_HEADER=none`. The first real
+send (24 November 2026, to SPC's own phone, test card TEST-REF-261124-9368) used it and was **delivered**.
 
 The admin's **Preview** button shows the message with these words. They are copied into `TEMPLATE_TEXT` in
 src/whatsapp/message.ts; if SPC changes the template in Gallabox, change that too, so the preview stays true.
@@ -82,8 +88,8 @@ Notes:
   shows new UAE rates), and Meta limits how many marketing messages each person receives, so some welcomes may
   not arrive (error 131049 in the table below). A Utility template, worded about the licence and the card, would
   avoid both; that is SPC's call.
-- **No picture.** The template has no header, so the message carries no card picture. `WHATSAPP_HEADER=image`
-  would send the card picture as an image header, but only for a template that has one.
+- **The picture must match the template.** `WHATSAPP_HEADER=image` (the default) for a template with an image
+  header, `none` for one without; Gallabox refuses a send that does not match.
 
 ## Turn it on (production)
 
@@ -119,13 +125,13 @@ by Claude.
    GALLABOX_ACCOUNT_ID=<account id>
    ```
 
-   `WHATSAPP_TEMPLATE_EN` is only needed for a template other than `19112026_linkedin_milestone`.
+   `WHATSAPP_TEMPLATE_EN` is only needed for a template other than `24112026_linkedin_milestone`.
 
 4. Recreate the container (docs/RUNBOOK.md, Secrets). The service refuses to start if the key, secret or channel
    is missing, and logs `mail {"transport":"smtp","whatsapp":"gallabox"}` when it is on.
 5. Admin → Settings → WhatsApp test numbers: add your own number.
 6. Admin → Test flow → Typical licence → Send as the ERP. Step 4 on the run page follows the message: sent, then
-   delivered and read. Check it on the phone: the link in the text and the View My Post button both open the card.
+   delivered and read. Check it on the phone: the card picture shows, and the link in the text and the View My Post button both open the card.
 
 To switch it off again: `WHATSAPP_TRANSPORT=off` and recreate the container. Messages stay queued in the admin.
 
