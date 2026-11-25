@@ -12,7 +12,7 @@ import { renderExpiredPage, renderNotFoundPage, renderUnsubscribePage } from './
 import { suppress, suppression } from '../db/emails.js';
 import { genericPreviewFile, renderStudioShell, studioCsp } from './studio.js';
 import { cachedPreview } from './preview-image.js';
-import { cachedCardImage, cardImageInput } from './card-image.js';
+import { cachedCardImage, cardImageInput, type CardStyle } from './card-image.js';
 import { readFile } from 'node:fs/promises';
 import { linkedinEnabled } from '../linkedin/client.js';
 import { reviewLink } from './review.js';
@@ -144,6 +144,8 @@ pageRoutes.get('/c/:token/review', async (c) => {
 
 // <hash>[-v<design>][-ar].jpg; addresses from before the design number still answer.
 const PREVIEW_FILE_RE = /^([0-9a-f]{10})(?:-v\d{1,3})?(-ar)?\.jpg$/;
+/** The card picture's file: the same, with -dayone for the Day One drawing (the WhatsApp message's). */
+const CARD_FILE_RE = /^([0-9a-f]{10})(?:-v\d{1,3})?(-dayone)?(-ar)?\.jpg$/;
 
 /**
  * The picture link previews show (WhatsApp, LinkedIn, iMessage): the company's name, big. The file name carries
@@ -178,18 +180,20 @@ pageRoutes.get('/c/:token/preview/:file', async (c) => {
 });
 
 /**
- * The customer's card as a picture (the Day One style, src/page/card-image.ts), shown in the welcome email and
- * posted by "Post on LinkedIn" from the email. Same address rules and fallback as the preview picture.
+ * The customer's card as a picture (src/page/card-image.ts): the Daylight style, shown in the welcome email and posted
+ * by "Post on LinkedIn" from the email, or with -dayone the Day One style the welcome WhatsApp message carries. Same
+ * address rules and fallback as the preview picture.
  */
 pageRoutes.get('/c/:token/card/:file', async (c) => {
   const token = c.req.param('token');
-  const m = PREVIEW_FILE_RE.exec(c.req.param('file'));
+  const m = CARD_FILE_RE.exec(c.req.param('file'));
   if (!TOKEN_RE.test(token) || !m) return c.text('Not found', 404);
-  const lang: Lang = m[2] ? 'ar' : 'en';
+  const style: CardStyle = m[2] ? 'dayone' : 'daylight';
+  const lang: Lang = m[3] ? 'ar' : 'en';
   const card = await getCardByToken(c.env.DB, token);
   if (!card || card.status === 'expired' || isPast(card.expires_at)) return c.text('Not found', 404);
   try {
-    const img = await cachedCardImage(`${token}:${card.content_hash}:${lang}`, cardImageInput(card, lang));
+    const img = await cachedCardImage(`${token}:${card.content_hash}:${lang}`, cardImageInput(card, lang), style);
     return new Response(new Uint8Array(img), {
       headers: { 'Content-Type': 'image/jpeg', 'X-Content-Type-Options': 'nosniff', 'X-Robots-Tag': 'noindex', 'Cache-Control': 'public, max-age=604800' },
     });

@@ -1,9 +1,11 @@
-// The customer's card as a picture, for the welcome email and the email's "Post on LinkedIn": the studio's
-// "Daylight" style (SPC's choice, 27 October 2026), square: the kicker, the founder and their role, the photo tile
-// waiting for their photo, the first headline ("I've started a new business!"), the company and activity, "Licensed with" and the logo.
-// Drawn by sharp from the design's measurements (design/source/studio/template.html, isDaylight); the customer then
-// makes their own version in the studio. The "Day One" drawing is kept below. Arabic in Noto Kufi Arabic.
-// 1080 x 1080 JPEG.
+// The customer's card as a picture, drawn by sharp from the design's measurements (design/source/studio/template.html);
+// the customer then makes their own version in the studio. Two styles, both square 1080 x 1080 JPEGs:
+//   daylight  the welcome email and the email's "Post on LinkedIn" (SPC's choice, 27 October 2026): the kicker, the
+//             founder and their role, the photo tile waiting for their photo, the first headline ("I've started a new
+//             business!"), the company and activity, "Licensed with" and the logo (isDaylight).
+//   dayone    the welcome WhatsApp message (SPC's choice, 25 November 2026): the tear-off calendar of the licence date,
+//             the headline, the company and activity, the founder's initials and name, "Licensed with" and the logo (isDayone).
+// Arabic in Noto Kufi Arabic.
 import { readFileSync } from 'node:fs';
 import sharp from 'sharp';
 import type { CardRow, Lang } from '../types.js';
@@ -109,7 +111,7 @@ async function fitText(o: { text: string; face: Face; sizes: number[]; color: st
   return last as TextImage;
 }
 
-/** The "Day One" picture as a JPEG (the email's picture until 27 October 2026). */
+/** The "Day One" picture as a JPEG: the WhatsApp message's picture since 25 November 2026 (the email's until 27 October). */
 export async function renderDayOne(p: CardImageInput): Promise<Buffer> {
   useOurFonts();
   const ar = p.lang === 'ar';
@@ -141,7 +143,11 @@ export async function renderDayOne(p: CardImageInput): Promise<Buffer> {
   const calLeft = ar ? S - PAD_X - 400 : PAD_X;
   const COL_W = S - 2 * PAD_X - 400 - 64;
   const colX = ar ? PAD_X : PAD_X + 400 + 64;
-  const headline = await fitText({ text: T[p.lang].headline, face: f.heavy, sizes: ar ? [66, 60, 54] : [74, 68, 62], color: C.ink, width: COL_W, maxHeight: 220, align, lineHeight: ar ? 0.85 : 0.98, tracking: ar ? 0 : -0.045 });
+  // The studio's dyHeadSize (by the headline's length, Arabic at 80 %), balanced like its text-wrap: balance. Without the
+  // no-break space the Daylight headline keeps, so it breaks as the studio's Day One does: "I've started a / new business!".
+  const dyHead = T[p.lang].headline.replace(/\u00a0/g, ' ');
+  const dyHeadSize = (n: number): number => (ar ? Math.round(n * 0.8) : n);
+  const headline = await balanced({ text: dyHead, face: f.heavy, size: dyHeadSize(dyHead.length <= 10 ? 96 : dyHead.length <= 16 ? 86 : dyHead.length <= 24 ? 74 : 64), color: C.ink, width: COL_W, align, lineHeight: ar ? 0.95 : 1, tracking: ar ? 0 : -0.045 });
   const coSizes = p.company.length <= 18 ? [44, 40, 36] : p.company.length <= 26 ? [40, 36, 32] : p.company.length <= 36 ? [34, 30, 28] : [30, 28, 26];
   const company = await fitText({ text: p.company, face: f.heavy, sizes: ar ? coSizes.map((s) => s - 4) : coSizes, color: C.blue, width: COL_W, maxHeight: 200, align, lineHeight: ar ? 0.9 : 1.08, tracking: ar ? 0 : -0.02 });
   const activity = p.activity ? await fitText({ text: p.activity, face: f.medium, sizes: [26, 24, 22], color: C.muted, width: COL_W, maxHeight: 110, align, lineHeight: ar ? 0.95 : 1.3, tracking: 0 }) : null;
@@ -292,12 +298,16 @@ export async function renderDaylight(p: CardImageInput): Promise<Buffer> {
 /** The email's picture. */
 export const renderCardImage = renderDaylight;
 
+/** Which drawing: daylight for the email and LinkedIn, dayone for WhatsApp. */
+export type CardStyle = 'daylight' | 'dayone';
+
 const cache = new Map<string, Buffer>();
-export async function cachedCardImage(key: string, p: CardImageInput): Promise<Buffer> {
-  const hit = cache.get(key);
+export async function cachedCardImage(key: string, p: CardImageInput, style: CardStyle = 'daylight'): Promise<Buffer> {
+  const k = style === 'dayone' ? `${key}:dayone` : key;
+  const hit = cache.get(k);
   if (hit) return hit;
-  const img = await renderCardImage(p);
-  cache.set(key, img);
+  const img = style === 'dayone' ? await renderDayOne(p) : await renderCardImage(p);
+  cache.set(k, img);
   if (cache.size > 200) cache.delete(cache.keys().next().value as string);
   return img;
 }

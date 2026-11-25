@@ -1,6 +1,7 @@
 // The customer studio: the page shell for /c/<token> and the static files built by tools/build-studio.mjs.
 // The studio itself is a client-side app (client/), built from the approved design; the server only hands
 // it the licence data and serves its files.
+import type { CardStyle } from './card-image.js';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -112,9 +113,12 @@ export function previewPath(card: Pick<CardRow, 'token' | 'content_hash'>, lang:
 /** The version of the card picture's design (src/page/card-image.ts, used in the welcome email). Raise it on change. */
 export const CARD_DESIGN = 3;
 
-/** Where a card's own Day One picture lives: /c/<token>/card/<hash10>-v<design>[-ar].jpg */
-export function cardImagePath(card: Pick<CardRow, 'token' | 'content_hash'>, lang: Lang): string {
-  return `/c/${card.token}/card/${card.content_hash.slice(0, 10)}-v${CARD_DESIGN}${lang === 'ar' ? '-ar' : ''}.jpg`;
+/**
+ * Where a card's own picture lives: /c/<token>/card/<hash10>-v<design>[-dayone][-ar].jpg. Daylight (the email's) by
+ * default; -dayone is the Day One drawing the WhatsApp message carries (src/page/card-image.ts).
+ */
+export function cardImagePath(card: Pick<CardRow, 'token' | 'content_hash'>, lang: Lang, style: CardStyle = 'daylight'): string {
+  return `/c/${card.token}/card/${card.content_hash.slice(0, 10)}-v${CARD_DESIGN}${style === 'dayone' ? '-dayone' : ''}${lang === 'ar' ? '-ar' : ''}.jpg`;
 }
 
 /** The generic link-preview picture (design/og/licence-preview.jpg), as built into public/studio. */

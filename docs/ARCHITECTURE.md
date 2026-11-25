@@ -721,7 +721,8 @@ provider. docs/WHATSAPP.md has the details, the template to create in Gallabox a
   - the template name (`WHATSAPP_TEMPLATE_EN`, default `24112026_linkedin_milestone`; English for every customer,
     SPC's decision of 24 November 2026);
   - the body value `variable_1`, the customer's studio link;
-  - the card picture as the image header (`WHATSAPP_HEADER=none` for a template without one);
+  - the card picture as the image header, in the Day One style (`/c/<token>/card/…-dayone.jpg`, src/page/card-image.ts
+    `renderDayOne`; the email keeps Daylight), or none with `WHATSAPP_HEADER=none`;
   - the button's URL suffix `<token>?lang=en&via=whatsapp`.
 
   `WHATSAPP_TRANSPORT=file` writes it to `DATA_DIR/whatsapp-outbox` instead (the local copy).

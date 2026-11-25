@@ -212,7 +212,8 @@ describe('the message', () => {
     expect(m.values).toEqual({ variable_1: link });
     expect(m.buttonSuffix).toBe(`${card.token}?lang=en&via=whatsapp`);
     expect(m.studioUrl).toBe(link);
-    expect(m.imageUrl).toMatch(new RegExp(`^https://licensed\\.test/c/${card.token}/card/[0-9a-f]{10}-v\\d+\\.jpg$`));
+    // The Day One drawing (SPC, 25 November 2026); the welcome email keeps the Daylight one.
+    expect(m.imageUrl).toMatch(new RegExp(`^https://licensed\\.test/c/${card.token}/card/[0-9a-f]{10}-v\\d+-dayone\\.jpg$`));
     expect(m.text).toContain(`Click the link below: ${link}\n\nWelcome to the SPC Free Zone family!`);
     expect(m.text).not.toContain('{{');
   });

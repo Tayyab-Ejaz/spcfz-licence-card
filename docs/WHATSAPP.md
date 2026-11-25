@@ -47,7 +47,7 @@ on 24 November 2026 (Gallabox id `6b057a72fa6579f26637877e`):
 | Category | Marketing |
 | Language | English |
 | Channel | SPC Free Zone- Marketing |
-| Header | Image: the customer's own card picture (Meta's sample was test card TEST-REF-261124-9368's picture) |
+| Header | Image: the customer's own card picture, in the Day One style (Meta's sample was test card TEST-REF-261124-9368's Daylight picture) |
 | Body | below, with one variable, `{{variable_1}}` |
 | Footer | none |
 | Button | Visit website, "View My Post", dynamic URL `https://licensed.spcfz.ae/c/{{1}}` |
@@ -65,9 +65,11 @@ What the service fills in:
 
 - `{{variable_1}}` is the customer's studio link, `https://licensed.spcfz.ae/c/<token>?lang=en&via=whatsapp`.
 - The button's `{{1}}` is the same link's part after `/c/`, `<token>?lang=en&via=whatsapp`.
-- The header picture is the customer's card picture, `https://licensed.spcfz.ae/c/<token>/card/<hash>-v<n>.jpg`
-  (1080 × 1080 JPEG, about 60 KB; WhatsApp's limit is 5 MB). It is drawn from the ERP's details, so it shows the
-  empty photo outline until the customer adds a photo in the studio.
+- The header picture is the customer's card in the **Day One** style (SPC, 25 November 2026): the tear-off
+  calendar of the licence date, "I've started a new business!", the company and activity, the founder's initials
+  and name, and "Licensed with" SPC. `https://licensed.spcfz.ae/c/<token>/card/<hash>-v<n>-dayone.jpg`, a
+  1080 × 1080 JPEG of about 65 KB (WhatsApp's limit is 5 MB), drawn from the ERP's details. The welcome email keeps
+  the Daylight picture (the same address without `-dayone`).
 
 In Gallabox's request that is `headerValues: { mediaUrl, mediaName }`, `bodyValues: { variable_1: <link> }` and
 one URL `buttonValues` entry.

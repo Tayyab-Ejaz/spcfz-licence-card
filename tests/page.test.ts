@@ -11,7 +11,7 @@ import { flushBackground } from '../src/util/background.js';
 import { createTestEnv } from './env.js';
 import sharp from 'sharp';
 import { unbreakable } from '../src/page/preview-image.js';
-import { PREVIEW_DESIGN } from '../src/page/studio.js';
+import { CARD_DESIGN, PREVIEW_DESIGN, cardImagePath } from '../src/page/studio.js';
 
 const env = createTestEnv();
 const app = new Hono<AppEnv>().route('/', pageRoutes);
@@ -162,6 +162,28 @@ describe('GET /c/:token', () => {
     }
     // An older address (the card changed since) still answers, with the current details.
     expect((await call(`/c/${card.token}/preview/0123456789.jpg`)).res.status).toBe(200);
+  }, 30_000);
+
+  it("draws the card picture in both styles: Daylight for the email, -dayone for WhatsApp (SPC, 25 November 2026)", async () => {
+    const card = await seedCard({ status: 'ready', fields: { company_name_en: 'Lumen & Ledger FZ-LLC', founder_name_en: 'Mariam Fawzy', activity_category: 'Financial advisory for small businesses' } });
+    const h = 'a1b2c3d4e5'; // real content hashes are hex; the route draws the card's current details either way
+    const got: Record<string, Buffer> = {};
+    for (const file of [`${h}-v${CARD_DESIGN}.jpg`, `${h}-v${CARD_DESIGN}-dayone.jpg`, `${h}-v${CARD_DESIGN}-dayone-ar.jpg`]) {
+      const { res } = await call(`/c/${card.token}/card/${file}`);
+      expect(res.status, file).toBe(200);
+      expect(res.headers.get('Content-Type')).toBe('image/jpeg');
+      got[file] = Buffer.from(await res.arrayBuffer());
+      const meta = await sharp(got[file]).metadata();
+      expect([meta.format, meta.width, meta.height], file).toEqual(['jpeg', 1080, 1080]);
+    }
+    expect(got[`${h}-v${CARD_DESIGN}-dayone.jpg`]?.equals(got[`${h}-v${CARD_DESIGN}.jpg`] as Buffer)).toBe(false);
+    const ch = card.content_hash.slice(0, 10);
+    expect(cardImagePath(card, 'en', 'dayone')).toBe(`/c/${card.token}/card/${ch}-v${CARD_DESIGN}-dayone.jpg`);
+    expect(cardImagePath(card, 'en')).toBe(`/c/${card.token}/card/${ch}-v${CARD_DESIGN}.jpg`);
+    // The style suffix belongs to the card picture only, and only in its place.
+    for (const path of [`/c/${card.token}/preview/${h}-dayone.jpg`, `/c/${card.token}/card/${h}-ar-dayone.jpg`, `/c/${card.token}/card/${h}-daylight.jpg`]) {
+      expect((await call(path)).res.status, path).toBe(404);
+    }
   }, 30_000);
 
   it('refuses malformed preview addresses and unknown cards get no drawn picture', async () => {

@@ -3,7 +3,8 @@
 //
 // The template SPC got approved (Gallabox, 24 November 2026; read back through the API the same day):
 //   name      24112026_linkedin_milestone, English, Marketing, on the "SPC Free Zone- Marketing" number
-//   header    image: the customer's own card picture (/c/<token>/card/….jpg), the same one the welcome email shows
+//   header    image: the customer's own card picture in the Day One style (/c/<token>/card/…-dayone.jpg; SPC's choice,
+//             25 November 2026). The welcome email keeps the Daylight style.
 //   body      TEMPLATE_TEXT.body below, with ONE variable, {{variable_1}}: the customer's studio link
 //   footer    none
 //   button    a website button, "View My Post", URL https://licensed.spcfz.ae/c/{{1}} (the part after /c/ is per customer)
@@ -59,7 +60,7 @@ export function welcomeWhatsapp(card: CardRow, o: { baseUrl: string; template?: 
     template: o.template || DEFAULT_TEMPLATE,
     values: { variable_1: studioUrl },
     buttonSuffix,
-    imageUrl: o.header === 'image' ? `${base}${cardImagePath(card, 'en')}` : null,
+    imageUrl: o.header === 'image' ? `${base}${cardImagePath(card, 'en', 'dayone')}` : null,
     studioUrl,
     text: TEMPLATE_TEXT.body.replace('{{variable_1}}', studioUrl),
   };
